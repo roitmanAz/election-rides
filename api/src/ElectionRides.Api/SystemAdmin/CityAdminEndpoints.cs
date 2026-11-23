@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectionRides.Api.SystemAdmin;
 
 public record NewCityBody(int LocalityCode, string AdminName, string AdminEmail, Guid? CopyFromCityId);
+public record NewOperationBody(string Type, DateOnly? ElectionDay, List<Guid> CityIds);
 
 /// <summary>
 /// The first part of the system admin screen (spec 3.2), built early so cities can be opened:
@@ -65,6 +66,26 @@ public static class CityAdminEndpoints
                     hqPhone = c.HqPhone != null,
                 },
             });
+        });
+
+        // Election operations (spec 3.2), the minimum needed to take requests: one active at a time.
+        g.MapGet("/operations", async (AppDbContext db, CancellationToken ct) =>
+            (await db.Operations.Include(o => o.Cities).OrderByDescending(o => o.ElectionDay).ToListAsync(ct))
+                .Select(o => new { o.Id, type = o.Type.ToString(), o.ElectionDay, o.IsActive, o.ClosedAt, cities = o.Cities.Select(c => new { c.Id, c.Name }) }));
+
+        g.MapPost("/operations", async (NewOperationBody b, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Enum.TryParse<ElectionType>(b.Type, out var type)) return Problems.Error("צריך לבחור סוג בחירות");
+            if (b.ElectionDay is null) return Problems.Error("צריך לבחור את יום הבחירות");
+            if (b.CityIds is not { Count: > 0 }) return Problems.Error("צריך לבחור לפחות עיר אחת");
+            if (await db.Operations.AnyAsync(o => o.IsActive, ct)) return Problems.Error("כבר יש מבצע פעיל. צריך לסגור אותו לפני שפותחים חדש.", 409);
+            var cities = await db.Cities.Where(c => b.CityIds.Contains(c.Id)).ToListAsync(ct);
+            var op = new ElectionOperation { Type = type, ElectionDay = b.ElectionDay.Value, IsActive = true, Cities = cities };
+            db.Operations.Add(op);
+            var actor = await db.Users.FirstAsync(u => u.Id == me.UserId(), ct);
+            Audit.Add(db, actor, "operation.open", $"{(type == ElectionType.Knesset ? "כנסת" : "רשויות")} {b.ElectionDay:dd.MM.yyyy}, {cities.Count} ערים");
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new { op.Id });
         });
 
         g.MapPost("/cities", async (NewCityBody b, ClaimsPrincipal me, AppDbContext db, IGovData gov, Invitations inv, CancellationToken ct) =>

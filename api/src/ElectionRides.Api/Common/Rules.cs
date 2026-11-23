@@ -19,6 +19,27 @@ public static partial class Rules
 
     public static string DigitsOnly(string? s) => new((s ?? "").Where(char.IsDigit).ToArray());
 
+    /// <summary>Israeli ID number: up to 9 digits (padded with leading zeros) with a check digit.</summary>
+    public static bool IsValidIdNumber(string? id)
+    {
+        var d = DigitsOnly(id);
+        if (d.Length is 0 or > 9 || d != (id ?? "").Trim()) return false;
+        d = d.PadLeft(9, '0');
+        var sum = 0;
+        for (var i = 0; i < 9; i++)
+        {
+            var n = (d[i] - '0') * (i % 2 == 0 ? 1 : 2);
+            sum += n > 9 ? n - 9 : n;
+        }
+        return sum % 10 == 0 && d != "000000000";
+    }
+
+    public static string NormalizeId(string id) => DigitsOnly(id).PadLeft(9, '0');
+
+    /// <summary>Closed lists from the operator prototype. "אחר" always needs a short text.</summary>
+    public static readonly string[] UrgencyReasons = ["יציאה מהעיר", "טיפול רפואי", "עבודה", "אחר"];
+    public static readonly string[] CancelReasons = ["הפונה ביטל", "מצא הסעה אחרת", "פנייה כפולה", "אחר"];
+
     /// <summary>
     /// Ballot boxes as typed by the city admin: single numbers and ranges, separated by commas,
     /// e.g. "31-35" or "10, 12, 14–16" or "12.1". Returns null when the text cannot be read.

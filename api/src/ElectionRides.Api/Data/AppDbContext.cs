@@ -17,6 +17,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Street> Streets => Set<Street>();
     public DbSet<Cluster> Clusters => Set<Cluster>();
     public DbSet<BallotBox> BallotBoxes => Set<BallotBox>();
+    public DbSet<Person> People => Set<Person>();
+    public DbSet<PersonPhone> PersonPhones => Set<PersonPhone>();
+    public DbSet<RideRequest> Requests => Set<RideRequest>();
+    public DbSet<RequestPassenger> Passengers => Set<RequestPassenger>();
+    public DbSet<AddressLocation> AddressLocations => Set<AddressLocation>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -93,6 +98,47 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Number).HasMaxLength(10);
             // A ballot box belongs to one cluster in the city.
             e.HasIndex(x => new { x.CityId, x.Number }).IsUnique();
+        });
+
+        // Intake (spec 5.1)
+        b.Entity<Person>(e =>
+        {
+            e.Property(x => x.FullName).HasMaxLength(100);
+            e.Property(x => x.IdNumber).HasMaxLength(9);
+            e.HasIndex(x => new { x.CityId, x.IdNumber }).IsUnique().HasFilter("\"IdNumber\" IS NOT NULL");
+            e.HasMany(x => x.Phones).WithOne().HasForeignKey(x => x.PersonId);
+        });
+        b.Entity<PersonPhone>(e =>
+        {
+            e.HasKey(x => new { x.PersonId, x.Phone });
+            e.Property(x => x.Phone).HasMaxLength(10);
+            e.HasIndex(x => x.Phone);
+        });
+        b.Entity<RideRequest>(e =>
+        {
+            e.HasIndex(x => new { x.CityId, x.OperationId, x.Number }).IsUnique();
+            e.HasIndex(x => new { x.CityId, x.Status });
+            e.HasIndex(x => x.CallerPhone);
+            e.Property(x => x.CallerPhone).HasMaxLength(10);
+            e.Property(x => x.BuildingNumber).HasMaxLength(10);
+            e.Property(x => x.Entrance).HasMaxLength(20);
+            e.Property(x => x.DriverNotes).HasMaxLength(300);
+            e.Property(x => x.UrgencyReason).HasMaxLength(120);
+            e.Property(x => x.CancelReason).HasMaxLength(200);
+            e.Property(x => x.Location).HasColumnType("geography (point, 4326)");
+            e.HasOne(x => x.Street).WithMany().HasForeignKey(x => x.StreetId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Passengers).WithOne().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<RequestPassenger>(e =>
+        {
+            e.HasOne(x => x.Person).WithMany().HasForeignKey(x => x.PersonId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.BallotBox).HasMaxLength(10);
+        });
+        b.Entity<AddressLocation>(e =>
+        {
+            e.HasKey(x => new { x.StreetId, x.BuildingNumber });
+            e.Property(x => x.BuildingNumber).HasMaxLength(10);
+            e.Property(x => x.Location).HasColumnType("geography (point, 4326)");
         });
     }
 }

@@ -39,6 +39,29 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("CityElectionOperation");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.AddressLocation", b =>
+                {
+                    b.Property<Guid>("StreetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BuildingNumber")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("Approximate")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point, 4326)");
+
+                    b.HasKey("StreetId", "BuildingNumber");
+
+                    b.ToTable("AddressLocations");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.AppUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -421,6 +444,186 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("PasswordTokens");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Person", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Gender")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IdNumber")
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)");
+
+                    b.Property<Guid?>("LastClusterId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId", "IdNumber")
+                        .IsUnique()
+                        .HasFilter("\"IdNumber\" IS NOT NULL");
+
+                    b.ToTable("People");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.PersonPhone", b =>
+                {
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("PersonId", "Phone");
+
+                    b.HasIndex("Phone");
+
+                    b.ToTable("PersonPhones");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.RequestPassenger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BallotBox")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("ClusterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("PendingVerification")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonId");
+
+                    b.HasIndex("RequestId");
+
+                    b.ToTable("Passengers");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.RideRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ApproximateLocation")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("BuildingNumber")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("CallerPhone")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CommunityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DriverNotes")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Entrance")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point, 4326)");
+
+                    b.Property<bool>("NeedsHelp")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NeedsWalker")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NeedsWheelchair")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ReturnMode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StreetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TakenById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TimeMode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UrgencyReason")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<TimeOnly?>("WindowFrom")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("WindowTo")
+                        .HasColumnType("time without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CallerPhone");
+
+                    b.HasIndex("StreetId");
+
+                    b.HasIndex("CityId", "Status");
+
+                    b.HasIndex("CityId", "OperationId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("Requests");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.Street", b =>
                 {
                     b.Property<Guid>("Id")
@@ -539,6 +742,43 @@ namespace ElectionRides.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.PersonPhone", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Person", null)
+                        .WithMany("Phones")
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.RequestPassenger", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ElectionRides.Api.Domain.RideRequest", null)
+                        .WithMany("Passengers")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Person");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.RideRequest", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Street", "Street")
+                        .WithMany()
+                        .HasForeignKey("StreetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Street");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.Street", b =>
                 {
                     b.HasOne("ElectionRides.Api.Domain.City", null)
@@ -551,6 +791,16 @@ namespace ElectionRides.Api.Data.Migrations
             modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
                 {
                     b.Navigation("Boxes");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Person", b =>
+                {
+                    b.Navigation("Phones");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.RideRequest", b =>
+                {
+                    b.Navigation("Passengers");
                 });
 #pragma warning restore 612, 618
         }

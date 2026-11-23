@@ -19,6 +19,8 @@ public class FoundationTests(ApiFactory api)
     public async Task Only_one_election_operation_can_be_active()
     {
         await using var db = api.NewDb();
+        // Other tests may leave an operation active; start from none.
+        await db.Operations.Where(o => o.IsActive).ExecuteUpdateAsync(s => s.SetProperty(o => o.IsActive, false));
         db.Operations.Add(new ElectionOperation { Type = ElectionType.Knesset, ElectionDay = new DateOnly(2026, 10, 27), IsActive = true });
         await db.SaveChangesAsync();
 

@@ -6,6 +6,8 @@ using ElectionRides.Api.Domain;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Email;
 using ElectionRides.Api.GovData;
+using ElectionRides.Api.Intake;
+using ElectionRides.Api.Maps;
 using ElectionRides.Api.SystemAdmin;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,8 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddSingleton<DevEmailSender>();
 builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<DevEmailSender>());
 builder.Services.AddScoped<Invitations>();
+// Until a Google key is configured, addresses are saved as approximate locations.
+builder.Services.AddSingleton<IGeocoder, NoGeocoder>();
 
 // Official lists from data.gov.il (localities and streets).
 builder.Services.AddHttpClient("gov", c =>
@@ -98,6 +102,7 @@ app.MapCitySettings();
 app.MapStreetImport();
 app.MapCityUsers();
 app.MapSystemCities();
+app.MapIntake();
 
 try
 {
