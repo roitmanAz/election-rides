@@ -150,16 +150,16 @@ export class OperatorPage implements OnInit {
     const d = phoneDigits(this.phone);
     this.phoneChecked.set(d);
     const r = await this.api.get<{
-      people: { personId: string; fullName: string; idNumber: string | null; gender: Gender; clusterId: string | null }[];
+      people: { personId: string | null; fullName: string; idNumber: string | null; gender: Gender | null; clusterId: string | null; ballotBox: string | null; age: number | null }[];
       openRequests: { id: string; number: number }[];
     }>(`/api/intake/phone/${d}`);
     this.openOnPhone.set(this.editing() ? r.openRequests.filter((o) => o.id !== this.editing()!.id) : r.openRequests);
     const typed = this.passengers().filter((p) => !p.fromPhone);
     const known = r.people
-      .filter((p) => !typed.some((t) => t.personId === p.personId))
+      .filter((p) => !typed.some((t) => (p.personId && t.personId === p.personId) || (p.idNumber && t.idNumber === p.idNumber)))
       .map<Passenger>((p) => ({
         key: 'k' + ++keySeq, personId: p.personId, fullName: p.fullName, idNumber: p.idNumber ?? '', noId: !p.idNumber,
-        gender: p.gender, clusterId: p.clusterId ?? '', selected: false, fromPhone: true,
+        gender: p.gender, clusterId: p.clusterId ?? '', selected: false, fromPhone: true, ballotBox: p.ballotBox, age: p.age,
       }));
     this.passengers.set([...known, ...typed]);
     this.newOpen.set(known.length === 0 && typed.length === 0);
@@ -180,6 +180,31 @@ export class OperatorPage implements OnInit {
     this.duplicate.set(null);
   }
 
+  protected setGender(p: Passenger, gender: Gender) {
+    this.passengers.update((list) => list.map((x) => (x.key === p.key ? { ...x, gender } : x)));
+  }
+
+  /** With a voter base, a typed ID is looked up: name, real ballot box and cluster are filled in (spec 5.1). */
+  protected readonly baseNote = signal('');
+  protected async lookupId() {
+    this.baseNote.set('');
+    const id = this.np.idNumber.trim();
+    if (this.np.noId || !idValid(id)) return;
+    const r = await this.api.get<{ baseLoaded: boolean; found: boolean; voter: { fullName: string; age: number | null; ballotBox: string; clusterId: string | null } | null }>(`/api/intake/voter/${id}`);
+    if (!r.baseLoaded) return;
+    if (r.found && r.voter) {
+      if (!this.np.fullName.trim()) this.np.fullName = r.voter.fullName;
+      if (!this.np.clusterId && r.voter.clusterId) this.np.clusterId = r.voter.clusterId;
+      this.npBox = r.voter.ballotBox;
+      this.baseNote.set(`נמצא בבייס: ${r.voter.fullName}, קלפי ${r.voter.ballotBox}${r.voter.age ? ', גיל ' + r.voter.age : ''}`);
+      this.checkNp('name');
+      this.tryAddNew();
+    } else {
+      this.baseNote.set('לא נמצא בבייס. הנוסע יסומן "ממתין לאימות".');
+    }
+  }
+  private npBox: string | null = null;
+
   protected setPassengerCluster(p: Passenger, clusterId: string | null) {
     this.passengers.update((list) => list.map((x) => (x.key === p.key ? { ...x, clusterId: clusterId ?? '' } : x)));
   }
@@ -194,7 +219,7 @@ export class OperatorPage implements OnInit {
   }
 
   protected editTyped(p: Passenger) {
-    this.np = { fullName: p.fullName, idNumber: p.idNumber, noId: p.noId, gender: p.gender, clusterId: p.clusterId || null };
+    this.np = { fullName: p.fullName, idNumber: p.idNumber, noId: p.noId, gender: p.gender ?? 'Male', clusterId: p.clusterId || null };
     this.npErr.set({});
     this.editingKey.set(p.key);
     this.newOpen.set(true);
@@ -218,8 +243,10 @@ export class OperatorPage implements OnInit {
     const existing = this.passengers().find((p) => p.key === key);
     const p: Passenger = {
       key, personId: existing?.personId ?? null, fullName: np.fullName.trim(), idNumber: np.noId ? '' : np.idNumber.trim(),
-      noId: np.noId, gender: np.gender, clusterId: np.clusterId!, selected: true, fromPhone: false,
+      noId: np.noId, gender: np.gender, clusterId: np.clusterId!, selected: true, fromPhone: false, ballotBox: np.noId ? null : this.npBox,
     };
+    this.npBox = null;
+    this.baseNote.set('');
     this.passengers.update((list) => (existing ? list.map((x) => (x.key === key ? p : x)) : [...list, p]));
     this.newOpen.set(false);
     this.editingKey.set(null);
@@ -253,7 +280,11 @@ export class OperatorPage implements OnInit {
   }
 
   protected destText(): string {
-    const parts = [...new Set(this.selected().map((p) => this.cluster(this.finalCluster(p))?.name).filter(Boolean))];
+    // With the base, the real ballot box is read out with the place (prototype: "קלפי 34 (תלמוד תורה...)").
+    const parts = [...new Set(this.selected().map((p) => {
+      const name = this.cluster(this.finalCluster(p))?.name;
+      return name && p.ballotBox && this.finalCluster(p) === p.clusterId ? `קלפי ${p.ballotBox} (${name})` : name;
+    }).filter(Boolean))];
     return joinNames(parts as string[]);
   }
 
@@ -279,6 +310,7 @@ export class OperatorPage implements OnInit {
     const sel = this.selected();
     if (!sel.length) m.push('נוסע');
     if (sel.some((p) => !p.clusterId)) m.push('אשכול לכל נוסע');
+    if (sel.some((p) => !p.gender)) m.push('גבר או אישה לכל נוסע');
     if (this.duplicate()) m.push('להוריד את מי שכבר בפנייה פתוחה');
     if (!this.streetId) m.push('רחוב מהרשימה');
     if (!/^\d{1,5}$/.test(this.building.trim())) m.push('מספר בניין');

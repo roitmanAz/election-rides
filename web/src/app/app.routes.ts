@@ -36,6 +36,7 @@ export const routes: Routes = [
       { path: 'clusters', loadComponent: () => import('./city/clusters').then((m) => m.ClustersPage), title: 'אשכולות · מטה הסעות' },
       { path: 'communities', loadComponent: () => import('./city/list-manager').then((m) => m.CommunitiesPage), title: 'קהילות · מטה הסעות' },
       { path: 'streets', loadComponent: () => import('./city/list-manager').then((m) => m.StreetsPage), title: 'רחובות · מטה הסעות' },
+      { path: 'base', loadComponent: () => import('./city/voter-base').then((m) => m.VoterBasePage), title: 'בייס מצביעים · מטה הסעות' },
       { path: 'users', loadComponent: () => import('./city/users').then((m) => m.UsersPage), title: 'משתמשים · מטה הסעות' },
       { path: 'settings', loadComponent: () => import('./city/settings').then((m) => m.SettingsPage), title: 'הגדרות העיר · מטה הסעות' },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

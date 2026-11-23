@@ -90,8 +90,14 @@
               <div class="grid items-center gap-x-3 gap-y-2 rounded-2xl border-[1.5px] px-3 py-2.5 sm:grid-cols-[28px_minmax(0,1fr)_minmax(0,1.3fr)_auto]"
                 [class]="p.selected ? 'border-action bg-action-soft' : 'border-line'">
                 <input type="checkbox" class="size-5 accent-[var(--color-action)]" [checked]="p.selected" (change)="toggle(p)" [attr.aria-label]="'נוסע: ' + p.fullName" />
-                <span><b>{{ p.fullName }}</b>
-                  <span class="block text-sm text-muted">{{ p.gender === 'Male' ? 'גבר' : 'אישה' }} · {{ p.noId ? 'לא מסר ת"ז' : 'ת"ז ' + p.idNumber }}</span></span>
+                <span><b>{{ p.fullName }}</b>@if (p.age) { <span class="text-sm text-muted"> · גיל {{ p.age }}</span> }
+                  <span class="block text-sm text-muted">@if (p.gender) { {{ p.gender === 'Male' ? 'גבר' : 'אישה' }} · }{{ p.noId ? 'לא מסר ת"ז' : 'ת"ז ' + p.idNumber }}@if (p.ballotBox) { · קלפי {{ p.ballotBox }} }</span>
+                  @if (p.selected && !p.gender) {
+                    <span class="mt-1 flex w-max gap-1 rounded-xl bg-soft p-1" role="group" aria-label="גבר או אישה?">
+                      <button type="button" class="h-9 rounded-[10px] px-4 text-sm font-medium" (click)="setGender(p, 'Male')">גבר</button>
+                      <button type="button" class="h-9 rounded-[10px] px-4 text-sm font-medium" (click)="setGender(p, 'Female')">אישה</button>
+                    </span>
+                  }</span>
                 @if (p.fromPhone) {
                   <app-combo [inputId]="'cl-' + p.key" [items]="clusterItems()" [value]="p.clusterId || null" (valueChange)="setPassengerCluster(p, $event)" placeholder="איפה מצביעים?" />
                 } @else {
@@ -125,9 +131,10 @@
               <div class="field">
                 <label class="label" for="npId">מה מספר תעודת הזהות?<span class="req">*</span></label>
                 <input id="npId" name="npId" class="input text-right" inputmode="numeric" maxlength="9" dir="ltr" [disabled]="np.noId"
-                  [(ngModel)]="np.idNumber" (blur)="checkNp('id'); tryAddNew()" [class.invalid]="npErr().id" />
+                  [(ngModel)]="np.idNumber" (blur)="checkNp('id'); lookupId(); tryAddNew()" [class.invalid]="npErr().id" />
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="npNoId" class="size-4" [(ngModel)]="np.noId" (change)="np.idNumber = ''; checkNp('id'); tryAddNew()" /> לא מסר ת"ז</label>
                 <div class="error-text">{{ npErr().id }}</div>
+                @if (baseNote()) { <div class="text-sm text-muted">{{ baseNote() }}</div> }
               </div>
               <fieldset class="field">
                 <legend class="label mb-1.5">גבר או אישה?<span class="req">*</span></legend>

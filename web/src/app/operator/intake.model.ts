@@ -33,8 +33,12 @@ export interface Passenger {
   fullName: string;
   idNumber: string;
   noId: boolean;
-  gender: Gender;
+  /** Null for a voter from the base: the base has no gender, so the operator asks. */
+  gender: Gender | null;
   clusterId: string;
+  /** From the voter base: the real ballot box and the age (shown next to the name). */
+  ballotBox?: string | null;
+  age?: number | null;
   /** Known people from the phone list can be ticked on and off. */
   selected: boolean;
   fromPhone: boolean;

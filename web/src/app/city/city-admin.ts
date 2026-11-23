@@ -3,7 +3,7 @@ import { AuthService } from '../core/auth.service';
 import { Shell, ShellTab } from '../shared/shell';
 
 /**
- * City admin screen (spec 3.1). The voter base joins the menu in stage 7.
+ * City admin screen (spec 3.1): dashboard, clusters, communities, streets, voter base, users, city settings.
  */
 @Component({
   selector: 'app-city-admin',
@@ -17,6 +17,7 @@ export class CityAdmin {
     { path: 'clusters', label: 'אשכולות', icon: 'clusters' },
     { path: 'communities', label: 'קהילות', icon: 'comms' },
     { path: 'streets', label: 'רחובות', icon: 'streets' },
+    { path: 'base', label: 'בייס מצביעים', icon: 'base' },
     { path: 'users', label: 'משתמשים', icon: 'users' },
     { path: 'settings', label: 'הגדרות העיר', icon: 'city' },
   ];

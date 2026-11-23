@@ -4,6 +4,7 @@ import { inject } from '@angular/core';
 
 /** Line icons from the prototypes (docs/admin.html), 24px grid, stroke follows the text color. */
 const PATHS = {
+  base: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   chart: '<path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8M21 17v-3"/>',
   clusters: '<rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M8 10V4h8v6"/><path d="M10 7h4"/>',
   comms: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.3c2.9.4 5 2.8 5 5.7"/>',
