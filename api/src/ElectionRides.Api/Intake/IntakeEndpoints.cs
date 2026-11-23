@@ -34,12 +34,34 @@ public static class IntakeEndpoints
             var p = Rules.DigitsOnly(phone);
             if (!Rules.IsValidPhone(p)) return Problems.Error("מספר הטלפון לא תקין");
             var city = me.CityId();
-            var people = await db.People.Where(x => x.CityId == city && x.Phones.Any(ph => ph.Phone == p))
+            var known = await db.People.Where(x => x.CityId == city && x.Phones.Any(ph => ph.Phone == p))
                 .OrderBy(x => x.FullName)
-                .Select(x => new { personId = x.Id, x.FullName, x.IdNumber, gender = x.Gender.ToString(), clusterId = x.LastClusterId })
+                .Select(x => new { personId = (Guid?)x.Id, x.FullName, x.IdNumber, gender = (string?)x.Gender.ToString(), clusterId = x.LastClusterId })
                 .ToListAsync(ct);
+            // With a voter base, everyone on the phone in the base is shown too, with the real ballot box (spec 5.1).
+            var voters = await db.Voters.Where(v => v.CityId == city && v.Phones.Any(ph => ph.Phone == p))
+                .Select(v => new { v.IdNumber, fullName = v.FirstName + " " + v.LastName, v.Age, v.BallotBox, v.ClusterId }).ToListAsync(ct);
+            var people = known.Select(k =>
+            {
+                var v = voters.FirstOrDefault(x => x.IdNumber == k.IdNumber);
+                return new { k.personId, k.FullName, k.IdNumber, k.gender, clusterId = k.clusterId ?? v?.ClusterId, ballotBox = v?.BallotBox, age = v?.Age, inBase = v is not null };
+            }).Concat(voters.Where(v => known.All(k => k.IdNumber != v.IdNumber)).Select(v => new
+            {
+                personId = (Guid?)null, FullName = v.fullName, IdNumber = (string?)v.IdNumber, gender = (string?)null,
+                clusterId = v.ClusterId, ballotBox = (string?)v.BallotBox, age = v.Age, inBase = true,
+            })).ToList();
             var open = await OpenRequests(db, city).Where(r => r.CallerPhone == p).Select(r => new { r.Id, r.Number }).ToListAsync(ct);
             return Results.Ok(new { people, openRequests = open });
+        });
+
+        g.MapGet("/voter/{id}", async (string id, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Rules.IsValidIdNumber(id)) return Problems.Error("מספר הזהות לא תקין");
+            var n = Rules.NormalizeId(id);
+            var v = await db.Voters.Where(x => x.CityId == me.CityId() && x.IdNumber == n)
+                .Select(x => new { fullName = x.FirstName + " " + x.LastName, x.Age, x.BallotBox, x.ClusterId }).FirstOrDefaultAsync(ct);
+            var baseLoaded = await db.VoterBases.AnyAsync(b => b.CityId == me.CityId(), ct);
+            return Results.Ok(new { baseLoaded, found = v is not null, voter = v });
         });
 
         g.MapPost("/requests", async (RequestIn body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CityEvents events, CancellationToken ct) =>
@@ -277,11 +299,18 @@ public static class IntakeEndpoints
         r.UrgencyReason = urgency;
         r.ReturnMode = returnMode;
 
-        // Until the voter base exists (stage 7), every passenger is verified by hand (spec 8).
+        // Verified at once when the ID is in the voter base, with the real ballot box. Otherwise (no ID given,
+        // not in the base, or no base loaded) the passenger waits for manual verification (spec 8).
+        var idNumbers = people.Where(x => x.person.IdNumber != null).Select(x => x.person.IdNumber!).ToList();
+        var inBase = await db.Voters.Where(v => v.CityId == city && idNumbers.Contains(v.IdNumber)).ToDictionaryAsync(v => v.IdNumber, v => v.BallotBox, ct);
         r.Passengers.Clear();
         foreach (var (person, input) in people)
         {
-            var passenger = new RequestPassenger { RequestId = r.Id, PersonId = person.Id, ClusterId = input.ClusterId!.Value, PendingVerification = true };
+            var box = person.IdNumber is { } pid2 && inBase.TryGetValue(pid2, out var b2) ? b2 : null;
+            var passenger = new RequestPassenger
+            {
+                RequestId = r.Id, PersonId = person.Id, ClusterId = input.ClusterId!.Value, BallotBox = box, PendingVerification = box is null,
+            };
             r.Passengers.Add(passenger);
             db.Entry(passenger).State = EntityState.Added;
         }
@@ -304,7 +333,7 @@ public static class IntakeEndpoints
         passengers = r.Passengers.Select(p => new
         {
             p.PersonId, p.Person!.FullName, p.Person.IdNumber, noId = p.Person.IdNumber == null,
-            gender = p.Person.Gender.ToString(), p.ClusterId, p.PendingVerification,
+            gender = p.Person.Gender.ToString(), p.ClusterId, p.PendingVerification, p.BallotBox,
         }),
     };
 }

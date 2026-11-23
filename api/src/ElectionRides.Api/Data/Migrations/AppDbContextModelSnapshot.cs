@@ -295,6 +295,60 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("Communities");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.DeletionCertificate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CityName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeletedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Number")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Number"));
+
+                    b.Property<string>("OperationText")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SentTo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("VoterCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WhatWasDeleted")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.ToTable("DeletionCertificates");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.Driver", b =>
                 {
                     b.Property<Guid>("Id")
@@ -824,6 +878,100 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("TrustedDevices");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Voter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Age")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("BallotBox")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("BuildingNumber")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClusterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("IdNumber")
+                        .IsRequired()
+                        .HasMaxLength(9)
+                        .HasColumnType("character varying(9)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId", "IdNumber")
+                        .IsUnique();
+
+                    b.ToTable("Voters");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.VoterBaseInfo", b =>
+                {
+                    b.Property<Guid>("CityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("LoadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LoadedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("VoterCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("CityId");
+
+                    b.ToTable("VoterBases");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.VoterPhone", b =>
+                {
+                    b.Property<Guid>("VoterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("VoterId", "Phone");
+
+                    b.HasIndex("Phone");
+
+                    b.ToTable("VoterPhones");
+                });
+
             modelBuilder.Entity("CityElectionOperation", b =>
                 {
                     b.HasOne("ElectionRides.Api.Domain.City", null)
@@ -950,6 +1098,15 @@ namespace ElectionRides.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.VoterPhone", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Voter", null)
+                        .WithMany("Phones")
+                        .HasForeignKey("VoterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
                 {
                     b.Navigation("Boxes");
@@ -968,6 +1125,11 @@ namespace ElectionRides.Api.Data.Migrations
             modelBuilder.Entity("ElectionRides.Api.Domain.Trip", b =>
                 {
                     b.Navigation("Stops");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Voter", b =>
+                {
+                    b.Navigation("Phones");
                 });
 #pragma warning restore 612, 618
         }

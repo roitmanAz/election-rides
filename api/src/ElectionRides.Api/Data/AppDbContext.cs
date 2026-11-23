@@ -25,6 +25,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Driver> Drivers => Set<Driver>();
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<TripStop> TripStops => Set<TripStop>();
+    public DbSet<Voter> Voters => Set<Voter>();
+    public DbSet<VoterPhone> VoterPhones => Set<VoterPhone>();
+    public DbSet<VoterBaseInfo> VoterBases => Set<VoterBaseInfo>();
+    public DbSet<DeletionCertificate> DeletionCertificates => Set<DeletionCertificate>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -163,5 +167,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.DeclineReason).HasMaxLength(150);
         });
         b.Entity<TripStop>(e => e.HasIndex(x => x.RequestId));
+
+        // Voter base (spec 8, 12)
+        b.Entity<Voter>(e =>
+        {
+            e.Property(x => x.IdNumber).HasMaxLength(9);
+            e.Property(x => x.FirstName).HasMaxLength(60);
+            e.Property(x => x.LastName).HasMaxLength(60);
+            e.Property(x => x.BallotBox).HasMaxLength(10);
+            e.Property(x => x.Street).HasMaxLength(80);
+            e.Property(x => x.BuildingNumber).HasMaxLength(10);
+            e.HasIndex(x => new { x.CityId, x.IdNumber }).IsUnique();
+            e.HasMany(x => x.Phones).WithOne().HasForeignKey(x => x.VoterId).OnDelete(DeleteBehavior.Cascade);
+        });
+        b.Entity<VoterPhone>(e =>
+        {
+            e.HasKey(x => new { x.VoterId, x.Phone });
+            e.Property(x => x.Phone).HasMaxLength(10);
+            e.HasIndex(x => x.Phone);
+        });
+        b.Entity<VoterBaseInfo>(e =>
+        {
+            e.HasKey(x => x.CityId);
+            e.Property(x => x.FileName).HasMaxLength(200);
+            e.Property(x => x.LoadedBy).HasMaxLength(100);
+        });
+        b.Entity<DeletionCertificate>(e =>
+        {
+            e.HasIndex(x => x.Number).IsUnique();
+            e.HasIndex(x => x.CityId);
+            e.Property(x => x.Number).UseIdentityAlwaysColumn();
+        });
     }
 }

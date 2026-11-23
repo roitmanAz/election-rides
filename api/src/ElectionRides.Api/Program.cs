@@ -11,6 +11,7 @@ using ElectionRides.Api.GovData;
 using ElectionRides.Api.Intake;
 using ElectionRides.Api.Maps;
 using ElectionRides.Api.SystemAdmin;
+using ElectionRides.Api.VoterBase;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,6 +37,9 @@ builder.Services.AddSingleton<IGeocoder>(sp => sp.GetRequiredService<IConfigurat
     ? new NominatimGeocoder(sp.GetRequiredService<IHttpClientFactory>().CreateClient("nominatim"))
     : new NoGeocoder());
 builder.Services.AddSignalR();
+builder.Services.AddScoped<VoterBaseService>();
+builder.Services.AddSingleton<AutoDeletion>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AutoDeletion>());
 builder.Services.AddSingleton<CityEvents>();
 
 // Official lists from data.gov.il (localities and streets).
@@ -128,6 +132,7 @@ app.MapCityLists();
 app.MapClusters();
 app.MapCitySettings();
 app.MapDashboard();
+app.MapVoterBase();
 app.MapStreetImport();
 app.MapCityUsers();
 app.MapSystemCities();
