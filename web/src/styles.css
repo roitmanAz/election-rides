@@ -91,3 +91,16 @@
     @apply bg-bad-soft text-bad;
   }
 }
+
+/* Map markers (Leaflet draws them outside the components). */
+.map-plate {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; padding: 0 6px;
+  border-radius: 8px; background: var(--color-ink); color: #fff; font: 600 12px var(--font-sans); white-space: nowrap;
+  box-shadow: 0 0 0 2px #fff; transform: translate(-50%, -50%);
+}
+.map-car {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; border-radius: 7px;
+  background: var(--color-ok); color: #fff; font: 600 11px var(--font-sans); box-shadow: 0 0 0 2px #fff; transform: translate(-50%, -50%);
+}
+.map-car-Soon { background: #c98a00; }
+.map-car-OnTrip, .map-car-Break { background: var(--color-muted); }

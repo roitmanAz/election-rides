@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ElectionRides.Api.Common;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Domain;
+using ElectionRides.Api.Maps;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElectionRides.Api.CityScreens;
@@ -27,22 +28,25 @@ public static class ClusterEndpoints
             return list.Select(Dto);
         });
 
-        g.MapPost("", async (ClusterBody body, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        g.MapPost("", async (ClusterBody body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CancellationToken ct) =>
         {
             var c = new Cluster { CityId = me.CityId(), Name = "", ShortName = "", BuildingNumber = "" };
             var error = await Apply(c, body, db, ct);
             if (error is not null) return error;
+            await Locate(c, db, geo, ct);
             db.Clusters.Add(c);
             await db.SaveChangesAsync(ct);
             return Results.Ok(Dto(c));
         }).RequireAuthorization(Policies.CityAdmin);
 
-        g.MapPut("/{id:guid}", async (Guid id, ClusterBody body, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        g.MapPut("/{id:guid}", async (Guid id, ClusterBody body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CancellationToken ct) =>
         {
             var c = await db.Clusters.Include(x => x.Boxes).FirstOrDefaultAsync(x => x.Id == id && x.CityId == me.CityId(), ct);
             if (c is null) return Results.NotFound();
+            var oldAddress = (c.StreetId, c.BuildingNumber);
             var error = await Apply(c, body, db, ct);
             if (error is not null) return error;
+            if (oldAddress != (c.StreetId, c.BuildingNumber) || c.Location is null) await Locate(c, db, geo, ct);
             await db.SaveChangesAsync(ct);
             return Results.Ok(Dto(c));
         }).RequireAuthorization(Policies.CityAdmin);
@@ -98,8 +102,16 @@ public static class ClusterEndpoints
         return null;
     }
 
+    /// <summary>Finds the cluster on the map, for the dispatcher's map and for distances.</summary>
+    static async Task Locate(Cluster c, AppDbContext db, IGeocoder geo, CancellationToken ct)
+    {
+        var cityName = await db.Cities.Where(x => x.Id == c.CityId).Select(x => x.Name).FirstAsync(ct);
+        c.Location = (await geo.FindAsync(cityName, c.Street!.Name, c.BuildingNumber, ct)).Location;
+    }
+
     static object Dto(Cluster c) => new
     {
+        location = c.Location is null ? null : new { lat = c.Location.Y, lon = c.Location.X },
         c.Id, c.Number, c.Name, c.ShortName, c.Accessible, c.DropoffNote, c.BuildingNumber,
         streetId = c.StreetId, street = c.Street?.Name,
         boxes = c.Boxes.Select(b => b.Number).OrderBy(n => double.TryParse(n, out var d) ? d : 0).ToList(),

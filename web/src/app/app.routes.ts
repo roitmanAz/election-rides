@@ -16,6 +16,7 @@ const startPage = () => {
   if (me?.role === 'CityAdmin') return router.parseUrl('/city/clusters');
   if (me?.role === 'SystemAdmin') return router.parseUrl('/admin/cities');
   if (me?.role === 'Operator') return router.parseUrl('/operator');
+  if (me?.role === 'Dispatcher') return router.parseUrl('/dispatcher');
   return true;
 };
 
@@ -44,6 +45,12 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard('Operator')],
     loadComponent: () => import('./operator/operator').then((m) => m.OperatorPage),
     title: 'מוקדן · מטה הסעות',
+  },
+  {
+    path: 'dispatcher',
+    canActivate: [authGuard, roleGuard('Dispatcher')],
+    loadComponent: () => import('./dispatcher/dispatcher').then((m) => m.DispatcherPage),
+    title: 'משבץ · מטה הסעות',
   },
   {
     path: 'admin',

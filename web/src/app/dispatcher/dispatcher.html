@@ -1,0 +1,295 @@
+<div class="min-h-screen">
+  <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
+    <span class="text-xl font-semibold">מטה הסעות</span>
+    <span class="text-muted">משבץ · {{ auth.me()?.cityName }}</span>
+    <button type="button" class="btn-secondary ms-auto h-11 px-3" (click)="logout()" aria-label="יציאה"><app-icon name="logout" [size]="18" /></button>
+  </header>
+
+  @if (!active()) {
+    <p class="notice m-4">העיר לא משתתפת עכשיו במבצע בחירות פעיל. מנהל המערכת פותח מבצע.</p>
+  } @else {
+    @if (notice()) {
+      <p class="notice bad mx-4 mt-3 flex items-center gap-3" role="alert">{{ notice() }}
+        <button type="button" class="ms-auto text-sm underline" (click)="notice.set('')">סגירה</button></p>
+    }
+    <div class="grid gap-3 p-3 xl:h-[calc(100vh-68px)] xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(320px,380px)]">
+
+      <!-- Queue -->
+      <section class="card flex min-h-[420px] flex-col overflow-hidden" aria-label="תור פניות">
+        <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <h2 class="text-lg font-semibold">תור פניות</h2>
+          <span class="rounded-full bg-soft px-2.5 text-sm text-muted">{{ queue().length }}</span>
+          <div class="ms-auto flex flex-wrap gap-1">
+            @for (f of filters; track f.key) {
+              <button type="button" class="h-9 rounded-full px-3 text-sm font-medium" [class]="filter() === f.key ? 'bg-ink text-white' : 'bg-soft text-muted'"
+                (click)="filter.set(f.key)">{{ f.label }}</button>
+            }
+          </div>
+        </div>
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="sticky top-0 z-10 grid grid-cols-[64px_minmax(0,1fr)_minmax(0,1.2fr)_80px] gap-2 border-b border-line bg-surface px-3 py-2 text-xs font-medium text-muted">
+            <span>דקות המתנה</span><span>שם</span><span>מאיפה ולאן</span><span>זמן</span>
+          </div>
+          @for (r of shown(); track r.id) {
+            <button type="button" class="grid w-full grid-cols-[64px_minmax(0,1fr)_minmax(0,1.2fr)_80px] items-center gap-2 border-b border-line px-3 py-2 text-start hover:bg-bg"
+              [class.!bg-action-soft]="r.id === selectedId()" [class.shadow-[inset_-4px_0_0_var(--color-action)]]="inProposal(r)"
+              (click)="selectedId.set(r.id)">
+              <span class="inline-flex h-7 w-11 items-center justify-center rounded-[10px] font-semibold tabular-nums"
+                [class]="waitClass(r) === 'bad' ? 'bg-bad text-white' : waitClass(r) === 'warn' ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'">{{ r.waitMinutes }}</span>
+              <span class="min-w-0">
+                <b class="block truncate">{{ r.passengers[0].fullName }}@if (r.passengers.length > 1) { <span class="font-normal"> +{{ r.passengers.length - 1 }}</span> }</b>
+                <span class="flex flex-wrap items-center gap-1 text-xs text-muted">{{ kindOf(r) }}
+                  @if (r.needsWheelchair) { <span class="inline-flex text-ink" title="כיסא גלגלים"><app-icon name="wc" [size]="14" /></span> }
+                  @if (r.pending) { <span class="rounded-full bg-warn-soft px-1.5 text-warn">ממתין לאימות</span> }
+                  @if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
+                </span>
+              </span>
+              <span class="flex min-w-0 items-center gap-1.5 text-sm">
+                <span class="truncate">{{ r.street }} {{ r.buildingNumber }}</span>
+                <span class="h-0 min-w-3 flex-1 border-t-2 border-dotted border-line2"></span>
+                <span class="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-lg bg-ink px-1.5 text-xs font-semibold text-white"
+                  [title]="(cluster(r.clusterIds[0])?.name ?? '') + ', ' + (cluster(r.clusterIds[0])?.street ?? '') + ' ' + (cluster(r.clusterIds[0])?.buildingNumber ?? '')">{{ plate(r.clusterIds[0]) }}</span>
+              </span>
+              <span class="text-sm tabular-nums">
+                @if (r.deadlineSoon) { <span class="rounded-full bg-bad px-1.5 py-0.5 text-xs font-medium text-white">{{ whenText(r) }}</span> }
+                @else { {{ whenText(r) }} }
+              </span>
+            </button>
+          } @empty {
+            <p class="p-6 text-center text-muted">{{ queue().length ? 'אין פניות שמתאימות לסינון' : 'התור ריק' }}</p>
+          }
+        </div>
+      </section>
+
+      <!-- Details and map -->
+      <div class="flex min-h-0 flex-col gap-3">
+        @if (selected(); as r) {
+          <section class="card shrink-0 overflow-hidden" aria-label="פרטי פנייה">
+            <div class="flex items-center gap-3 border-b border-line px-4 py-3">
+              <h2 class="text-lg font-semibold">פנייה מס' {{ r.number }}</h2>
+              <span class="text-sm text-muted"><b class="tabular-nums text-ink">{{ r.waitMinutes }}</b> דקות המתנה</span>
+              <button type="button" class="ms-auto grid size-[42px] place-items-center rounded-full bg-soft hover:bg-bad-soft" aria-label="סגירה" (click)="selectedId.set(null)"><app-icon name="x" /></button>
+            </div>
+            <dl class="grid max-h-[300px] grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-1.5 overflow-y-auto px-4 py-3 text-sm">
+              <dt class="text-muted">נוסעים</dt>
+              <dd>@for (p of r.passengers; track $index) { <span class="block"><b>{{ p.fullName }}</b> · {{ p.gender === 'Male' ? 'גבר' : 'אישה' }}</span> }</dd>
+              <dt class="text-muted">טלפון</dt><dd dir="ltr" class="text-right whitespace-nowrap">{{ formatPhone(r.callerPhone) }}</dd>
+              <dt class="text-muted">מאיפה</dt><dd>{{ r.street }} {{ r.buildingNumber }}@if (r.entrance) { , כניסה {{ r.entrance }} }@if (r.approximateLocation) { <span class="text-warn"> · מיקום משוער</span> }</dd>
+              <dt class="text-muted">לאן</dt>
+              <dd>@for (id of r.clusterIds; track id) { <span class="block">{{ cluster(id)?.name }}</span> }
+                @for (p of r.passengers; track $index) { @if (p.ballotBox) { <span class="block text-muted">קלפי {{ p.ballotBox }}</span> } }</dd>
+              <dt class="text-muted">זמן</dt><dd>{{ whenText(r) }}@if (r.urgencyReason) { · {{ r.urgencyReason }} }</dd>
+              @if (r.returnMode !== 'DriverWaits') {
+                <dt class="text-muted">חזרה</dt><dd>{{ r.returnMode === 'CallsSeparately' ? 'בנפרד, יתקשרו' : 'הלוך בלבד' }}</dd>
+              }
+              @if (r.needsWheelchair || r.needsWalker || r.needsHelp) {
+                <dt class="text-muted">צרכים</dt>
+                <dd class="flex flex-wrap items-center gap-2">@if (r.needsWheelchair) { <span class="inline-flex items-center gap-1"><app-icon name="wc" [size]="16" /> כיסא גלגלים</span> }
+                  @if (r.needsWalker) { <span>הליכון</span> } @if (r.needsHelp) { <span>צריך עזרה</span> }</dd>
+              }
+              @if (r.driverNotes) { <dt class="text-muted">הערות</dt><dd>{{ r.driverNotes }}</dd> }
+              @if (r.pending) {
+                <dt class="text-muted">אימות</dt>
+                <dd class="flex items-center gap-2"><span class="rounded-full bg-warn-soft px-2 text-warn">ממתין לאימות</span>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="verify(r)"><app-icon name="check" [size]="16" /> אומת</button></dd>
+              }
+            </dl>
+            <div class="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3">
+              @if (propDriver(); as d) {
+                @if (joinReason()) {
+                  <span class="text-sm font-medium text-bad">לא ניתן לצרף ל{{ d.fullName }}: {{ joinReason() }}</span>
+                } @else {
+                  <button type="button" class="btn-primary h-11" (click)="addToProposal()">צרף להצעה של {{ d.fullName }}</button>
+                }
+              }
+              <button type="button" class="btn-secondary ms-auto h-11 text-bad" (click)="openCancel()">ביטול פנייה</button>
+            </div>
+          </section>
+        }
+        <section class="card flex min-h-[320px] flex-1 flex-col overflow-hidden" aria-label="מפה">
+          <div class="flex items-center gap-2 border-b border-line px-4 py-2">
+            <h2 class="text-lg font-semibold">מפה</h2>
+            <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="fitMap()">איפוס</button>
+            <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="mapBig.set(true)">הגדל</button>
+          </div>
+          <div class="min-h-0 flex-1">
+            @if (!mapBig()) {
+              <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" (picked)="selectedId.set($event)" />
+            }
+          </div>
+        </section>
+      </div>
+
+      <!-- Proposals and drivers -->
+      <section class="card flex min-h-[420px] flex-col overflow-hidden" aria-label="הצעות ונהגים">
+        @if (proposals().length) {
+          <div class="m-2.5 rounded-[20px] shadow-[inset_0_0_0_1.5px_var(--color-line)]">
+            <div class="m-2.5 mb-0 flex flex-wrap gap-1 rounded-[14px] bg-soft p-1">
+              @for (p of proposals(); track p.driverId; let i = $index) {
+                <button type="button" class="rounded-[10px] px-3 py-1.5 text-sm font-medium" [class]="i === propIdx() ? 'bg-ink text-white' : 'text-muted'"
+                  (click)="propIdx.set(i)">{{ drivers().find(d => d.id === p.driverId)?.fullName }}</button>
+              }
+            </div>
+            @if (propDriver(); as d) {
+              <div class="p-3">
+                <p class="mb-2 flex flex-wrap items-baseline gap-2"><b>הצעה ל{{ d.fullName }}</b>
+                  <span class="text-sm text-muted">{{ d.status === 'Soon' ? 'מתפנה בעוד ' + (d.minutesToFree ?? 0) + " דק'" : 'פנוי' }}</span>
+                  <span class="ms-auto text-sm text-muted">{{ propStops().length }} עצירות · {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span></p>
+                @if (propStops().length) {
+                  <ol class="relative grid gap-2 border-s-4 border-action ps-4">
+                    @for (r of propStops(); track r.id) {
+                      <li class="flex flex-wrap items-center gap-2 text-sm">
+                        <span class="-ms-[26px] size-3.5 shrink-0 rounded-full border-4 border-action bg-surface"></span>
+                        <span><b>{{ r.passengers.map(p => p.fullName).join(', ') }}</b> · {{ r.street }} {{ r.buildingNumber }}</span>
+                        @if (r.needsWheelchair) { <app-icon name="wc" [size]="14" /> }
+                        <button type="button" class="ms-auto h-8 rounded-lg bg-soft px-2.5 text-xs font-medium hover:text-bad" (click)="removeStop(r.id)">הסר</button>
+                      </li>
+                    }
+                    <li class="flex flex-wrap items-center gap-2 text-sm">
+                      <span class="-ms-[30px] inline-flex h-6 min-w-7 items-center justify-center rounded-lg bg-ink px-1.5 text-xs font-semibold text-white">{{ plate(propStops()[0].clusterIds[0]) }}</span>
+                      <span>{{ cluster(propStops()[0].clusterIds[0])?.name }}</span>
+                    </li>
+                  </ol>
+                  @if (!d.hasSmartphone) {
+                    <div class="mt-3 rounded-2xl bg-soft p-3 text-sm">
+                      <b class="mb-1 block">להקריא לנהג בטלפון</b>
+                      @for (l of scriptLines(); track $index) { <p>{{ l }}</p> }
+                    </div>
+                  }
+                  <button type="button" class="btn-primary mt-3 w-full" (click)="confirm()">{{ d.hasSmartphone ? 'שלח לנהג' : 'התקשרתי, הנהג אישר' }}</button>
+                } @else {
+                  <p class="text-sm text-muted">אין כרגע פנייה שמתאימה לרכב הזה.</p>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="flex items-center gap-2 border-y border-line px-4 py-2">
+          <h2 class="text-lg font-semibold">נהגים</h2>
+          <span class="rounded-full bg-soft px-2.5 text-sm text-muted">{{ drivers().length }}</span>
+          <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="openNewDriver()"><app-icon name="plus" [size]="16" /> נהג חדש</button>
+        </div>
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          @for (d of drivers(); track d.id) {
+            <div class="border-b border-line">
+              <button type="button" class="flex w-full items-center gap-2 px-4 py-2.5 text-start hover:bg-bg" [class.bg-action-soft]="openDriverId() === d.id"
+                (click)="openDriverId.set(openDriverId() === d.id ? null : d.id)">
+                <b class="min-w-0 flex-1 truncate">{{ d.fullName }}</b>
+                @if (!d.hasSmartphone) { <span class="rounded-full border border-dashed border-line2 px-1.5 text-xs text-muted">בלי אפליקציה</span> }
+                <span class="rounded-full px-2 py-0.5 text-xs font-medium"
+                  [class]="d.status === 'Free' ? 'bg-ok text-white' : d.status === 'Soon' ? 'bg-warn-soft text-warn' : 'bg-soft text-muted'">{{ driverLine(d) }}</span>
+              </button>
+              @if (openDriverId() === d.id) {
+                <div class="grid gap-2 bg-bg px-4 py-3 text-sm">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span dir="ltr" class="whitespace-nowrap">{{ formatPhone(d.phone) }}</span>
+                    <span class="text-muted">· {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span>
+                    <span class="ms-auto flex gap-1.5">
+                      <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium" (click)="openEditDriver(d)">ערוך</button>
+                      <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium disabled:text-line2" [disabled]="!!d.trip" (click)="action(d, 'Finish')">סיים לעבוד</button>
+                    </span>
+                  </div>
+                  @if (d.trip) {
+                    <div>
+                      <b class="text-muted">לוקח עכשיו:</b>
+                      <ul class="mt-1 grid gap-0.5">@for (s of riders(d); track $index) { <li>{{ s.names?.join(', ') }} · {{ s.address }} · <span dir="ltr">{{ formatPhone(s.phone ?? '') }}</span></li> }</ul>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5">
+                      <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'PickedUp')">נאסף</button>
+                      <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'DroppedOff')">הורד בקלפי</button>
+                      <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'Soon5')">מתפנה בעוד 5</button>
+                      <button type="button" class="h-10 rounded-[10px] bg-action text-xs font-medium text-white" (click)="action(d, 'Free')">פנוי</button>
+                    </div>
+                  } @else if (d.status === 'Break') {
+                    <button type="button" class="btn-secondary h-10 w-max px-3" (click)="action(d, 'BackFromBreak')">חזר מהפסקה, פנוי</button>
+                  } @else {
+                    <button type="button" class="btn-secondary h-10 w-max px-3" (click)="action(d, 'Break')">יוצא להפסקה</button>
+                  }
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="p-6 text-center text-muted">עוד אין נהגים ברשימה של היום</p>
+          }
+        </div>
+      </section>
+    </div>
+  }
+</div>
+
+<app-dialog [open]="mapBig()" title="מפה" [width]="1400" (closed)="mapBig.set(false)">
+  <div class="h-[75vh]">
+    @if (mapBig()) {
+      <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" (picked)="selectedId.set($event); mapBig.set(false)" />
+    }
+  </div>
+</app-dialog>
+
+<app-dialog [open]="cancelOpen()" title="ביטול פנייה" [width]="460" (closed)="cancelOpen.set(false)">
+  <label class="field"><span class="label">למה מבטלים?<span class="req">*</span></span>
+    <select class="input" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')"><option value="">בחר סיבה</option>@for (r of cancelReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+  @if (cancelReason === 'אחר') {
+    <label class="field mt-3"><span class="label">פרט בקצרה<span class="req">*</span></span><input class="input" maxlength="150" [(ngModel)]="cancelOther" /></label>
+  }
+  @if (cancelErr()) { <p class="error-text mt-2">{{ cancelErr() }}</p> }
+  <div class="mt-5 flex gap-2">
+    <button type="button" class="btn-primary !bg-bad" (click)="confirmCancel()">בטל את הפנייה</button>
+    <button type="button" class="btn-secondary" (click)="cancelOpen.set(false)">חזרה</button>
+  </div>
+</app-dialog>
+
+<app-dialog [open]="drvOpen()" [title]="drvEditId() ? 'עריכת נהג' : 'נהג חדש'" [width]="520" (closed)="drvOpen.set(false)">
+  <div class="grid gap-3">
+    <div class="field">
+      <label class="label" for="dPhone">מה מספר הטלפון?<span class="req">*</span></label>
+      <input id="dPhone" class="input text-right" type="tel" inputmode="numeric" dir="ltr" [(ngModel)]="drv.phone" (blur)="checkDriverPhone()" [class.invalid]="drvErr().phone" />
+      <div class="error-text">{{ drvErr().phone }}</div>
+    </div>
+    @if (known(); as k) {
+      <div class="grid gap-2 rounded-2xl bg-action-soft p-3">
+        @if (k.onList) {
+          <p>{{ k.fullName }} כבר ברשימה של היום.</p>
+        } @else {
+          <p>המספר שייך ל<b>{{ k.fullName }}</b> ({{ k.seats }} מקומות). זה הוא?</p>
+          <div class="flex gap-2"><button type="button" class="btn-primary h-10" (click)="rejoin()">כן, להחזיר לרשימה</button></div>
+        }
+      </div>
+    } @else {
+      <div class="field">
+        <label class="label" for="dName">מה השם המלא?<span class="req">*</span></label>
+        <input id="dName" class="input" [(ngModel)]="drv.fullName" [class.invalid]="drvErr().name" />
+        <div class="error-text">{{ drvErr().name }}</div>
+      </div>
+      <div class="field">
+        <label class="label" for="dSeats">כמה מקומות פנויים יש ברכב?<span class="req">*</span></label>
+        <select id="dSeats" class="input w-32" [(ngModel)]="drv.seats" [class.invalid]="drvErr().seats"><option value="">בחר</option>@for (n of [1,2,3,4,5,6,7,8]; track n) { <option [value]="'' + n">{{ n }}</option> }</select>
+        <div class="error-text">{{ drvErr().seats }}</div>
+      </div>
+      <fieldset class="field">
+        <legend class="label mb-1.5">הרכב מתאים לכיסא גלגלים?</legend>
+        <div class="flex w-max gap-1 rounded-xl bg-soft p-1">
+          <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="!drv.wheelchairCar ? 'bg-ink text-white' : ''" (click)="drv.wheelchairCar = false">לא</button>
+          <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="drv.wheelchairCar ? 'bg-ink text-white' : ''" (click)="drv.wheelchairCar = true">כן</button>
+        </div>
+      </fieldset>
+      <fieldset class="field">
+        <legend class="label mb-1.5">יש לך סמארטפון?<span class="req">*</span></legend>
+        <div class="flex w-max gap-1 rounded-xl bg-soft p-1" [class.ring-2]="drvErr().app" [class.ring-bad]="drvErr().app">
+          <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="drv.hasSmartphone === true ? 'bg-ink text-white' : ''" (click)="drv.hasSmartphone = true">כן</button>
+          <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="drv.hasSmartphone === false ? 'bg-ink text-white' : ''" (click)="drv.hasSmartphone = false">לא</button>
+        </div>
+        <div class="error-text">{{ drvErr().app }}</div>
+      </fieldset>
+      @if (drvErr().save) { <p class="notice bad" role="alert">{{ drvErr().save }}</p> }
+      <div class="flex gap-2">
+        <button type="button" class="btn-primary" (click)="saveDriver()">{{ drvEditId() ? 'שמירה' : 'הוסף נהג' }}</button>
+        <button type="button" class="btn-secondary" (click)="drvOpen.set(false)">ביטול</button>
+      </div>
+    }
+  </div>
+</app-dialog>
+
+@if (toast()) {
+  <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-3 font-medium text-white shadow-[var(--shadow-pop)]" role="status">{{ toast() }}</div>
+}
