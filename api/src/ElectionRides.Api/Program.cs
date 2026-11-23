@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using ElectionRides.Api.Auth;
 using ElectionRides.Api.CityScreens;
 using ElectionRides.Api.Common;
+using ElectionRides.Api.Dispatch;
 using ElectionRides.Api.Domain;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Email;
@@ -22,8 +23,19 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddSingleton<DevEmailSender>();
 builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<DevEmailSender>());
 builder.Services.AddScoped<Invitations>();
-// Until a Google key is configured, addresses are saved as approximate locations.
-builder.Services.AddSingleton<IGeocoder, NoGeocoder>();
+// Address lookup: free OpenStreetMap lookup when configured (development); otherwise every address is
+// saved as an approximate location. Google can replace it before going live.
+builder.Services.AddHttpClient("nominatim", c =>
+{
+    c.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("election-rides-dev/0.1");
+    c.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddSingleton<IGeocoder>(sp => sp.GetRequiredService<IConfiguration>()["Geocoding:Provider"] == "nominatim"
+    ? new NominatimGeocoder(sp.GetRequiredService<IHttpClientFactory>().CreateClient("nominatim"))
+    : new NoGeocoder());
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<CityEvents>();
 
 // Official lists from data.gov.il (localities and streets).
 builder.Services.AddHttpClient("gov", c =>
@@ -57,6 +69,7 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy(Policies.CityStaff, p => p.RequireClaim(SessionPolicy.CityClaim));
     o.AddPolicy(Policies.CityAdmin, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.CityAdmin)));
     o.AddPolicy(Policies.SystemAdmin, p => p.RequireRole(nameof(UserRole.SystemAdmin)));
+    o.AddPolicy(Policies.Dispatch, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.Dispatcher), nameof(UserRole.CityAdmin)));
 });
 
 // Sign-in endpoints: at most 20 requests a minute from one address (configurable for tests).
@@ -103,6 +116,8 @@ app.MapStreetImport();
 app.MapCityUsers();
 app.MapSystemCities();
 app.MapIntake();
+app.MapDispatch();
+app.MapHub<CityHub>("/hubs/city");
 
 try
 {

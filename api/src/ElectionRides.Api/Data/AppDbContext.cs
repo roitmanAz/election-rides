@@ -22,6 +22,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<RideRequest> Requests => Set<RideRequest>();
     public DbSet<RequestPassenger> Passengers => Set<RequestPassenger>();
     public DbSet<AddressLocation> AddressLocations => Set<AddressLocation>();
+    public DbSet<Driver> Drivers => Set<Driver>();
+    public DbSet<Trip> Trips => Set<Trip>();
+    public DbSet<TripStop> TripStops => Set<TripStop>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -140,5 +143,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.BuildingNumber).HasMaxLength(10);
             e.Property(x => x.Location).HasColumnType("geography (point, 4326)");
         });
+
+        // Dispatch (spec 5.3 to 5.7)
+        b.Entity<Driver>(e =>
+        {
+            e.Property(x => x.FullName).HasMaxLength(100);
+            e.Property(x => x.Phone).HasMaxLength(10);
+            e.HasIndex(x => new { x.CityId, x.Phone }).IsUnique();
+            e.Property(x => x.Location).HasColumnType("geography (point, 4326)");
+        });
+        b.Entity<Trip>(e =>
+        {
+            e.HasIndex(x => new { x.CityId, x.Status });
+            e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
+            e.HasMany(x => x.Stops).WithOne().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
+            // A driver has at most one active trip.
+            e.HasIndex(x => x.DriverId).IsUnique().HasFilter("\"Status\" = 1");
+        });
+        b.Entity<TripStop>(e => e.HasIndex(x => x.RequestId));
     }
 }

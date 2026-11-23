@@ -295,6 +295,60 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("Communities");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Driver", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("BreakAfterTrip")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("FreeAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("HasSmartphone")
+                        .HasColumnType("boolean");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point, 4326)");
+
+                    b.Property<Guid?>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("Seats")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StatusSince")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("WheelchairCar")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId", "Phone")
+                        .IsUnique();
+
+                    b.ToTable("Drivers");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.ElectionOperation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -655,6 +709,74 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("Streets");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Trip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DriverId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 1");
+
+                    b.HasIndex("CityId", "Status");
+
+                    b.ToTable("Trips");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.TripStop", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClusterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DoneAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("TripId");
+
+                    b.ToTable("TripStops");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.TrustedDevice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -788,6 +910,26 @@ namespace ElectionRides.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Trip", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.TripStop", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Trip", null)
+                        .WithMany("Stops")
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
                 {
                     b.Navigation("Boxes");
@@ -801,6 +943,11 @@ namespace ElectionRides.Api.Data.Migrations
             modelBuilder.Entity("ElectionRides.Api.Domain.RideRequest", b =>
                 {
                     b.Navigation("Passengers");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Trip", b =>
+                {
+                    b.Navigation("Stops");
                 });
 #pragma warning restore 612, 618
         }

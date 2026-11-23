@@ -26,6 +26,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["ConnectionStrings:Db"] = ConnectionString,
             ["RateLimit:AuthPerMinute"] = "10000",
+            // Tests never call outside services.
+            ["Geocoding:Provider"] = "none",
         }));
         // Tests never call data.gov.il.
         builder.ConfigureServices(s => s.Replace(ServiceDescriptor.Singleton<IGovData>(Gov)));

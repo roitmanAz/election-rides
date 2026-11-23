@@ -85,6 +85,8 @@ public static class Policies
     public const string CityStaff = "city-staff";
     public const string CityAdmin = "city-admin";
     public const string SystemAdmin = "system-admin";
+    /// <summary>The dispatcher, and the city admin who handles exceptions.</summary>
+    public const string Dispatch = "dispatch";
 }
 
 public static class Problems

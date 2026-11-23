@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ElectionRides.Api.Common;
 using ElectionRides.Api.Data;
+using ElectionRides.Api.Dispatch;
 using ElectionRides.Api.Domain;
 using ElectionRides.Api.Maps;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,7 @@ public static class IntakeEndpoints
             return Results.Ok(new { people, openRequests = open });
         });
 
-        g.MapPost("/requests", async (RequestIn body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CancellationToken ct) =>
+        g.MapPost("/requests", async (RequestIn body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CityEvents events, CancellationToken ct) =>
         {
             var city = me.CityId();
             var op = await ActiveOperation(db, city, ct);
@@ -58,6 +59,7 @@ public static class IntakeEndpoints
                 {
                     db.Requests.Add(req);
                     await db.SaveChangesAsync(ct);
+                    await events.Changed(city);
                     return Results.Ok(new { req.Id, req.Number });
                 }
                 catch (DbUpdateException) when (attempt < 3)
@@ -74,7 +76,7 @@ public static class IntakeEndpoints
             return r is null ? Results.NotFound() : Results.Ok(Detail(r));
         });
 
-        g.MapPut("/requests/{id:guid}", async (Guid id, RequestIn body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CancellationToken ct) =>
+        g.MapPut("/requests/{id:guid}", async (Guid id, RequestIn body, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CityEvents events, CancellationToken ct) =>
         {
             var r = await db.Requests.Include(x => x.Passengers).FirstOrDefaultAsync(x => x.Id == id && x.CityId == me.CityId(), ct);
             if (r is null) return Results.NotFound();
@@ -83,10 +85,11 @@ public static class IntakeEndpoints
             if (error is not null) return error;
             r.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
+            await events.Changed(r.CityId);
             return Results.Ok(new { r.Id, r.Number });
         });
 
-        g.MapPost("/requests/{id:guid}/cancel", async (Guid id, CancelIn body, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        g.MapPost("/requests/{id:guid}/cancel", async (Guid id, CancelIn body, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
         {
             var r = await db.Requests.FirstOrDefaultAsync(x => x.Id == id && x.CityId == me.CityId(), ct);
             if (r is null) return Results.NotFound();
@@ -98,7 +101,10 @@ public static class IntakeEndpoints
             r.UpdatedAt = DateTimeOffset.UtcNow;
             var user = await db.Users.FirstAsync(u => u.Id == me.UserId(), ct);
             Audit.Add(db, user, "request.cancel", $"פנייה {r.Number}: {r.CancelReason}");
+            // A request already in a trip leaves the trip.
+            await db.TripStops.Where(s => s.RequestId == r.Id).ExecuteDeleteAsync(ct);
             await db.SaveChangesAsync(ct);
+            await events.Changed(r.CityId);
             return Results.NoContent();
         });
 
