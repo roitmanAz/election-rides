@@ -50,18 +50,19 @@ public static class CityAdminEndpoints
             var clusters = await db.Clusters.GroupBy(c => c.CityId).Select(x => x.Key).ToListAsync(ct);
             var streets = await db.Streets.GroupBy(c => c.CityId).Select(x => x.Key).ToListAsync(ct);
             var communities = await db.Communities.GroupBy(c => c.CityId).Select(x => x.Key).ToListAsync(ct);
+            var bases = await db.VoterBases.Select(b => b.CityId).ToListAsync(ct);
 
             return cities.Select(c => new
             {
                 c.Id, c.Name, c.IsActive,
                 admins = admins.Where(a => a.CityId == c.Id).Select(a => new { a.FullName, a.Email, a.LastLoginAt, a.invited }),
-                // The six setup steps (spec 3.2). The voter base step is completed in stage 7.
+                // The six setup steps (spec 3.2).
                 setup = new
                 {
                     clusters = clusters.Contains(c.Id),
                     streets = streets.Contains(c.Id),
                     communities = communities.Contains(c.Id),
-                    voterBase = false,
+                    voterBase = bases.Contains(c.Id),
                     users = staff.Contains(c.Id),
                     hqPhone = c.HqPhone != null,
                 },

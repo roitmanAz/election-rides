@@ -654,6 +654,9 @@ namespace ElectionRides.Api.Data.Migrations
                     b.Property<bool>("ApproximateLocation")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("BuildingNumber")
                         .IsRequired()
                         .HasMaxLength(10)

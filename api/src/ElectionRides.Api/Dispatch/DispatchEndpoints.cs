@@ -124,7 +124,7 @@ public static class DispatchEndpoints
             db.Trips.Add(trip);
 
             await db.Requests.Where(r => pickups.Contains(r.Id))
-                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Assigned).SetProperty(r => r.UpdatedAt, now), ct);
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Assigned).SetProperty(r => r.UpdatedAt, now).SetProperty(r => r.AssignedAt, now), ct);
             if (!d.HasSmartphone)
             {
                 d.Status = DriverStatus.OnTrip;
@@ -347,7 +347,7 @@ public static class DispatchEndpoints
         trip.DeclineReason = reason;
         var ids = trip.Stops.Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList();
         await db.Requests.Where(r => ids.Contains(r.Id) && r.Status == RequestStatus.Assigned)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Queued), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Queued).SetProperty(r => r.AssignedAt, (DateTimeOffset?)null), ct);
     }
 
     /// <summary>Links work until the end of election day (Israel time); without a day yet, for 24 hours.</summary>

@@ -67,6 +67,8 @@ public class RideRequest
     public ReturnMode ReturnMode { get; set; } = ReturnMode.DriverWaits;
 
     public RequestStatus Status { get; set; } = RequestStatus.Queued;
+    /// <summary>When a driver was given the request; the wait for reports is from CreatedAt to here.</summary>
+    public DateTimeOffset? AssignedAt { get; set; }
     public string? CancelReason { get; set; }
     public List<RequestPassenger> Passengers { get; set; } = [];
 }

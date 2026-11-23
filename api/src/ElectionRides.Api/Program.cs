@@ -136,6 +136,7 @@ app.MapVoterBase();
 app.MapStreetImport();
 app.MapCityUsers();
 app.MapSystemCities();
+app.MapSystem();
 app.MapIntake();
 app.MapDispatch();
 app.MapDriverApp();
