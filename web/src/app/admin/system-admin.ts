@@ -8,7 +8,7 @@ import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Shell, ShellTab } from '../shared/shell';
 
-/** System admin screen (spec 3.2). Only "cities" for now; the other screens come in stage 8. */
+/** System admin screen (spec 3.2). Opens on the live status. */
 @Component({
   selector: 'app-system-admin',
   imports: [Shell],
@@ -16,8 +16,15 @@ import { Shell, ShellTab } from '../shared/shell';
 })
 export class SystemAdmin {
   protected readonly tabs: ShellTab[] = [
+    { path: 'live', label: 'תמונת מצב', icon: 'pulse' },
     { path: 'cities', label: 'ערים', icon: 'city' },
     { path: 'operations', label: 'מבצעי בחירות', icon: 'calendar' },
+    { path: 'reports', label: 'דוחות', icon: 'chart' },
+    { path: 'certificates', label: 'אישורי מחיקה', icon: 'trash' },
+    { path: 'audit', label: 'יומן פעולות', icon: 'list' },
+    { path: 'sysadmins', label: 'מנהלי מערכת', icon: 'users' },
+    { path: 'security', label: 'מדיניות אבטחה', icon: 'lock' },
+    { path: 'party', label: 'פרטיות והגדרות', icon: 'shield' },
   ];
 }
 
@@ -54,7 +61,10 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         @for (c of cities(); track c.id) {
           <article class="grid gap-3 rounded-2xl bg-bg p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
             <div>
-              <h2 class="text-lg font-semibold">{{ c.name }} @if (!c.isActive) { <span class="text-sm font-normal text-muted">(מושבתת)</span> }</h2>
+              <div class="flex items-start gap-2">
+                <h2 class="text-lg font-semibold">{{ c.name }} @if (!c.isActive) { <span class="text-sm font-normal text-muted">(מושבתת)</span> }</h2>
+                <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="manage(c)">ניהול</button>
+              </div>
               @for (a of c.admins; track a.email) {
                 <p class="text-sm">{{ a.fullName }} <span class="text-muted" dir="ltr">{{ a.email }}</span>
                   @if (a.invited) { <span class="text-warn">· הוזמן, עוד לא נכנס</span> }
@@ -81,6 +91,40 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         }
       </div>
     </section>
+
+    <app-dialog [open]="!!managed()" [title]="'ניהול ' + (managed()?.name ?? '')" [width]="560" (closed)="managed.set(null)">
+      @if (managed(); as m) {
+        <div class="grid gap-4">
+          <section>
+            <h3 class="mb-2 font-semibold">מנהלי העיר</h3>
+            @for (a of admins(); track a.id) {
+              <div class="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-sm odd:bg-bg">
+                <b>{{ a.fullName }}</b><span class="text-muted" dir="ltr">{{ a.email }}</span>
+                @if (a.invited) { <span class="text-warn">הוזמן</span> }
+                @if (confirmRemove() === a.id) {
+                  <span class="ms-auto">להסיר?</span>
+                  <button type="button" class="btn-primary h-9 !bg-bad px-3 text-sm" (click)="removeAdmin(a.id)">כן, הסר</button>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="confirmRemove.set(null)">לא</button>
+                } @else {
+                  <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm text-bad" (click)="confirmRemove.set(a.id)">הסר</button>
+                }
+              </div>
+            } @empty { <p class="text-sm font-medium text-bad">אין מנהל עיר</p> }
+            <div class="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+              <label class="field"><span class="label">מה השם של המנהל החדש?<span class="req">*</span></span><input class="input" [(ngModel)]="newAdminName" /></label>
+              <label class="field"><span class="label">מה האימייל שלו?<span class="req">*</span></span><input class="input" type="email" dir="ltr" [(ngModel)]="newAdminEmail" /></label>
+              <button type="button" class="btn-primary" (click)="addAdmin()">הזמנה</button>
+            </div>
+          </section>
+          <section class="border-t border-line pt-4">
+            <h3 class="mb-1 font-semibold">{{ m.isActive ? 'השבתת העיר' : 'הפעלת העיר' }}</h3>
+            <p class="mb-2 text-sm text-muted">{{ m.isActive ? 'הנתונים נשמרים, אבל משתמשי העיר לא יוכלו להיכנס.' : 'משתמשי העיר יוכלו להיכנס שוב.' }}</p>
+            <button type="button" class="btn-secondary" [class.text-bad]="m.isActive" (click)="setActive(!m.isActive)">{{ m.isActive ? 'השבתה' : 'הפעלה' }}</button>
+          </section>
+          @if (manageMsg()) { <p class="notice" [class.bad]="manageBad()" role="status">{{ manageMsg() }}</p> }
+        </div>
+      }
+    </app-dialog>
 
     <app-dialog [open]="newOpen()" title="עיר חדשה" [width]="520" (closed)="newOpen.set(false)">
       <form class="grid gap-3" (ngSubmit)="create()" novalidate>
@@ -134,6 +178,63 @@ export class CitiesPage implements OnInit {
   protected adminEmail = '';
   protected copyFrom: string | null = null;
   private searchSeq = 0;
+  protected readonly managed = signal<CityRow | null>(null);
+  protected readonly admins = signal<{ id: string; fullName: string; email: string; invited: boolean }[]>([]);
+  protected readonly confirmRemove = signal<string | null>(null);
+  protected readonly manageMsg = signal('');
+  protected readonly manageBad = signal(false);
+  protected newAdminName = '';
+  protected newAdminEmail = '';
+
+  protected async manage(c: CityRow) {
+    this.newAdminName = this.newAdminEmail = '';
+    this.manageMsg.set('');
+    this.confirmRemove.set(null);
+    this.admins.set(await this.api.get(`/api/admin/cities/${c.id}/admins`));
+    this.managed.set(c);
+  }
+
+  private async afterManage(msg: string, bad = false) {
+    this.manageBad.set(bad);
+    this.manageMsg.set(msg);
+    if (bad) return;
+    const id = this.managed()!.id;
+    await this.load();
+    this.admins.set(await this.api.get(`/api/admin/cities/${id}/admins`));
+    this.managed.set(this.cities().find((c) => c.id === id) ?? null);
+  }
+
+  protected async addAdmin() {
+    if (!this.newAdminName.trim()) return this.afterManage('צריך למלא שם', true);
+    if (!EMAIL.test(this.newAdminEmail.trim())) return this.afterManage('האימייל לא תקין', true);
+    try {
+      await this.api.post(`/api/admin/cities/${this.managed()!.id}/admins`, { email: this.newAdminEmail, fullName: this.newAdminName });
+      const email = this.newAdminEmail.trim();
+      this.newAdminName = this.newAdminEmail = '';
+      await this.afterManage(`נשלחה הזמנה אל ${email}`);
+    } catch (e) {
+      await this.afterManage(errorMessage(e), true);
+    }
+  }
+
+  protected async removeAdmin(userId: string) {
+    try {
+      await this.api.delete(`/api/admin/cities/${this.managed()!.id}/admins/${userId}`);
+      this.confirmRemove.set(null);
+      await this.afterManage('מנהל העיר הוסר');
+    } catch (e) {
+      await this.afterManage(errorMessage(e), true);
+    }
+  }
+
+  protected async setActive(active: boolean) {
+    try {
+      await this.api.post(`/api/admin/cities/${this.managed()!.id}/active`, { active });
+      await this.afterManage(active ? 'העיר הופעלה' : 'העיר הושבתה');
+    } catch (e) {
+      await this.afterManage(errorMessage(e), true);
+    }
+  }
 
   async ngOnInit() {
     await this.load();
@@ -213,7 +314,7 @@ interface Operation {
   cities: { id: string; name: string }[];
 }
 
-/** Election operations (spec 3.2): one active at a time; open a new one with type, day and cities. Closing comes in stage 8. */
+/** Election operations (spec 3.2): one active at a time; open a new one with type, day and cities; close the active one. */
 @Component({
   selector: 'app-operations',
   imports: [FormsModule, Dialog, Icon, DatePipe],
@@ -233,12 +334,24 @@ interface Operation {
               @else { <span class="rounded-full bg-surface px-2.5 py-0.5 text-sm text-muted">נסגר</span> }
             </h2>
             <p class="text-muted">{{ o.cities.length }} ערים: {{ cityNames(o) }}</p>
+            @if (o.isActive) { <div><button type="button" class="btn-secondary mt-1 h-9 px-3 text-sm text-bad" (click)="openClose(o)">סגירת המבצע</button></div> }
+            @else if (o.closedAt) { <p class="text-sm text-muted">נסגר {{ o.closedAt | date: 'dd.MM.yyyy HH:mm' }}</p> }
           </article>
         } @empty {
           <p class="px-3 py-6 text-center text-muted">עוד אין מבצעים. ערים מקבלות פניות רק בתוך מבצע פעיל.</p>
         }
       </div>
     </section>
+
+    <app-dialog [open]="!!toClose()" title="סגירת המבצע" [width]="480" (closed)="toClose.set(null)">
+      <p>אחרי הסגירה הערים לא יקבלו פניות חדשות, ואי אפשר לפתוח את המבצע מחדש.</p>
+      <p class="mt-2 text-sm text-muted">{{ deletionText() }}</p>
+      @if (closeError()) { <p class="notice bad mt-3" role="alert">{{ closeError() }}</p> }
+      <div class="mt-5 flex gap-2">
+        <button type="button" class="btn-primary !bg-bad" [disabled]="busy()" (click)="close()">סגירה</button>
+        <button type="button" class="btn-secondary" (click)="toClose.set(null)">ביטול</button>
+      </div>
+    </app-dialog>
 
     <app-dialog [open]="newOpen()" title="מבצע חדש" [width]="520" (closed)="newOpen.set(false)">
       <div class="grid gap-3">
@@ -277,6 +390,31 @@ export class OperationsPage implements OnInit {
   protected type: 'Knesset' | 'Municipal' | null = null;
   protected day = '';
   protected chosen = new Set<string>();
+  protected readonly toClose = signal<Operation | null>(null);
+  protected readonly closeError = signal('');
+  protected readonly deletionText = signal('');
+
+  protected async openClose(o: Operation) {
+    this.closeError.set('');
+    const p = await this.api.get<{ baseDeletionDays: number | null; deletionDate: string | null }>('/api/admin/party');
+    this.deletionText.set(p.baseDeletionDays
+      ? `הבייסים יימחקו אוטומטית ${p.baseDeletionDays} ימים אחרי יום הבחירות${p.deletionDate ? ` (${p.deletionDate.split('-').reverse().join('.')})` : ''}.`
+      : 'עוד לא נקבע מתי נמחקים הבייסים. אפשר לקבוע במסך "פרטיות והגדרות".');
+    this.toClose.set(o);
+  }
+
+  protected async close() {
+    this.busy.set(true);
+    try {
+      await this.api.post(`/api/admin/operations/${this.toClose()!.id}/close`);
+      this.toClose.set(null);
+      await this.load();
+    } catch (e) {
+      this.closeError.set(errorMessage(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   async ngOnInit() {
     await this.load();

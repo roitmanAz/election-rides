@@ -14,7 +14,7 @@ const startPage = () => {
   const me = inject(AuthService).me();
   const router = inject(Router);
   if (me?.role === 'CityAdmin') return router.parseUrl('/city/dashboard');
-  if (me?.role === 'SystemAdmin') return router.parseUrl('/admin/cities');
+  if (me?.role === 'SystemAdmin') return router.parseUrl('/admin/live');
   if (me?.role === 'Operator') return router.parseUrl('/operator');
   if (me?.role === 'Dispatcher') return router.parseUrl('/dispatcher');
   return true;
@@ -64,7 +64,14 @@ export const routes: Routes = [
     children: [
       { path: 'cities', loadComponent: () => import('./admin/system-admin').then((m) => m.CitiesPage), title: 'ערים · מטה הסעות' },
       { path: 'operations', loadComponent: () => import('./admin/system-admin').then((m) => m.OperationsPage), title: 'מבצעי בחירות · מטה הסעות' },
-      { path: '', pathMatch: 'full', redirectTo: 'cities' },
+      { path: 'live', loadComponent: () => import('./admin/system-pages').then((m) => m.LivePage), title: 'תמונת מצב · מטה הסעות' },
+      { path: 'reports', loadComponent: () => import('./admin/system-pages').then((m) => m.ReportsPage), title: 'דוחות · מטה הסעות' },
+      { path: 'certificates', loadComponent: () => import('./admin/system-pages').then((m) => m.CertificatesPage), title: 'אישורי מחיקה · מטה הסעות' },
+      { path: 'audit', loadComponent: () => import('./admin/system-pages').then((m) => m.AuditPage), title: 'יומן פעולות · מטה הסעות' },
+      { path: 'sysadmins', loadComponent: () => import('./admin/system-pages').then((m) => m.SysAdminsPage), title: 'מנהלי מערכת · מטה הסעות' },
+      { path: 'security', loadComponent: () => import('./admin/system-pages').then((m) => m.SecurityPage), title: 'מדיניות אבטחה · מטה הסעות' },
+      { path: 'party', loadComponent: () => import('./admin/system-pages').then((m) => m.PartyPage), title: 'פרטיות והגדרות · מטה הסעות' },
+      { path: '', pathMatch: 'full', redirectTo: 'live' },
     ],
   },
   {
