@@ -15,7 +15,10 @@ import { Shell, ShellTab } from '../shared/shell';
   template: `<app-shell [tabs]="tabs" subtitle="מנהל מערכת" menuLabel="תפריט מנהל המערכת" />`,
 })
 export class SystemAdmin {
-  protected readonly tabs: ShellTab[] = [{ path: 'cities', label: 'ערים', icon: 'city' }];
+  protected readonly tabs: ShellTab[] = [
+    { path: 'cities', label: 'ערים', icon: 'city' },
+    { path: 'operations', label: 'מבצעי בחירות', icon: 'calendar' },
+  ];
 }
 
 interface CityRow {
@@ -195,6 +198,131 @@ export class CitiesPage implements OnInit {
       await this.load();
     } catch (e) {
       this.createError.set(errorMessage(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+}
+
+interface Operation {
+  id: string;
+  type: 'Knesset' | 'Municipal';
+  electionDay: string;
+  isActive: boolean;
+  closedAt: string | null;
+  cities: { id: string; name: string }[];
+}
+
+/** Election operations (spec 3.2): one active at a time; open a new one with type, day and cities. Closing comes in stage 8. */
+@Component({
+  selector: 'app-operations',
+  imports: [FormsModule, Dialog, Icon, DatePipe],
+  template: `
+    <section class="card overflow-hidden">
+      <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
+        <h1 class="text-xl font-semibold">מבצעי בחירות</h1>
+        <button type="button" class="btn-primary ms-auto" [disabled]="hasActive()" (click)="openNew()"><app-icon name="plus" [size]="18" /> מבצע חדש</button>
+      </div>
+      @if (hasActive()) { <p class="mx-5 mt-4 text-sm text-muted">רק מבצע אחד פעיל בכל פעם.</p> }
+      <div class="grid gap-3 p-3 sm:p-5">
+        @for (o of ops(); track o.id) {
+          <article class="grid gap-1 rounded-2xl bg-bg p-4">
+            <h2 class="flex flex-wrap items-center gap-2 text-lg font-semibold">
+              {{ o.type === 'Knesset' ? 'בחירות לכנסת' : 'בחירות לרשויות המקומיות' }} · {{ o.electionDay | date: 'dd.MM.yyyy' }}
+              @if (o.isActive) { <span class="rounded-full bg-action-soft px-2.5 py-0.5 text-sm font-medium">פעיל</span> }
+              @else { <span class="rounded-full bg-surface px-2.5 py-0.5 text-sm text-muted">נסגר</span> }
+            </h2>
+            <p class="text-muted">{{ o.cities.length }} ערים: {{ cityNames(o) }}</p>
+          </article>
+        } @empty {
+          <p class="px-3 py-6 text-center text-muted">עוד אין מבצעים. ערים מקבלות פניות רק בתוך מבצע פעיל.</p>
+        }
+      </div>
+    </section>
+
+    <app-dialog [open]="newOpen()" title="מבצע חדש" [width]="520" (closed)="newOpen.set(false)">
+      <div class="grid gap-3">
+        <fieldset class="field">
+          <legend class="label mb-1.5">איזה סוג בחירות?<span class="req">*</span></legend>
+          <div class="flex w-max gap-1 rounded-xl bg-soft p-1">
+            <button type="button" class="h-10 rounded-[10px] px-4 font-medium" [class]="type === 'Knesset' ? 'bg-ink text-white' : ''" (click)="type = 'Knesset'">כנסת</button>
+            <button type="button" class="h-10 rounded-[10px] px-4 font-medium" [class]="type === 'Municipal' ? 'bg-ink text-white' : ''" (click)="type = 'Municipal'">רשויות מקומיות</button>
+          </div>
+        </fieldset>
+        <label class="field"><span class="label">מתי יום הבחירות?<span class="req">*</span></span><input type="date" class="input w-48" [(ngModel)]="day" /></label>
+        <fieldset class="field">
+          <legend class="label mb-1.5">אילו ערים משתתפות?<span class="req">*</span></legend>
+          <div class="grid gap-1.5 sm:grid-cols-2">
+            @for (c of cities(); track c.id) {
+              <label class="flex items-center gap-2"><input type="checkbox" class="size-4" [checked]="chosen.has(c.id)" (change)="toggle(c.id)" /> {{ c.name }}</label>
+            }
+          </div>
+        </fieldset>
+        @if (error()) { <p class="notice bad" role="alert">{{ error() }}</p> }
+        <div class="flex gap-2">
+          <button type="button" class="btn-primary" [disabled]="busy()" (click)="create()">פתיחת המבצע</button>
+          <button type="button" class="btn-secondary" (click)="newOpen.set(false)">ביטול</button>
+        </div>
+      </div>
+    </app-dialog>
+  `,
+})
+export class OperationsPage implements OnInit {
+  private readonly api = inject(Api);
+  protected readonly ops = signal<Operation[]>([]);
+  protected readonly cities = signal<{ id: string; name: string }[]>([]);
+  protected readonly newOpen = signal(false);
+  protected readonly busy = signal(false);
+  protected readonly error = signal('');
+  protected type: 'Knesset' | 'Municipal' | null = null;
+  protected day = '';
+  protected chosen = new Set<string>();
+
+  async ngOnInit() {
+    await this.load();
+  }
+
+  private async load() {
+    const [ops, cities] = await Promise.all([
+      this.api.get<Operation[]>('/api/admin/operations'),
+      this.api.get<{ id: string; name: string }[]>('/api/admin/cities'),
+    ]);
+    this.ops.set(ops);
+    this.cities.set(cities);
+  }
+
+  protected hasActive() {
+    return this.ops().some((o) => o.isActive);
+  }
+
+  protected cityNames(o: Operation) {
+    return o.cities.map((c) => c.name).join(', ');
+  }
+
+  protected openNew() {
+    this.type = null;
+    this.day = '';
+    this.chosen = new Set();
+    this.error.set('');
+    this.newOpen.set(true);
+  }
+
+  protected toggle(id: string) {
+    this.chosen.has(id) ? this.chosen.delete(id) : this.chosen.add(id);
+  }
+
+  protected async create() {
+    if (!this.type) return this.error.set('צריך לבחור סוג בחירות');
+    if (!this.day) return this.error.set('צריך לבחור את יום הבחירות');
+    if (!this.chosen.size) return this.error.set('צריך לבחור לפחות עיר אחת');
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.api.post('/api/admin/operations', { type: this.type, electionDay: this.day, cityIds: [...this.chosen] });
+      this.newOpen.set(false);
+      await this.load();
+    } catch (e) {
+      this.error.set(errorMessage(e));
     } finally {
       this.busy.set(false);
     }

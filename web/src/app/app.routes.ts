@@ -15,6 +15,7 @@ const startPage = () => {
   const router = inject(Router);
   if (me?.role === 'CityAdmin') return router.parseUrl('/city/clusters');
   if (me?.role === 'SystemAdmin') return router.parseUrl('/admin/cities');
+  if (me?.role === 'Operator') return router.parseUrl('/operator');
   return true;
 };
 
@@ -39,11 +40,18 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'operator',
+    canActivate: [authGuard, roleGuard('Operator')],
+    loadComponent: () => import('./operator/operator').then((m) => m.OperatorPage),
+    title: 'מוקדן · מטה הסעות',
+  },
+  {
     path: 'admin',
     canActivate: [authGuard, roleGuard('SystemAdmin')],
     loadComponent: () => import('./admin/system-admin').then((m) => m.SystemAdmin),
     children: [
       { path: 'cities', loadComponent: () => import('./admin/system-admin').then((m) => m.CitiesPage), title: 'ערים · מטה הסעות' },
+      { path: 'operations', loadComponent: () => import('./admin/system-admin').then((m) => m.OperationsPage), title: 'מבצעי בחירות · מטה הסעות' },
       { path: '', pathMatch: 'full', redirectTo: 'cities' },
     ],
   },

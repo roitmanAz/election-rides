@@ -1,0 +1,295 @@
+<div class="min-h-screen">
+  <!-- Top bar: brand, my counts, status search, new request -->
+  <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
+    <span class="text-xl font-semibold">מטה הסעות</span>
+    <span class="text-muted">מוקדן · {{ auth.me()?.cityName }}</span>
+    @if (mine(); as m) {
+      <span class="rounded-full bg-soft px-3 py-1 text-sm"><b class="tabular-nums">{{ m.mineToday }}</b> פניות שלי היום</span>
+      <span class="rounded-full bg-soft px-3 py-1 text-sm"><b class="tabular-nums">{{ m.queued }}</b> בתור עכשיו</span>
+    }
+    <div class="relative ms-auto w-full sm:w-80">
+      <span class="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted"><app-icon name="search" [size]="18" /></span>
+      <input class="h-11 w-full rounded-full bg-soft ps-10 pe-4 outline-none focus:bg-surface focus:ring-2 focus:ring-action"
+        placeholder='חיפוש פנייה: טלפון, ת"ז או שם' aria-label="חיפוש פנייה" [(ngModel)]="query" (ngModelChange)="search()"
+        (keydown.escape)="hits.set(null)" />
+      @if (hits(); as list) {
+        <div class="absolute end-0 top-full z-30 mt-2 max-h-[440px] w-[min(560px,calc(100vw-32px))] overflow-y-auto rounded-2xl bg-surface p-2 shadow-[var(--shadow-pop)]">
+          @for (h of list; track h.id) {
+            <div class="grid gap-1 rounded-xl p-3 hover:bg-soft">
+              <div class="flex flex-wrap items-baseline gap-2">
+                <span class="text-sm text-muted">פנייה מס' {{ h.number }}</span>
+                <b>{{ hitNames(h) }}</b>
+                <span class="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  [class]="h.status === 'Queued' ? 'bg-warn-soft text-warn' : h.status === 'Cancelled' ? 'bg-soft text-muted' : 'bg-action-soft text-ink'">{{ statusNames[h.status] }}</span>
+                <span class="ms-auto text-sm tabular-nums text-muted">{{ h.createdAt | date: 'HH:mm' }}</span>
+              </div>
+              <div class="flex flex-wrap gap-x-3 text-sm text-muted">
+                <span dir="ltr" class="whitespace-nowrap">{{ formatPhone(h.callerPhone) }}</span>
+                @for (p of h.passengers; track $index) {
+                  @if (p.idNumber) { <span>ת"ז {{ p.idNumber }}</span> }
+                  @if (p.cluster) { <span>{{ p.cluster.number != null ? 'אשכול ' + p.cluster.number + ', ' : '' }}{{ p.cluster.name }}</span> }
+                }
+                @if (h.cancelReason) { <span>{{ h.cancelReason }}</span> }
+              </div>
+              @if (editable.includes(h.status)) {
+                <div class="mt-1 flex gap-2">
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="openForEdit(h.id)"><app-icon name="edit" [size]="16" /> ערוך</button>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm text-bad" (click)="openCancel(h)">בטל פנייה</button>
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="p-3 text-muted">לא נמצאה פנייה</p>
+          }
+        </div>
+      }
+    </div>
+    <button type="button" class="btn-primary" (click)="reset()"><app-icon name="plus" [size]="18" /> פנייה חדשה</button>
+    <button type="button" class="btn-secondary h-11 px-3" (click)="logout()" aria-label="יציאה"><app-icon name="logout" [size]="18" /></button>
+  </header>
+
+  <div class="mx-auto grid max-w-[1400px] items-start gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <form class="card overflow-visible" autocomplete="off" novalidate (ngSubmit)="save()">
+      @if (editing(); as ed) {
+        <div class="flex flex-wrap items-center gap-3 rounded-t-[var(--radius-card)] bg-warn-soft px-5 py-3 font-medium text-warn">
+          עורך את פנייה מס' {{ ed.number }}
+          <button type="button" class="btn-secondary ms-auto h-9 px-3 text-ink" (click)="reset()">בטל עריכה</button>
+        </div>
+      }
+
+      <!-- 1. Phone -->
+      <section class="border-b border-line p-5">
+        <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">1</span>טלפון</h2>
+        <div class="field max-w-xs">
+          <label class="label" for="phone">מה מספר הטלפון שלך?<span class="req">*</span></label>
+          <input id="phone" name="phone" type="tel" inputmode="numeric" dir="ltr" class="input text-right text-lg" placeholder="05X-XXX-XXXX"
+            [(ngModel)]="phone" (ngModelChange)="onPhoneInput()" (blur)="onPhoneBlur()" [class.invalid]="phoneErr()" />
+          <div class="error-text">{{ phoneErr() }}</div>
+        </div>
+        @for (o of openOnPhone(); track o.id) {
+          <p class="notice mt-2 flex flex-wrap items-center gap-3">על המספר הזה יש פנייה פתוחה (מס' {{ o.number }})
+            <button type="button" class="btn-secondary h-9 px-3" (click)="openForEdit(o.id)">פתח את הפנייה הקיימת</button></p>
+        }
+      </section>
+
+      <!-- 2. Passengers -->
+      <section class="border-b border-line p-5" [class.opacity-40]="!phoneOk()" [attr.inert]="phoneOk() ? null : ''">
+        <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">2</span>נוסעים</h2>
+
+        @if (peopleCollapsed() && selected().length) {
+          <button type="button" class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-soft px-4 py-3 text-start hover:bg-soft2" (click)="peopleCollapsed.set(false)">
+            <b>{{ selected().map(p => p.fullName).join(', ') }}</b>
+            <span class="text-muted">אל {{ destText() }}</span>
+            @if (needsText().length) { <span class="text-muted">· {{ needsText().join(', ') }}</span> }
+            <span class="ms-auto text-sm font-medium text-action">עריכה</span>
+          </button>
+        } @else {
+          <p class="label mb-2">מי צריך הסעה?<span class="req">*</span></p>
+          <div class="grid gap-2">
+            @for (p of passengers(); track p.key) {
+              <div class="grid items-center gap-x-3 gap-y-2 rounded-2xl border-[1.5px] px-3 py-2.5 sm:grid-cols-[28px_minmax(0,1fr)_minmax(0,1.3fr)_auto]"
+                [class]="p.selected ? 'border-action bg-action-soft' : 'border-line'">
+                <input type="checkbox" class="size-5 accent-[var(--color-action)]" [checked]="p.selected" (change)="toggle(p)" [attr.aria-label]="'נוסע: ' + p.fullName" />
+                <span><b>{{ p.fullName }}</b>
+                  <span class="block text-sm text-muted">{{ p.gender === 'Male' ? 'גבר' : 'אישה' }} · {{ p.noId ? 'לא מסר ת"ז' : 'ת"ז ' + p.idNumber }}</span></span>
+                @if (p.fromPhone) {
+                  <app-combo [inputId]="'cl-' + p.key" [items]="clusterItems()" [value]="p.clusterId || null" (valueChange)="setPassengerCluster(p, $event)" placeholder="איפה מצביעים?" />
+                } @else {
+                  <span class="text-sm">{{ clusterLabel(cluster(p.clusterId)) }}</span>
+                }
+                <span class="flex gap-2">
+                  @if (!p.fromPhone) {
+                    <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="editTyped(p)">ערוך</button>
+                    <button type="button" class="btn-secondary h-9 px-3 text-sm text-bad" (click)="removeTyped(p)" aria-label="הסר נוסע"><app-icon name="trash" [size]="16" /></button>
+                  }
+                </span>
+              </div>
+            }
+          </div>
+
+          @if (duplicate(); as d) {
+            <p class="notice bad mt-3 flex flex-wrap items-center gap-3">{{ saveError() }}
+              <button type="button" class="btn-secondary h-9 px-3 text-ink" (click)="openForEdit(d.id)">פתח את הפנייה הקיימת</button></p>
+          }
+          @if (family()) {
+            <p class="notice mt-3">פנייה משפחתית: הנוסעים ייסעו לבד ברכב, בלי נוסעים נוספים.</p>
+          }
+
+          @if (newOpen()) {
+            <div class="mt-3 grid gap-3 rounded-2xl border-[1.5px] border-dashed border-line2 p-4 md:grid-cols-2">
+              <div class="field">
+                <label class="label" for="npName">מה השם המלא?<span class="req">*</span></label>
+                <input id="npName" name="npName" class="input" [(ngModel)]="np.fullName" (blur)="checkNp('name'); tryAddNew()" [class.invalid]="npErr().name" />
+                <div class="error-text">{{ npErr().name }}</div>
+              </div>
+              <div class="field">
+                <label class="label" for="npId">מה מספר תעודת הזהות?<span class="req">*</span></label>
+                <input id="npId" name="npId" class="input text-right" inputmode="numeric" maxlength="9" dir="ltr" [disabled]="np.noId"
+                  [(ngModel)]="np.idNumber" (blur)="checkNp('id'); tryAddNew()" [class.invalid]="npErr().id" />
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="npNoId" class="size-4" [(ngModel)]="np.noId" (change)="np.idNumber = ''; checkNp('id'); tryAddNew()" /> לא מסר ת"ז</label>
+                <div class="error-text">{{ npErr().id }}</div>
+              </div>
+              <fieldset class="field">
+                <legend class="label mb-1.5">גבר או אישה?<span class="req">*</span></legend>
+                <div class="flex w-max gap-1 rounded-xl bg-soft p-1">
+                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Male' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Male'">גבר</button>
+                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Female' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Female'">אישה</button>
+                </div>
+              </fieldset>
+              <div class="field">
+                <label class="label" for="npCl">איפה מצביעים?<span class="req">*</span></label>
+                <app-combo inputId="npCl" [items]="clusterItems()" [(value)]="np.clusterId" (valueChange)="checkNp('cluster'); tryAddNew()"
+                  [invalid]="!!npErr().cluster" placeholder="חלק מהשם או מהכתובת" />
+                <div class="error-text">{{ npErr().cluster }}</div>
+              </div>
+            </div>
+          } @else {
+            <button type="button" class="btn-secondary mt-3" (click)="openNew()"><app-icon name="plus" [size]="18" /> נוסע שלא ברשימה</button>
+          }
+
+          <div class="field mt-4 max-w-sm">
+            <label class="label" for="comm">לאיזו קהילה שייכים?</label>
+            <app-combo inputId="comm" [items]="communityItems()" [(value)]="communityId" placeholder="חלק מהשם" />
+          </div>
+          <p class="label mt-4 mb-2">צריך כיסא גלגלים, הליכון או עזרה?</p>
+          <div class="flex flex-wrap gap-2">
+            <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="needsWheelchair">
+              <input type="checkbox" name="wc" class="size-4" [(ngModel)]="needsWheelchair" /><app-icon name="wc" [size]="18" /> כיסא גלגלים</label>
+            <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="needsWalker">
+              <input type="checkbox" name="walker" class="size-4" [(ngModel)]="needsWalker" /> הליכון</label>
+            <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="needsHelp">
+              <input type="checkbox" name="help" class="size-4" [(ngModel)]="needsHelp" /> צריך עזרה (הערה לנהג)</label>
+          </div>
+
+          @if (notAccessible().length) {
+            <div class="mt-3 grid gap-2 rounded-2xl bg-warn-soft p-4" role="alert">
+              <p class="font-medium text-warn"><app-icon name="warn" [size]="16" /> {{ notAccessible().map(c => c.name).join(', ') }} לא נגיש לכיסא גלגלים. לשאול את הפונה:</p>
+              <label class="flex items-center gap-2"><input type="radio" name="acc" value="stay" [(ngModel)]="accAnswer" /> נשאר במקום הזה (יש מי שיעזור לו)</label>
+              <label class="flex items-center gap-2"><input type="radio" name="acc" value="move" [(ngModel)]="accAnswer" /> עובר למקום נגיש</label>
+              @if (accAnswer === 'move') {
+                <div class="field max-w-md">
+                  <label class="label" for="accTo">לאיזה מקום נגיש?<span class="req">*</span></label>
+                  <app-combo inputId="accTo" [items]="accessibleItems()" [(value)]="accMoveTo" placeholder="רק מקומות נגישים" />
+                </div>
+              }
+            </div>
+          }
+        }
+      </section>
+
+      <!-- 3. Pickup address -->
+      <section class="border-b border-line p-5" [class.opacity-40]="!selected().length" [attr.inert]="selected().length ? null : ''">
+        <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">3</span>כתובת איסוף</h2>
+        <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_130px_130px]">
+          <div class="field">
+            <label class="label" for="street">באיזה רחוב לאסוף?<span class="req">*</span></label>
+            <app-combo inputId="street" [items]="streetItems()" [(value)]="streetId" (left)="checkStreet()" [invalid]="!!streetErr()" placeholder="חלק משם הרחוב" />
+            <div class="error-text">{{ streetErr() }}</div>
+          </div>
+          <div class="field">
+            <label class="label" for="house">מה מספר הבניין?<span class="req">*</span></label>
+            <input id="house" name="house" class="input text-right" inputmode="numeric" maxlength="5" dir="ltr" [(ngModel)]="building" (blur)="checkBuilding()" [class.invalid]="buildingErr()" />
+            <div class="error-text">{{ buildingErr() }}</div>
+          </div>
+          <div class="field">
+            <label class="label" for="entr">איזו כניסה?</label>
+            <input id="entr" name="entr" class="input" maxlength="20" placeholder="א / ב" [(ngModel)]="entrance" />
+          </div>
+        </div>
+        <div class="field mt-2">
+          <label class="label" for="notes">משהו שהנהג צריך לדעת?</label>
+          <input id="notes" name="notes" class="input" maxlength="300" placeholder="למשל: לצלצל באינטרקום, יורד לבד" [(ngModel)]="notes" />
+        </div>
+      </section>
+
+      <!-- 4. Time and return -->
+      <section class="p-5" [class.opacity-40]="!selected().length" [attr.inert]="selected().length ? null : ''">
+        <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">4</span>זמן וחזרה</h2>
+        <p class="label mb-2">מתי נוח לך לצאת?</p>
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="flex flex-wrap gap-1 rounded-xl bg-soft p-1">
+            @for (o of [{ v: 'Now', t: 'עכשיו' }, { v: 'Between', t: 'בין שעות' }, { v: 'LeaveBy', t: 'חייב לצאת עד' }]; track o.v) {
+              <button type="button" class="h-10 rounded-[10px] px-4 font-medium" [class]="timeMode === o.v ? 'bg-ink text-white' : ''" (click)="timeMode = $any(o.v)">{{ o.t }}</button>
+            }
+          </div>
+          @if (timeMode === 'Between') {
+            <label class="field"><span class="label">מאיזו שעה?</span><input type="time" name="wf" class="input w-36" [(ngModel)]="windowFrom" /></label>
+            <label class="field"><span class="label">עד איזו שעה?</span><input type="time" name="wt" class="input w-36" [(ngModel)]="windowTo" /></label>
+          }
+          @if (timeMode === 'LeaveBy') {
+            <label class="field"><span class="label">עד איזו שעה?</span><input type="time" name="lb" class="input w-36" [(ngModel)]="leaveBy" /></label>
+            <label class="field"><span class="label">למה דווקא עד אז?<span class="req">*</span></span>
+              <select name="urg" class="input w-48" [(ngModel)]="urgency"><option value="">בחר סיבה</option>@for (r of urgencyReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+            @if (urgency === 'אחר') {
+              <label class="field"><span class="label">מה הסיבה?<span class="req">*</span></span><input name="urgo" class="input w-60" maxlength="100" [(ngModel)]="urgencyOther" /></label>
+            }
+          }
+        </div>
+        <p class="label mt-4 mb-2">צריך גם הסעה חזרה הביתה?</p>
+        <div class="flex w-max max-w-full flex-wrap gap-1 rounded-xl bg-soft p-1">
+          @for (o of [{ v: 'DriverWaits', t: 'הלוך ושוב, הנהג ממתין' }, { v: 'CallsSeparately', t: 'חזור בנפרד, יתקשרו' }, { v: 'NoReturn', t: 'הלוך בלבד' }]; track o.v) {
+            <button type="button" class="h-10 rounded-[10px] px-4 font-medium" [class]="returnMode === o.v ? 'bg-ink text-white' : ''" (click)="returnMode = $any(o.v)">{{ o.t }}</button>
+          }
+        </div>
+      </section>
+    </form>
+
+    <!-- Read back and save -->
+    <aside class="grid gap-4 lg:sticky lg:top-4">
+      <div class="card overflow-hidden">
+        <div class="bg-ink px-5 py-3 font-semibold text-white">להקריא לפונה לפני השמירה</div>
+        <div class="p-5">
+          @if (readback()) {
+            <p class="leading-relaxed" [innerHTML]="readback()"></p>
+          } @else {
+            <p class="text-muted">הסיכום יופיע כאן, תוך כדי מילוי.</p>
+          }
+          @if (missing().length && selected().length) {
+            <p class="mt-3 text-sm font-medium text-bad">חסר: {{ missing().join(', ') }}</p>
+          }
+          @if (saveError() && !duplicate()) { <p class="notice bad mt-3" role="alert">{{ saveError() }}</p> }
+          <button type="button" class="btn-primary mt-4 w-full" [disabled]="missing().length > 0 || saving()" (click)="save()">
+            {{ editing() ? 'שמור את השינויים' : 'שמור והכנס לתור' }}</button>
+        </div>
+      </div>
+
+      @if (mine(); as m) {
+        <div class="card overflow-hidden">
+          <div class="border-b border-line px-5 py-3 font-semibold">הפניות האחרונות שלי</div>
+          <div class="p-2">
+            @for (r of m.recent; track r.id) {
+              <div class="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-2 rounded-xl px-3 py-2 odd:bg-bg">
+                <span class="text-sm tabular-nums text-muted">{{ r.createdAt | date: 'HH:mm' }}</span>
+                <span class="min-w-0"><b class="block truncate">{{ r.names.join(', ') }}</b><span class="block truncate text-sm text-muted">{{ cluster(r.clusterId)?.name }}</span></span>
+                <span class="rounded-full px-2.5 py-0.5 text-xs font-medium"
+                  [class]="r.status === 'Queued' ? 'bg-warn-soft text-warn' : r.status === 'Cancelled' ? 'bg-soft text-muted' : 'bg-action-soft text-ink'">{{ statusNames[r.status] }}</span>
+              </div>
+            } @empty {
+              <p class="px-3 py-4 text-muted">עוד לא קלטת פניות היום</p>
+            }
+          </div>
+        </div>
+      }
+    </aside>
+  </div>
+</div>
+
+<app-dialog [open]="!!cancelOf()" title="ביטול פנייה" [width]="460" (closed)="cancelOf.set(null)">
+  @if (cancelOf(); as h) {
+    <p>פנייה מס' {{ h.number }}: <b>{{ hitNames(h) }}</b></p>
+    <label class="field mt-4"><span class="label">למה מבטלים?<span class="req">*</span></span>
+      <select class="input" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')"><option value="">בחר סיבה</option>@for (r of cancelReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+    @if (cancelReason === 'אחר') {
+      <label class="field mt-3"><span class="label">מה הסיבה?<span class="req">*</span></span><input class="input" maxlength="150" [(ngModel)]="cancelOther" /></label>
+    }
+    @if (cancelErr()) { <p class="error-text mt-2">{{ cancelErr() }}</p> }
+    <div class="mt-5 flex gap-2">
+      <button type="button" class="btn-primary !bg-bad" (click)="confirmCancel()">בטל את הפנייה</button>
+      <button type="button" class="btn-secondary" (click)="cancelOf.set(null)">חזרה</button>
+    </div>
+  }
+</app-dialog>
+
+@if (toast()) {
+  <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-3 font-medium text-white shadow-[var(--shadow-pop)]" role="status">{{ toast() }}</div>
+}

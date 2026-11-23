@@ -102,6 +102,25 @@ public static class IntakeEndpoints
             return Results.NoContent();
         });
 
+        // The operator's own latest requests (side panel), and how many are waiting in the city queue.
+        g.MapGet("/mine", async (ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        {
+            var city = me.CityId();
+            var user = me.UserId();
+            var startOfDay = StartOfToday();
+            var recent = await db.Requests.Where(r => r.CityId == city && r.TakenById == user)
+                .OrderByDescending(r => r.CreatedAt).Take(8)
+                .Select(r => new
+                {
+                    r.Id, r.Number, r.CreatedAt, status = r.Status.ToString(),
+                    names = r.Passengers.Select(p => p.Person!.FullName).ToList(),
+                    clusterId = r.Passengers.Select(p => p.ClusterId).FirstOrDefault(),
+                }).ToListAsync(ct);
+            var mineToday = await db.Requests.CountAsync(r => r.CityId == city && r.TakenById == user && r.CreatedAt >= startOfDay, ct);
+            var queued = await db.Requests.CountAsync(r => r.CityId == city && r.Status == RequestStatus.Queued, ct);
+            return Results.Ok(new { recent, mineToday, queued });
+        });
+
         // Status search by phone, ID number or name, or part of them (spec 5.1).
         g.MapGet("/search", async (string? q, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
         {
