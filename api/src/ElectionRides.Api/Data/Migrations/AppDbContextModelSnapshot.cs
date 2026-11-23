@@ -438,6 +438,9 @@ namespace ElectionRides.Api.Data.Migrations
                     b.Property<int?>("OfficialCode")
                         .HasColumnType("integer");
 
+                    b.Property<string>("OfficialName")
+                        .HasColumnType("text");
+
                     b.Property<int>("Source")
                         .HasColumnType("integer");
 

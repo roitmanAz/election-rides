@@ -21,6 +21,11 @@ public class Street
     public StreetSource Source { get; set; }
     /// <summary>Street code in the official list, for official streets.</summary>
     public int? OfficialCode { get; set; }
+    /// <summary>
+    /// The name as it was in the official list at the last import. When Name differs, the city admin renamed
+    /// the street (for example "אזולאי עקיבא" to "עקיבא אזולאי"), and a re-import keeps that name.
+    /// </summary>
+    public string? OfficialName { get; set; }
 }
 
 /// <summary>A building with several ballot boxes. Rides go to the cluster (spec 4).</summary>

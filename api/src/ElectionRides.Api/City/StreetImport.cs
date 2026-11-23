@@ -8,8 +8,9 @@ using Microsoft.EntityFrameworkCore;
 namespace ElectionRides.Api.CityScreens;
 
 /// <summary>
-/// Imports the city's streets from the official list (spec 3.1). Re-import updates names, adds new
-/// streets and removes official streets that left the list, unless a cluster uses them.
+/// Imports the city's streets from the official list (spec 3.1). Re-import adds new streets, renames a street
+/// only when its name changed in the official list (a name the city admin edited is kept), and removes
+/// official streets that left the list, unless a cluster uses them.
 /// Manually added streets are always kept; an official street whose name a manual street already has is skipped.
 /// </summary>
 public static class StreetImport
@@ -29,17 +30,23 @@ public static class StreetImport
         {
             if (byCode.TryGetValue(o.Code, out var s))
             {
-                if (s.Name != o.Name && !names.Contains(o.Name))
+                // Only a change in the official list itself renames a street; a name the city admin edited stays.
+                if (s.OfficialName != o.Name)
                 {
-                    names.Remove(s.Name);
-                    s.Name = o.Name;
-                    names.Add(o.Name);
-                    renamed++;
+                    var editedByAdmin = s.OfficialName is not null && s.Name != s.OfficialName;
+                    s.OfficialName = o.Name;
+                    if (!editedByAdmin && s.Name != o.Name && !names.Contains(o.Name))
+                    {
+                        names.Remove(s.Name);
+                        s.Name = o.Name;
+                        names.Add(o.Name);
+                        renamed++;
+                    }
                 }
             }
             else if (names.Add(o.Name))
             {
-                db.Streets.Add(new Street { CityId = cityId, Name = o.Name, Source = StreetSource.Official, OfficialCode = o.Code });
+                db.Streets.Add(new Street { CityId = cityId, Name = o.Name, Source = StreetSource.Official, OfficialCode = o.Code, OfficialName = o.Name });
                 added++;
             }
         }

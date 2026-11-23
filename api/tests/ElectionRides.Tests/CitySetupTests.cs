@@ -54,6 +54,29 @@ public class CitySetupTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Reimport_keeps_a_name_the_city_admin_edited_and_follows_official_renames()
+    {
+        var code = 60_000 + Random.Shared.Next(10_000);
+        api.Gov.Streets[code] = [new(201, "אזולאי עקיבא"), new(202, "הנביאים")];
+        var (admin, _) = await CityWithLocality(code);
+        await admin.PostAsync("/api/city/streets/import", null);
+
+        var streets = await Json(await admin.GetAsync("/api/city/streets"));
+        var id = streets.EnumerateArray().First(s => s.GetProperty("name").GetString() == "אזולאי עקיבא").GetProperty("id").GetGuid();
+        await admin.PutAsJsonAsync($"/api/city/streets/{id}", new { name = "עקיבא אזולאי" });
+
+        // Same official list again, plus an official rename of the other street.
+        api.Gov.Streets[code] = [new(201, "אזולאי עקיבא"), new(202, "רחוב הנביאים")];
+        await admin.PostAsync("/api/city/streets/import", null);
+
+        var names = (await Json(await admin.GetAsync("/api/city/streets"))).EnumerateArray()
+            .Select(s => s.GetProperty("name").GetString()).ToList();
+        Assert.Contains("עקיבא אזולאי", names);
+        Assert.DoesNotContain("אזולאי עקיבא", names);
+        Assert.Contains("רחוב הנביאים", names);
+    }
+
+    [Fact]
     public async Task System_admin_opens_a_city_from_the_localities_list_and_invites_its_admin()
     {
         var (sys, _, _) = await TestUsers.SignedIn(api, UserRole.SystemAdmin);
