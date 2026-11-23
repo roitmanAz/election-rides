@@ -1,4 +1,8 @@
+using System.Threading.RateLimiting;
+using ElectionRides.Api.Auth;
 using ElectionRides.Api.Data;
+using ElectionRides.Api.Email;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +10,44 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Db"), npg => npg.UseNetTopologySuite()));
+
+// Email: development keeps messages in the log. Amazon SES is added with the cloud stage.
+builder.Services.AddSingleton<DevEmailSender>();
+builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<DevEmailSender>());
+builder.Services.AddScoped<Invitations>();
+
+builder.Services.AddAuthentication(AuthEndpoints.Scheme)
+    .AddCookie(AuthEndpoints.Scheme, o =>
+    {
+        o.Cookie.Name = "er_session";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SameSite = SameSiteMode.Strict;
+        o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+        // The idle timeout is enforced by SessionPolicy; this is only an upper bound for a working day.
+        o.ExpireTimeSpan = TimeSpan.FromHours(16);
+        o.SlidingExpiration = false;
+        o.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = SessionPolicy.Validate,
+            // An API answers with status codes, not redirects to a login page.
+            OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; },
+            OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; },
+        };
+    });
+builder.Services.AddAuthorization();
+
+// Sign-in endpoints: at most 20 requests a minute from one address (configurable for tests).
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = 429;
+    o.AddPolicy("auth", http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimit:AuthPerMinute", 20),
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
 
 const string WebCors = "web";
 builder.Services.AddCors(o => o.AddPolicy(WebCors, p =>
@@ -19,6 +61,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 app.UseCors(WebCors);
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Health: the server is up, and whether it can reach the database.
 app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
@@ -27,6 +72,16 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
     return Results.Json(new { status = dbOk ? "ok" : "degraded", database = dbOk },
         statusCode: dbOk ? 200 : 503);
 });
+app.MapAuth();
+
+try
+{
+    await Invitations.BootstrapAsync(app.Services);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Bootstrap of the first system admin failed (is the database up?)");
+}
 
 app.Run();
 

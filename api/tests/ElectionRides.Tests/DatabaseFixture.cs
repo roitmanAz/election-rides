@@ -22,6 +22,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:Db"] = ConnectionString,
+            ["RateLimit:AuthPerMinute"] = "10000",
         }));
     }
 
@@ -38,3 +39,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
 }
+
+/// <summary>All API tests share one freshly migrated database and run one class at a time.</summary>
+[CollectionDefinition("api")]
+public class ApiCollection : ICollectionFixture<ApiFactory>;

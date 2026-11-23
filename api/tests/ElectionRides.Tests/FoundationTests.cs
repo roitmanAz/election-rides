@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ElectionRides.Tests;
 
-public class FoundationTests(ApiFactory api) : IClassFixture<ApiFactory>
+[Collection("api")]
+public class FoundationTests(ApiFactory api)
 {
     [Fact]
     public async Task Health_reports_ok_when_database_is_reachable()

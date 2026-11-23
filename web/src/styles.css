@@ -49,3 +49,45 @@
     outline-offset: 2px;
   }
 }
+
+/* Shared building blocks, the same look as docs/green-theme.css. */
+@layer components {
+  .card {
+    @apply rounded-[var(--radius-card)] bg-surface shadow-[var(--shadow-card)];
+  }
+  .btn-primary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-action px-6 font-semibold text-white
+      hover:bg-action-hover disabled:cursor-not-allowed disabled:bg-soft2 disabled:text-muted;
+  }
+  .btn-secondary {
+    @apply inline-flex h-12 items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-soft px-5 font-medium text-ink hover:bg-soft2;
+  }
+  .btn-link {
+    @apply font-medium text-action underline-offset-4 hover:underline;
+  }
+  .field {
+    @apply grid gap-1.5;
+  }
+  .label {
+    @apply font-medium text-ink;
+  }
+  .req {
+    @apply ms-0.5 font-bold text-bad;
+  }
+  .input {
+    @apply h-12 w-full rounded-xl border-[1.5px] border-line2 bg-white px-3.5 text-base text-ink
+      focus:border-action focus:shadow-[0_0_0_3px_var(--color-action-soft)] focus:outline-none;
+  }
+  .input.invalid {
+    @apply border-bad bg-bad-soft;
+  }
+  .error-text {
+    @apply min-h-5 text-sm font-medium text-bad;
+  }
+  .notice {
+    @apply rounded-2xl bg-soft p-4 text-ink;
+  }
+  .notice.bad {
+    @apply bg-bad-soft text-bad;
+  }
+}

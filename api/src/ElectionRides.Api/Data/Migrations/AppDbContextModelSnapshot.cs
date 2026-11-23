@@ -55,12 +55,21 @@ namespace ElectionRides.Api.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
+                    b.Property<int>("FailedLogins")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
@@ -80,6 +89,42 @@ namespace ElectionRides.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_User_CityByRole", "(\"Role\" = 4 AND \"CityId\" IS NULL) OR (\"Role\" <> 4 AND \"CityId\" IS NOT NULL)");
                         });
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.AuditEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserEmail")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("CityId");
+
+                    b.ToTable("Audit");
                 });
 
             modelBuilder.Entity("ElectionRides.Api.Domain.City", b =>
@@ -142,6 +187,152 @@ namespace ElectionRides.Api.Data.Migrations
                         .HasFilter("\"IsActive\" = true");
 
                     b.ToTable("Operations");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.LoginChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LoginChallenges");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.PartySettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BaseDeletionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdleTimeoutMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LegalAdvisorEmail")
+                        .HasColumnType("text");
+
+                    b.Property<int>("LockMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxFailedLogins")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PartyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PrivacyOfficerEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PrivacyOfficerName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("RememberDeviceHours")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("RequireEmailCode")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PartySettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_PartySettings_Single", "\"Id\" = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IdleTimeoutMinutes = 30,
+                            LockMinutes = 15,
+                            MaxFailedLogins = 5,
+                            RememberDeviceHours = 24,
+                            RequireEmailCode = true
+                        });
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.PasswordToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("PasswordTokens");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.TrustedDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("TrustedDevices");
                 });
 
             modelBuilder.Entity("CityElectionOperation", b =>

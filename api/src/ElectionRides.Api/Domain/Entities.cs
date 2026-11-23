@@ -43,5 +43,11 @@ public class AppUser
     /// <summary>Null until the user sets a password from the invitation link.</summary>
     public string? PasswordHash { get; set; }
     public DateTimeOffset? LastLoginAt { get; set; }
+    /// <summary>Wrong passwords in a row; reset on a successful sign-in.</summary>
+    public int FailedLogins { get; set; }
+    /// <summary>Set after too many wrong passwords. A city admin can clear it early.</summary>
+    public DateTimeOffset? LockedUntil { get; set; }
+    /// <summary>Removed users keep their history but cannot sign in.</summary>
+    public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
