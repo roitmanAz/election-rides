@@ -301,6 +301,12 @@ namespace ElectionRides.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("AccessTokenExpires")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AccessTokenHash")
+                        .HasColumnType("text");
+
                     b.Property<bool>("BreakAfterTrip")
                         .HasColumnType("boolean");
 
@@ -320,6 +326,9 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.Property<Point>("Location")
                         .HasColumnType("geography (point, 4326)");
+
+                    b.Property<DateTimeOffset?>("LocationAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("OperationId")
                         .HasColumnType("uuid");
@@ -342,6 +351,10 @@ namespace ElectionRides.Api.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccessTokenHash")
+                        .IsUnique()
+                        .HasFilter("\"AccessTokenHash\" IS NOT NULL");
 
                     b.HasIndex("CityId", "Phone")
                         .IsUnique();
@@ -715,6 +728,9 @@ namespace ElectionRides.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("AssignedById")
                         .HasColumnType("uuid");
 
@@ -723,6 +739,10 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<Guid>("DriverId")
                         .HasColumnType("uuid");
@@ -737,7 +757,7 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.HasIndex("DriverId")
                         .IsUnique()
-                        .HasFilter("\"Status\" = 1");
+                        .HasFilter("\"Status\" IN (1, 3)");
 
                     b.HasIndex("CityId", "Status");
 

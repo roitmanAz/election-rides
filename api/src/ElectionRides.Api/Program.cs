@@ -4,6 +4,7 @@ using ElectionRides.Api.CityScreens;
 using ElectionRides.Api.Common;
 using ElectionRides.Api.Dispatch;
 using ElectionRides.Api.Domain;
+using ElectionRides.Api.DriverApp;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Email;
 using ElectionRides.Api.GovData;
@@ -64,11 +65,25 @@ builder.Services.AddAuthentication(AuthEndpoints.Scheme)
             OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; },
         };
     });
+// The driver app has its own sign-in: the personal link, valid until the end of election day.
+builder.Services.AddAuthentication().AddCookie(DriverAppEndpoints.Scheme, o =>
+{
+    o.Cookie.Name = "er_driver";
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Strict;
+    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    o.Events = new CookieAuthenticationEvents
+    {
+        OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; },
+        OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; },
+    };
+});
 builder.Services.AddAuthorization(o =>
 {
     o.AddPolicy(Policies.CityStaff, p => p.RequireClaim(SessionPolicy.CityClaim));
     o.AddPolicy(Policies.CityAdmin, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.CityAdmin)));
     o.AddPolicy(Policies.SystemAdmin, p => p.RequireRole(nameof(UserRole.SystemAdmin)));
+    o.AddPolicy(Policies.Driver, p => p.AddAuthenticationSchemes(DriverAppEndpoints.Scheme).RequireClaim(DriverAppEndpoints.DriverClaim));
     o.AddPolicy(Policies.Dispatch, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.Dispatcher), nameof(UserRole.CityAdmin)));
 });
 
@@ -117,6 +132,7 @@ app.MapCityUsers();
 app.MapSystemCities();
 app.MapIntake();
 app.MapDispatch();
+app.MapDriverApp();
 app.MapHub<CityHub>("/hubs/city");
 
 try

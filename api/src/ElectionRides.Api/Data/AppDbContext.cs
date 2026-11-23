@@ -150,6 +150,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.FullName).HasMaxLength(100);
             e.Property(x => x.Phone).HasMaxLength(10);
             e.HasIndex(x => new { x.CityId, x.Phone }).IsUnique();
+            e.HasIndex(x => x.AccessTokenHash).IsUnique().HasFilter("\"AccessTokenHash\" IS NOT NULL");
             e.Property(x => x.Location).HasColumnType("geography (point, 4326)");
         });
         b.Entity<Trip>(e =>
@@ -158,7 +159,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Driver).WithMany().HasForeignKey(x => x.DriverId);
             e.HasMany(x => x.Stops).WithOne().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
             // A driver has at most one active trip.
-            e.HasIndex(x => x.DriverId).IsUnique().HasFilter("\"Status\" = 1");
+            e.HasIndex(x => x.DriverId).IsUnique().HasFilter("\"Status\" IN (1, 3)");
+            e.Property(x => x.DeclineReason).HasMaxLength(150);
         });
         b.Entity<TripStop>(e => e.HasIndex(x => x.RequestId));
     }

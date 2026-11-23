@@ -61,7 +61,9 @@ export interface DriverRow {
   breakAfterTrip: boolean;
   minutesToFree: number | null;
   location: LatLon | null;
-  trip: { id: string; stops: TripStop[] } | null;
+  hasLink: boolean;
+  lastDecline: string | null;
+  trip: { id: string; status: 'Offered' | 'Active'; offeredAt: string; stops: TripStop[] } | null;
 }
 
 export interface ClusterRow {

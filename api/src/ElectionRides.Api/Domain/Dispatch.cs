@@ -28,11 +28,19 @@ public class Driver
     public DateTimeOffset? FreeAt { get; set; }
     /// <summary>"After this ride I take a break" (spec 5.7).</summary>
     public bool BreakAfterTrip { get; set; }
-    /// <summary>Last known location (from the driver app, stage 6).</summary>
+    /// <summary>Last known location, sent by the driver app with each button press (no background tracking).</summary>
     public Point? Location { get; set; }
+    public DateTimeOffset? LocationAt { get; set; }
+    /// <summary>
+    /// Personal sign-in link for the driver app (spec 12): one use, valid until the end of election day.
+    /// Only its hash is stored. The dispatcher copies the link and sends it to the driver.
+    /// </summary>
+    public string? AccessTokenHash { get; set; }
+    public DateTimeOffset? AccessTokenExpires { get; set; }
 }
 
-public enum TripStatus { Active = 1, Done = 2, Cancelled = 9 }
+/// <summary>Offered: sent to a driver with the app, waiting for "I take it" (2 minutes, spec 5.4).</summary>
+public enum TripStatus { Active = 1, Done = 2, Offered = 3, Cancelled = 9 }
 
 /// <summary>A ride given to one driver: pickups, then drop-offs at the clusters, in order.</summary>
 public class Trip
@@ -45,6 +53,9 @@ public class Trip
     public TripStatus Status { get; set; } = TripStatus.Active;
     public Guid AssignedById { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? AcceptedAt { get; set; }
+    /// <summary>Why the driver could not take it (closed list; "other" with a short text).</summary>
+    public string? DeclineReason { get; set; }
     public List<TripStop> Stops { get; set; } = [];
 }
 

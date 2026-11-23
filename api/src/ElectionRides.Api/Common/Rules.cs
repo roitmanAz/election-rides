@@ -87,6 +87,8 @@ public static class Policies
     public const string SystemAdmin = "system-admin";
     /// <summary>The dispatcher, and the city admin who handles exceptions.</summary>
     public const string Dispatch = "dispatch";
+    /// <summary>A driver signed in with the personal link (driver app).</summary>
+    public const string Driver = "driver";
 }
 
 public static class Problems

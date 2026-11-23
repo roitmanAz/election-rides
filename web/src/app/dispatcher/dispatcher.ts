@@ -110,8 +110,8 @@ export class DispatcherPage implements OnInit, OnDestroy {
     } catch {
       this.notice.set('אין עדכון חי כרגע. המסך מתעדכן כל דקה.');
     }
-    // Wait minutes grow by themselves; refresh once a minute even without changes.
-    this.clock = setInterval(() => this.reload(), 60_000);
+    // Wait minutes and the 2-minute offer alert change by themselves; refresh every 30 seconds even without changes.
+    this.clock = setInterval(() => this.reload(), 30_000);
   }
 
   ngOnDestroy() {
@@ -252,9 +252,48 @@ export class DispatcherPage implements OnInit, OnDestroy {
 
   // ---------- Drivers ----------
   protected driverLine(d: DriverRow) {
+    if (d.trip?.status === 'Offered') return this.offerLate(d) ? 'לא אישר תוך 2 דקות' : 'ממתין לאישור';
     if (d.status === 'Soon') return `מתפנה בעוד ${d.minutesToFree ?? 0} דק'`;
     if (d.status === 'OnTrip') return d.breakAfterTrip ? 'בנסיעה · הפסקה אחריה' : 'בנסיעה';
     return DRIVER_STATUS[d.status];
+  }
+
+  /** An offer not accepted within 2 minutes alerts the dispatcher (spec 5.4). */
+  protected offerLate(d: DriverRow) {
+    return d.trip?.status === 'Offered' && Date.now() - new Date(d.trip.offeredAt).getTime() > 120_000;
+  }
+
+  protected async withdraw(d: DriverRow) {
+    if (!d.trip) return;
+    try {
+      await this.api.post(`/api/dispatch/trips/${d.trip.id}/withdraw`);
+      await this.reload();
+    } catch (e) {
+      this.notice.set(errorMessage(e));
+    }
+  }
+
+  /** Personal link for the driver app; the dispatcher sends it by WhatsApp or SMS from their own phone. */
+  protected readonly linkFor = signal<{ name: string; url: string } | null>(null);
+  protected readonly copied = signal(false);
+  protected async makeLink(d: DriverRow) {
+    try {
+      const r = await this.api.post<{ url: string }>(`/api/dispatch/drivers/${d.id}/link`);
+      this.copied.set(false);
+      this.linkFor.set({ name: d.fullName, url: r.url });
+    } catch (e) {
+      this.notice.set(errorMessage(e));
+    }
+  }
+  protected async copyLink() {
+    const l = this.linkFor();
+    if (!l) return;
+    try {
+      await navigator.clipboard.writeText(l.url);
+      this.copied.set(true);
+    } catch {
+      (document.getElementById('linkText') as HTMLInputElement | null)?.select();
+    }
   }
 
   protected riders(d: DriverRow) {

@@ -46,6 +46,9 @@ export const routes: Routes = [
     loadComponent: () => import('./operator/operator').then((m) => m.OperatorPage),
     title: 'מוקדן · מטה הסעות',
   },
+  // Driver app: its own sign-in by personal link; no staff sign-in.
+  { path: 'driver/:token', loadComponent: () => import('./driver/driver-app').then((m) => m.DriverAppPage), title: 'נהג · מטה הסעות' },
+  { path: 'driver', loadComponent: () => import('./driver/driver-app').then((m) => m.DriverAppPage), title: 'נהג · מטה הסעות' },
   {
     path: 'dispatcher',
     canActivate: [authGuard, roleGuard('Dispatcher')],

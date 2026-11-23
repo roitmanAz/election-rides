@@ -31,7 +31,11 @@ public static class DispatchEndpoints
             var queue = await QueueItems(db, city, op.Id, now, ct);
             var drivers = await db.Drivers.Where(d => d.CityId == city && d.OperationId == op.Id && d.Status != DriverStatus.Finished)
                 .OrderBy(d => d.FullName).ToListAsync(ct);
-            var trips = await db.Trips.Where(t => t.CityId == city && t.Status == TripStatus.Active).Include(t => t.Stops).ToListAsync(ct);
+            var trips = await db.Trips.Where(t => t.CityId == city && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered)).Include(t => t.Stops).ToListAsync(ct);
+            // A driver who could not take a ride in the last 15 minutes: the dispatcher sees the reason.
+            var since = now.AddMinutes(-15);
+            var declines = await db.Trips.Where(t => t.CityId == city && t.Status == TripStatus.Cancelled && t.DeclineReason != null && t.CreatedAt >= since)
+                .OrderByDescending(t => t.CreatedAt).Select(t => new { t.DriverId, t.DeclineReason }).ToListAsync(ct);
             var tripReqIds = trips.SelectMany(t => t.Stops).Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList();
             var tripReqs = await db.Requests.Where(r => tripReqIds.Contains(r.Id)).Include(r => r.Street)
                 .Include(r => r.Passengers).ThenInclude(p => p.Person).ToDictionaryAsync(r => r.Id, ct);
@@ -49,9 +53,11 @@ public static class DispatchEndpoints
                         d.StatusSince, d.FreeAt, d.BreakAfterTrip,
                         minutesToFree = d.FreeAt is { } f ? Math.Max(0, (int)Math.Ceiling((f - now).TotalMinutes)) : (int?)null,
                         location = Point(d.Location),
+                        hasLink = d.AccessTokenExpires > now,
+                        lastDecline = declines.FirstOrDefault(x => x.DriverId == d.Id)?.DeclineReason,
                         trip = trip is null ? null : new
                         {
-                            trip.Id,
+                            trip.Id, status = trip.Status.ToString(), offeredAt = trip.CreatedAt,
                             stops = trip.Stops.OrderBy(s => s.Order).Select(s =>
                             {
                                 var r = s.RequestId is { } rid ? tripReqs.GetValueOrDefault(rid) : null;
@@ -104,7 +110,14 @@ public static class DispatchEndpoints
             var clusterPoints = await db.Clusters.Where(c => c.CityId == city)
                 .ToDictionaryAsync(c => c.Id, c => Point(c.Location) is { } p ? new GeoPoint(p.lat, p.lon) : null, ct);
             var (pickups, drops) = ProposalEngine.OrderStops(driver.Location, car, clusterPoints);
-            var trip = new Trip { CityId = city, OperationId = op.Id, DriverId = driver.Id, AssignedById = me.UserId() };
+            var d = await db.Drivers.FirstAsync(x => x.Id == driver.Id, ct);
+            // A driver with the app gets an offer to accept; a driver without it confirmed on the phone.
+            var trip = new Trip
+            {
+                CityId = city, OperationId = op.Id, DriverId = driver.Id, AssignedById = me.UserId(),
+                Status = d.HasSmartphone ? TripStatus.Offered : TripStatus.Active,
+                AcceptedAt = d.HasSmartphone ? null : now,
+            };
             var order = 0;
             foreach (var p in pickups) trip.Stops.Add(new TripStop { TripId = trip.Id, Order = ++order, Kind = StopKind.Pickup, RequestId = p });
             foreach (var c in drops) trip.Stops.Add(new TripStop { TripId = trip.Id, Order = ++order, Kind = StopKind.DropOff, ClusterId = c });
@@ -112,10 +125,12 @@ public static class DispatchEndpoints
 
             await db.Requests.Where(r => pickups.Contains(r.Id))
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Assigned).SetProperty(r => r.UpdatedAt, now), ct);
-            var d = await db.Drivers.FirstAsync(x => x.Id == driver.Id, ct);
-            d.Status = DriverStatus.OnTrip;
-            d.StatusSince = now;
-            d.FreeAt = null;
+            if (!d.HasSmartphone)
+            {
+                d.Status = DriverStatus.OnTrip;
+                d.StatusSince = now;
+                d.FreeAt = null;
+            }
             await db.SaveChangesAsync(ct);
             await events.Changed(city);
             return Results.Ok(new { trip.Id });
@@ -203,6 +218,35 @@ public static class DispatchEndpoints
             return Results.NoContent();
         });
 
+        // An offer the driver did not take: back to the queue (spec 5.4).
+        g.MapPost("/trips/{id:guid}/withdraw", async (Guid id, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        {
+            var city = me.CityId();
+            var trip = await db.Trips.Include(t => t.Stops).FirstOrDefaultAsync(t => t.Id == id && t.CityId == city && t.Status == TripStatus.Offered, ct);
+            if (trip is null) return Problems.Error("ההצעה כבר לא ממתינה", 409);
+            await CancelOffer(db, trip, null, ct);
+            await db.SaveChangesAsync(ct);
+            await events.Changed(city);
+            return Results.NoContent();
+        });
+
+        // Personal sign-in link for the driver app; the dispatcher copies it and sends it (spec 12).
+        g.MapPost("/drivers/{id:guid}/link", async (Guid id, ClaimsPrincipal me, AppDbContext db, IConfiguration config, CancellationToken ct) =>
+        {
+            var city = me.CityId();
+            var d = await db.Drivers.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city, ct);
+            if (d is null) return Results.NotFound();
+            if (!d.HasSmartphone) return Problems.Error("לנהג בלי סמארטפון אין אפליקציה");
+            var op = await IntakeEndpoints.ActiveOperation(db, city, ct);
+            var cityRow = await db.Cities.FirstAsync(c => c.Id == city, ct);
+            var token = Auth.Secrets.NewToken();
+            d.AccessTokenHash = Auth.Secrets.Hash(token);
+            d.AccessTokenExpires = EndOfElectionDay(cityRow.ElectionDayOverride ?? op?.ElectionDay);
+            await db.SaveChangesAsync(ct);
+            var baseUrl = (config["App:BaseUrl"] ?? "http://localhost:4200").TrimEnd('/');
+            return Results.Ok(new { url = $"{baseUrl}/driver/{token}", expires = d.AccessTokenExpires });
+        });
+
         // "Verified" removes the tag only (spec 5.3).
         g.MapPost("/requests/{id:guid}/verify", async (Guid id, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
         {
@@ -223,11 +267,13 @@ public static class DispatchEndpoints
         return null;
     }
 
-    static async Task<IResult?> DriverAction(AppDbContext db, Guid city, Guid id, string action, CancellationToken ct)
+    internal static async Task<IResult?> DriverAction(AppDbContext db, Guid city, Guid id, string action, CancellationToken ct)
     {
         var d = await db.Drivers.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city, ct);
         if (d is null) return Results.NotFound();
         var trip = await db.Trips.Include(t => t.Stops).FirstOrDefaultAsync(t => t.DriverId == id && t.Status == TripStatus.Active, ct);
+        if (action == "Finish" && await db.Trips.AnyAsync(t => t.DriverId == id && t.Status == TripStatus.Offered, ct))
+            return Problems.Error("לנהג יש הצעה שממתינה לאישור");
         var now = DateTimeOffset.UtcNow;
         var requestIds = trip?.Stops.Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList() ?? [];
 
@@ -292,11 +338,32 @@ public static class DispatchEndpoints
         return null;
     }
 
-    static (double lat, double lon)? Point(Point? p) => p is null ? null : (p.Y, p.X);
+    internal static (double lat, double lon)? Point(Point? p) => p is null ? null : (p.Y, p.X);
+
+    /// <summary>The offer ends: its requests go back to the queue, as they were.</summary>
+    internal static async Task CancelOffer(AppDbContext db, Trip trip, string? reason, CancellationToken ct)
+    {
+        trip.Status = TripStatus.Cancelled;
+        trip.DeclineReason = reason;
+        var ids = trip.Stops.Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList();
+        await db.Requests.Where(r => ids.Contains(r.Id) && r.Status == RequestStatus.Assigned)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RequestStatus.Queued), ct);
+    }
+
+    /// <summary>Links work until the end of election day (Israel time); without a day yet, for 24 hours.</summary>
+    static DateTimeOffset EndOfElectionDay(DateOnly? day)
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (day is null) return now.AddHours(24);
+        var end = day.Value.ToDateTime(new TimeOnly(23, 59));
+        var at = new DateTimeOffset(end, Israel.GetUtcOffset(end)).ToUniversalTime();
+        return at > now ? at : now.AddHours(24);
+    }
 
     static async Task<List<DriverItem>> AvailableDrivers(AppDbContext db, Guid city, Guid op, DateTimeOffset now, CancellationToken ct)
     {
-        var drivers = await db.Drivers.Where(d => d.CityId == city && d.OperationId == op && Available.Contains(d.Status) && !d.BreakAfterTrip).ToListAsync(ct);
+        var drivers = await db.Drivers.Where(d => d.CityId == city && d.OperationId == op && Available.Contains(d.Status) && !d.BreakAfterTrip
+            && !db.Trips.Any(t => t.DriverId == d.Id && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered))).ToListAsync(ct);
         return drivers.Select(d => new DriverItem(
             d.Id, d.FullName, d.Seats, d.WheelchairCar, d.Status == DriverStatus.Soon,
             d.FreeAt is { } f ? Math.Max(0, (f - now).TotalMinutes) : null,

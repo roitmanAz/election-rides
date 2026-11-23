@@ -178,7 +178,7 @@
                 <b class="min-w-0 flex-1 truncate">{{ d.fullName }}</b>
                 @if (!d.hasSmartphone) { <span class="rounded-full border border-dashed border-line2 px-1.5 text-xs text-muted">בלי אפליקציה</span> }
                 <span class="rounded-full px-2 py-0.5 text-xs font-medium"
-                  [class]="d.status === 'Free' ? 'bg-ok text-white' : d.status === 'Soon' ? 'bg-warn-soft text-warn' : 'bg-soft text-muted'">{{ driverLine(d) }}</span>
+                  [class]="offerLate(d) ? 'bg-bad text-white' : d.trip?.status === 'Offered' ? 'bg-warn-soft text-warn' : d.status === 'Free' ? 'bg-ok text-white' : d.status === 'Soon' ? 'bg-warn-soft text-warn' : 'bg-soft text-muted'">{{ driverLine(d) }}</span>
               </button>
               @if (openDriverId() === d.id) {
                 <div class="grid gap-2 bg-bg px-4 py-3 text-sm">
@@ -190,7 +190,18 @@
                       <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium disabled:text-line2" [disabled]="!!d.trip" (click)="action(d, 'Finish')">סיים לעבוד</button>
                     </span>
                   </div>
-                  @if (d.trip) {
+                  @if (d.lastDecline && !d.trip) {
+                    <p class="rounded-xl bg-warn-soft px-3 py-2 text-warn">לא יכול לקחת: {{ d.lastDecline }}</p>
+                  }
+                  @if (d.hasSmartphone) {
+                    <button type="button" class="h-9 w-max rounded-lg bg-surface px-3 text-xs font-medium" (click)="makeLink(d)">{{ d.hasLink ? 'קישור כניסה חדש לאפליקציה' : 'קישור כניסה לאפליקציה' }}</button>
+                  }
+                  @if (d.trip?.status === 'Offered') {
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span [class.text-bad]="offerLate(d)">{{ offerLate(d) ? 'הנהג לא אישר תוך 2 דקות.' : 'ההצעה נשלחה, ממתין לאישור הנהג.' }}</span>
+                      <button type="button" class="h-9 rounded-lg bg-surface px-3 text-xs font-medium" (click)="withdraw(d)">החזר לתור</button>
+                    </div>
+                  } @else if (d.trip) {
                     <div>
                       <b class="text-muted">לוקח עכשיו:</b>
                       <ul class="mt-1 grid gap-0.5">@for (s of riders(d); track $index) { <li>{{ s.names?.join(', ') }} · {{ s.address }} · <span dir="ltr">{{ formatPhone(s.phone ?? '') }}</span></li> }</ul>
@@ -224,6 +235,17 @@
       <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" (picked)="selectedId.set($event); mapBig.set(false)" />
     }
   </div>
+</app-dialog>
+
+<app-dialog [open]="!!linkFor()" title="קישור כניסה לאפליקציה" [width]="520" (closed)="linkFor.set(null)">
+  @if (linkFor(); as l) {
+    <p>הקישור האישי של <b>{{ l.name }}</b>. שולחים לו בוואטסאפ או ב-SMS. הקישור עובד פעם אחת, עד סוף יום הבחירות. קישור חדש מבטל את הקודם.</p>
+    <input id="linkText" class="input mt-3 text-left" dir="ltr" readonly [value]="l.url" (focus)="$any($event.target).select()" />
+    <div class="mt-4 flex gap-2">
+      <button type="button" class="btn-primary" (click)="copyLink()">{{ copied() ? 'הועתק' : 'העתק קישור' }}</button>
+      <button type="button" class="btn-secondary" (click)="linkFor.set(null)">סגירה</button>
+    </div>
+  }
 </app-dialog>
 
 <app-dialog [open]="cancelOpen()" title="ביטול פנייה" [width]="460" (closed)="cancelOpen.set(false)">
