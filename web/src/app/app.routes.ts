@@ -13,7 +13,7 @@ const roleGuard = (role: Role) => () => {
 const startPage = () => {
   const me = inject(AuthService).me();
   const router = inject(Router);
-  if (me?.role === 'CityAdmin') return router.parseUrl('/city/clusters');
+  if (me?.role === 'CityAdmin') return router.parseUrl('/city/dashboard');
   if (me?.role === 'SystemAdmin') return router.parseUrl('/admin/cities');
   if (me?.role === 'Operator') return router.parseUrl('/operator');
   if (me?.role === 'Dispatcher') return router.parseUrl('/dispatcher');
@@ -32,12 +32,13 @@ export const routes: Routes = [
     canActivate: [authGuard, roleGuard('CityAdmin')],
     loadComponent: () => import('./city/city-admin').then((m) => m.CityAdmin),
     children: [
+      { path: 'dashboard', loadComponent: () => import('./city/dashboard').then((m) => m.DashboardPage), title: 'דשבורד · מטה הסעות' },
       { path: 'clusters', loadComponent: () => import('./city/clusters').then((m) => m.ClustersPage), title: 'אשכולות · מטה הסעות' },
       { path: 'communities', loadComponent: () => import('./city/list-manager').then((m) => m.CommunitiesPage), title: 'קהילות · מטה הסעות' },
       { path: 'streets', loadComponent: () => import('./city/list-manager').then((m) => m.StreetsPage), title: 'רחובות · מטה הסעות' },
       { path: 'users', loadComponent: () => import('./city/users').then((m) => m.UsersPage), title: 'משתמשים · מטה הסעות' },
       { path: 'settings', loadComponent: () => import('./city/settings').then((m) => m.SettingsPage), title: 'הגדרות העיר · מטה הסעות' },
-      { path: '', pathMatch: 'full', redirectTo: 'clusters' },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
     ],
   },
   {

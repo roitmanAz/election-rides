@@ -127,6 +127,7 @@ app.MapAuth();
 app.MapCityLists();
 app.MapClusters();
 app.MapCitySettings();
+app.MapDashboard();
 app.MapStreetImport();
 app.MapCityUsers();
 app.MapSystemCities();

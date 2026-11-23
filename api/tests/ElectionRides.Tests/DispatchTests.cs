@@ -158,6 +158,32 @@ public class DispatchTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Dashboard_counts_today_and_drivers_and_only_the_city_admin_sees_it()
+    {
+        var (admin, city, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        await using (var db = api.NewDb())
+        {
+            var active = await db.Operations.Include(o => o.Cities).FirstOrDefaultAsync(o => o.IsActive)
+                ?? db.Operations.Add(new ElectionOperation { Type = ElectionType.Knesset, ElectionDay = new DateOnly(2026, 12, 1), IsActive = true }).Entity;
+            active.Cities.Add(await db.Cities.FirstAsync(c => c.Id == city.Id));
+            await db.SaveChangesAsync();
+        }
+        var street = (await Json(await admin.PostAsJsonAsync("/api/city/streets", new { name = "סוקולוב" }))).GetProperty("id").GetGuid();
+        var cluster = (await Json(await admin.PostAsJsonAsync("/api/city/clusters", new { name = "מתנ\"ס", shortName = "מתנ\"ס", number = 4, boxes = "6-9", streetId = street, buildingNumber = "3", accessible = true }))).GetProperty("id").GetGuid();
+        var (op, _, _) = await TestUsers.SignedIn(api, UserRole.Operator, city);
+        var (disp, _, _) = await TestUsers.SignedIn(api, UserRole.Dispatcher, city);
+        await op.PostAsJsonAsync("/api/intake/requests", Req("0527555551", "נחמה פישר", "000000075", "Female", street, cluster));
+        await disp.PostAsJsonAsync("/api/dispatch/drivers", new { phone = "0548000779", fullName = "צבי אורן", seats = 4, wheelchairCar = false, hasSmartphone = false });
+
+        var d = await Json(await admin.GetAsync("/api/city/dashboard"));
+        Assert.Equal(1, d.GetProperty("requestsToday").GetInt32());
+        Assert.Equal(1, d.GetProperty("queued").GetInt32());
+        Assert.Equal(1, d.GetProperty("drivers").GetProperty("free").GetInt32());
+        Assert.Equal(1, d.GetProperty("perHalfHour").EnumerateArray().Sum(b => b.GetProperty("count").GetInt32()));
+        Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/city/dashboard")).StatusCode);
+    }
+
+    [Fact]
     public async Task Operator_cannot_use_the_dispatcher_screen()
     {
         var (op, _, _, _) = await Setup();
