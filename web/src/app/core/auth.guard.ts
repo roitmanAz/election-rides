@@ -6,9 +6,11 @@ import { AuthService } from './auth.service';
 
 /** Signed-in users only; anyone else goes to the sign-in page. */
 export const authGuard: CanActivateFn = async () => {
+  // inject() only works before the first await.
   const auth = inject(AuthService);
+  const router = inject(Router);
   if (auth.me() || (await auth.loadMe())) return true;
-  return inject(Router).parseUrl('/login');
+  return router.parseUrl('/login');
 };
 
 /**
