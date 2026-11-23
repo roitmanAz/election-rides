@@ -12,6 +12,11 @@ public class City
     public string? HqPhone { get; set; }
     /// <summary>Disabled cities keep their data, but their users cannot sign in.</summary>
     public bool IsActive { get; set; } = true;
+    /// <summary>HQ opening hours on election day.</summary>
+    public TimeOnly? HoursFrom { get; set; }
+    public TimeOnly? HoursTo { get; set; }
+    /// <summary>The city's own election day, when it differs from the operation (for example a runoff).</summary>
+    public DateOnly? ElectionDayOverride { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

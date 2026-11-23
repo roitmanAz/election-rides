@@ -4,6 +4,7 @@ using ElectionRides.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -127,6 +128,33 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("Audit");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.BallotBox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClusterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClusterId");
+
+                    b.HasIndex("CityId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("BallotBoxes");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.City", b =>
                 {
                     b.Property<Guid>("Id")
@@ -135,6 +163,15 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("ElectionDayOverride")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("HoursFrom")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("HoursTo")
+                        .HasColumnType("time without time zone");
 
                     b.Property<string>("HqPhone")
                         .HasMaxLength(10)
@@ -157,6 +194,82 @@ namespace ElectionRides.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Cities");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Accessible")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("BuildingNumber")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DropoffNote")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Point>("Location")
+                        .HasColumnType("geography (point, 4326)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
+                    b.Property<Guid>("StreetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StreetId");
+
+                    b.HasIndex("CityId", "Number")
+                        .IsUnique()
+                        .HasFilter("\"Number\" IS NOT NULL");
+
+                    b.HasIndex("CityId", "ShortName")
+                        .IsUnique();
+
+                    b.ToTable("Clusters");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Community", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Communities");
                 });
 
             modelBuilder.Entity("ElectionRides.Api.Domain.ElectionOperation", b =>
@@ -308,6 +421,34 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("PasswordTokens");
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.Street", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int?>("OfficialCode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Streets");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.TrustedDevice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -358,6 +499,55 @@ namespace ElectionRides.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("City");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.BallotBox", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.Cluster", null)
+                        .WithMany("Boxes")
+                        .HasForeignKey("ClusterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ElectionRides.Api.Domain.Street", "Street")
+                        .WithMany()
+                        .HasForeignKey("StreetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Street");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Community", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Street", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.Cluster", b =>
+                {
+                    b.Navigation("Boxes");
                 });
 #pragma warning restore 612, 618
         }

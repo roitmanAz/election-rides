@@ -1,5 +1,8 @@
 using System.Threading.RateLimiting;
 using ElectionRides.Api.Auth;
+using ElectionRides.Api.CityScreens;
+using ElectionRides.Api.Common;
+using ElectionRides.Api.Domain;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Email;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -34,7 +37,12 @@ builder.Services.AddAuthentication(AuthEndpoints.Scheme)
             OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; },
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy(Policies.CityStaff, p => p.RequireClaim(SessionPolicy.CityClaim));
+    o.AddPolicy(Policies.CityAdmin, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.CityAdmin)));
+    o.AddPolicy(Policies.SystemAdmin, p => p.RequireRole(nameof(UserRole.SystemAdmin)));
+});
 
 // Sign-in endpoints: at most 20 requests a minute from one address (configurable for tests).
 builder.Services.AddRateLimiter(o =>
@@ -73,6 +81,9 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
         statusCode: dbOk ? 200 : 503);
 });
 app.MapAuth();
+app.MapCityLists();
+app.MapClusters();
+app.MapCitySettings();
 
 try
 {
