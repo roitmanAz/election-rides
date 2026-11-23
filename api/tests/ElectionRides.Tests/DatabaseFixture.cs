@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using ElectionRides.Api.GovData;
 
 namespace ElectionRides.Tests;
 
@@ -24,7 +27,11 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             ["ConnectionStrings:Db"] = ConnectionString,
             ["RateLimit:AuthPerMinute"] = "10000",
         }));
+        // Tests never call data.gov.il.
+        builder.ConfigureServices(s => s.Replace(ServiceDescriptor.Singleton<IGovData>(Gov)));
     }
+
+    public FakeGovData Gov { get; } = new();
 
     public AppDbContext NewDb() =>
         new(new DbContextOptionsBuilder<AppDbContext>()
@@ -43,3 +50,15 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 /// <summary>All API tests share one freshly migrated database and run one class at a time.</summary>
 [CollectionDefinition("api")]
 public class ApiCollection : ICollectionFixture<ApiFactory>;
+
+public class FakeGovData : IGovData
+{
+    public List<Locality> Localities { get; } = [new(3000, "ירושלים"), new(6100, "בני ברק"), new(1139, "כרמיאל")];
+    public Dictionary<int, List<OfficialStreet>> Streets { get; } = new();
+
+    public Task<IReadOnlyList<Locality>> LocalitiesAsync(CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<Locality>>(Localities);
+
+    public Task<IReadOnlyList<OfficialStreet>> StreetsAsync(int localityCode, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<OfficialStreet>>(Streets.GetValueOrDefault(localityCode) ?? []);
+}

@@ -5,6 +5,8 @@ using ElectionRides.Api.Common;
 using ElectionRides.Api.Domain;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Email;
+using ElectionRides.Api.GovData;
+using ElectionRides.Api.SystemAdmin;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +20,15 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddSingleton<DevEmailSender>();
 builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<DevEmailSender>());
 builder.Services.AddScoped<Invitations>();
+
+// Official lists from data.gov.il (localities and streets).
+builder.Services.AddHttpClient("gov", c =>
+{
+    c.BaseAddress = new Uri("https://data.gov.il/");
+    c.Timeout = TimeSpan.FromSeconds(60);
+});
+// One shared client, so the localities list is fetched once a day.
+builder.Services.AddSingleton<IGovData>(sp => new GovDataClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("gov")));
 
 builder.Services.AddAuthentication(AuthEndpoints.Scheme)
     .AddCookie(AuthEndpoints.Scheme, o =>
@@ -84,6 +95,9 @@ app.MapAuth();
 app.MapCityLists();
 app.MapClusters();
 app.MapCitySettings();
+app.MapStreetImport();
+app.MapCityUsers();
+app.MapSystemCities();
 
 try
 {
