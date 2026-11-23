@@ -1,0 +1,27 @@
+<main class="min-h-screen p-4 sm:p-8">
+  <div class="mx-auto max-w-xl rounded-[var(--radius-card)] bg-surface p-6 shadow-[var(--shadow-card)]">
+    <h1 class="text-2xl font-semibold">מטה הסעות</h1>
+    <p class="mt-1 text-muted">שלד המערכת. המסכים ייבנו בשלבים הבאים.</p>
+
+    <div class="mt-6 flex items-center gap-3 rounded-[var(--radius-btn)] bg-soft p-4">
+      @switch (health()) {
+        @case ('ok') {
+          <span class="size-3 rounded-full bg-action"></span>
+          <span>השרת ומסד הנתונים פועלים</span>
+        }
+        @case ('degraded') {
+          <span class="size-3 rounded-full bg-warn"></span>
+          <span>השרת פועל, אבל אין חיבור למסד הנתונים</span>
+        }
+        @case ('down') {
+          <span class="size-3 rounded-full bg-bad"></span>
+          <span>אין חיבור לשרת</span>
+        }
+        @default {
+          <span class="size-3 rounded-full bg-line2"></span>
+          <span class="text-muted">בודק חיבור...</span>
+        }
+      }
+    </div>
+  </div>
+</main>

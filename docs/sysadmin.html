@@ -1,0 +1,869 @@
+<title>מנהל מערכת</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* City admin prototype, v2. DESIGN.md: graphite sign plates, sign-blue action only, wait scale green/amber/red, Secular One for numbers/headings, big targets, no sideways scroll, light-only. Works on a phone: tabs become an icon grid, tables become cards. */
+:root {
+  --page: #e7e9ec; --page-muted: #555c66; --page-line: #cdd1d7;
+  --bg: #f1f2f4; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --plate2: #2a3039; --action: #0b4c9e; --action-soft: #e6eefa;
+  --ok: #1f7a3a; --ok-soft: #e3f1e7; --warn: #a15f00; --warn-soft: #fdefd2; --bad: #c92a2a; --bad-soft: #fbe5e5;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); direction: rtl; font-size: 15.5px; line-height: 1.5; }
+.page { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; }
+@media (max-width: 600px) { .page { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); padding-block: 12px 40px; } }
+.intro { max-width: 90ch; display: grid; gap: 6px; margin-bottom: 18px; }
+.intro h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 4vw, 32px); margin: 0; }
+.intro p { margin: 0; color: var(--page-muted); }
+.frame { border: 1px solid var(--page-line); border-radius: 6px; background: var(--bg); overflow: clip; }
+
+svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.m-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--plate); color: #fff; padding: 8px 16px; min-height: 56px; border-bottom: 4px solid #fff; box-shadow: 0 4px 0 var(--plate); }
+.brand { font-family: var(--display); font-size: 22px; white-space: nowrap; }
+.brand span { font-family: var(--body); font-size: 13px; opacity: .75; margin-inline-start: 8px; }
+.top-note { margin-inline-start: auto; font-size: 13.5px; opacity: .9; display: flex; align-items: center; gap: 6px; }
+
+.shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; padding: 16px 12px 14px; align-items: start; }
+.tabs { display: grid; gap: 6px; position: sticky; top: 12px; }
+.tabs a { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 14px; border-radius: 8px; border: 2px solid var(--line2); background: #fff; color: var(--ink); text-decoration: none; font-weight: 700; }
+.tabs a:hover { border-color: var(--action); color: var(--action); }
+.tabs a.on { background: var(--plate); color: #fff; border-color: var(--plate); }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); padding: 10px 8px; }
+  .tabs { position: static; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .tabs a { flex-direction: column; justify-content: center; gap: 2px; min-height: 60px; padding: 6px 4px; font-size: 13px; text-align: center; }
+}
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, label.filebtn:focus-within { outline: 3px solid var(--action); outline-offset: 2px; }
+
+.panel { background: var(--surface); border: 2px solid var(--line2); border-radius: 8px; min-width: 0; }
+.p-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; background: #e9ebee; border-bottom: 2px solid var(--line2); border-radius: 6px 6px 0 0; }
+.p-h h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.p-h .tools { margin-inline-start: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 600px) { .p-h .tools { margin-inline-start: 0; width: 100%; } .p-h { padding: 10px 12px; } }
+.p-b { padding: 14px 16px; display: grid; gap: 16px; }
+@media (max-width: 600px) { .p-b { padding: 12px; } }
+.muted { color: var(--muted); }
+.lead { margin: 0; color: var(--muted); }
+.section-t { font-family: var(--display); font-weight: 400; font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
+
+.b1, .b2, .b3 { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; border-radius: 6px; }
+.b1 { font-family: var(--display); font-size: 15.5px; border: 0; padding: 0 18px; height: 42px; background: var(--action); color: #fff; }
+.b1.danger { background: var(--bad); }
+.b2 { font: inherit; font-weight: 700; font-size: 14.5px; background: #fff; border: 2px solid var(--line2); padding: 0 14px; height: 42px; color: var(--ink); }
+.b2:hover { border-color: var(--action); color: var(--action); }
+.b3 { font: inherit; font-weight: 700; font-size: 13.5px; background: #fff; border: 2px solid var(--line2); padding: 0 12px; height: 38px; color: var(--ink); }
+.b3:hover { border-color: var(--action); color: var(--action); }
+.b3.danger { color: var(--bad); }
+.b3.danger:hover { border-color: var(--bad); }
+.b1 svg.i, .b2 svg.i, .b3 svg.i { width: 18px; height: 18px; }
+.fbtn { font: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 12px; height: 38px; cursor: pointer; }
+.fbtn.on { background: var(--plate); color: #fff; border-color: var(--plate); }
+
+input[type=text], input[type=tel], input[type=email], input[type=date], input[type=time], input[type=search], select {
+  font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; height: 44px; padding: 0 12px; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+input.err, select.err { border-color: var(--bad); background: var(--bad-soft); }
+input.good, select.good { border-color: var(--ok); }
+.f { display: grid; gap: 4px; font-weight: 700; font-size: 13.5px; color: var(--muted); align-content: start; min-width: 0; }
+.req { color: var(--bad); font-weight: 800; margin-inline-start: 3px; }
+.msg { font-size: 13px; font-weight: 700; min-height: 18px; color: var(--bad); }
+.hint { font-weight: 500; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.seg { display: inline-flex; border: 2px solid var(--line2); border-radius: 6px; overflow: hidden; height: 44px; width: max-content; max-width: 100%; }
+.seg label { display: flex; align-items: center; padding: 0 16px; cursor: pointer; font-weight: 700; font-size: 15px; color: var(--ink); border-inline-start: 1px solid var(--line2); }
+.seg label:first-child { border-inline-start: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--action); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: -3px; }
+.seg.err { border-color: var(--bad); }
+.with-ico { position: relative; }
+.with-ico svg.i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.with-ico input { padding-right: 40px; }
+
+/* Tables: cards on a phone */
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th, td { text-align: right; padding: 0 10px; }
+th { font-weight: 800; font-size: 12.5px; color: var(--muted); height: 34px; border-bottom: 1px solid var(--line2); }
+td { height: 46px; border-bottom: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.wrap { white-space: normal; padding-block: 6px; }
+@media (max-width: 760px) {
+  table.rt, table.rt tbody, table.rt tr, table.rt td { display: block; width: 100%; }
+  table.rt colgroup, table.rt thead { display: none; }
+  table.rt tr { border: 2px solid var(--line2); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; display: grid; gap: 4px; }
+  table.rt td { height: auto; border: 0; padding: 2px 0; white-space: normal; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  table.rt td[data-l]::before { content: attr(data-l); font-size: 12.5px; font-weight: 800; color: var(--muted); min-width: 92px; }
+  table.rt td.act { justify-content: flex-start; }
+}
+.nm { font-weight: 800; }
+.pl { display: inline-flex; justify-content: center; align-items: center; min-width: 34px; height: 24px; padding: 0 7px; font-family: var(--display); font-size: 14px; border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; white-space: nowrap; }
+.pl-name { background: #fff; color: var(--plate); box-shadow: inset 0 0 0 2px var(--plate); font-family: var(--body); font-weight: 800; font-size: 12.5px; }
+.ico { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; border: 2px solid var(--plate); border-radius: 4px; color: var(--plate); flex: none; vertical-align: middle; }
+.ico svg.i { width: 16px; height: 16px; stroke-width: 2.2; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 12.5px; border-radius: 5px; padding: 1px 8px; white-space: nowrap; }
+.chip.no { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.role { background: var(--action-soft); color: var(--action); }
+.nowrap { white-space: nowrap; unicode-bidi: isolate; display: inline-block; }
+
+/* Dashboard */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tile { border: 2px solid var(--line2); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; background: #fff; min-width: 0; }
+.tile .k { font-size: 14px; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.tile .k svg.i { width: 18px; height: 18px; }
+.tile .v { font-family: var(--display); font-size: 32px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .v small { font-family: var(--body); font-size: 14px; color: var(--muted); font-weight: 700; margin-inline-start: 4px; }
+.tile.alert { border-color: var(--bad); }
+.chart-wrap { position: relative; }
+.chart { width: 100%; height: auto; display: block; }
+.tip { position: absolute; pointer-events: none; background: var(--plate); color: #fff; border-radius: 6px; padding: 6px 10px; font-size: 13.5px; font-weight: 700; white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 2; }
+.tip b { font-family: var(--display); font-weight: 400; font-size: 16px; }
+details.tbl-view summary { cursor: pointer; font-weight: 700; min-height: 42px; display: flex; align-items: center; gap: 6px; color: var(--action); }
+details.tbl-view table td, details.tbl-view table th { height: 34px; }
+.tbl-cols { columns: 3 160px; column-gap: 24px; }
+.tbl-cols div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 4px 0; break-inside: avoid; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.list b { font-family: var(--display); font-weight: 400; font-size: 17px; font-variant-numeric: tabular-nums; }
+
+/* List manager (communities, streets): search, add new, the list below */
+.lm-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; align-items: start; }
+@media (max-width: 700px) { .lm-bar { grid-template-columns: minmax(0, 1fr); } }
+.lm-add { display: flex; gap: 8px; align-items: start; }
+.lm-add .f { flex: 1; }
+.lm-add .b1 { margin-top: 23px; height: 44px; }
+.lm-count { font-size: 14px; color: var(--muted); font-weight: 700; }
+.lm-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.lm-list li { display: flex; align-items: center; gap: 8px; min-height: 50px; border: 2px solid var(--line2); border-radius: 8px; padding: 4px 6px 4px 12px; background: #fff; }
+.lm-list li .t { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lm-list li .t mark { background: #fff1b8; color: inherit; border-radius: 2px; }
+.lm-list li .src { font-size: 12px; color: var(--muted); font-weight: 700; }
+.icon-btn { flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--line2); border-radius: 8px; background: #fff; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { color: var(--bad); border-color: var(--bad); }
+.lm-empty { padding: 14px; border: 2px dashed var(--line2); border-radius: 8px; color: var(--muted); text-align: center; }
+
+/* Combobox */
+.combo { position: relative; }
+.combo-list { display: none; position: absolute; top: 100%; right: 0; left: 0; z-index: 15; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 2px solid var(--action); border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.12); max-height: 220px; overflow: auto; }
+.combo-list.show { display: block; }
+.combo-list li { padding: 9px 10px; border-radius: 4px; cursor: pointer; color: var(--ink); font-weight: 500; }
+.combo-list li.hl, .combo-list li:hover { background: var(--action-soft); }
+.combo-list li mark { background: #fff1b8; color: inherit; }
+.combo-list .empty { color: var(--muted); cursor: default; }
+
+/* Base */
+.status { display: flex; gap: 12px; align-items: center; border: 2px solid var(--line2); border-radius: 8px; padding: 12px 14px; }
+.status .s-t { display: grid; gap: 2px; min-width: 0; }
+.status svg.i { width: 28px; height: 28px; }
+.status.loaded { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.status.loaded .s-t span { color: var(--ink); }
+.filebox { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.filebtn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border: 2px solid var(--plate); border-radius: 6px; background: #fff; color: var(--plate); font-weight: 800; cursor: pointer; }
+.filebtn:hover { background: var(--bg); }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filename { font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
+.filename.has { color: var(--ink); }
+.map-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.legal { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 14px; font-weight: 700; }
+.cert { border: 2px solid var(--plate); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; background: #fff; }
+.cert h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; }
+.cert dl { margin: 0; display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 4px 10px; }
+.cert dt { color: var(--muted); font-weight: 700; }
+.cert dd { margin: 0; }
+
+/* Dialogs: X, click outside, Esc */
+.dlg-back { position: fixed; inset: 0; background: rgba(18,21,25,.45); display: none; align-items: center; justify-content: center; z-index: 40; padding: 16px; }
+.dlg-back.show { display: flex; }
+@media (max-width: 600px) { .dlg-back { padding: 0; align-items: flex-end; } .dlg { border-radius: 12px 12px 0 0 !important; max-height: 92vh !important; } }
+.dlg { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border: 3px solid var(--plate); border-radius: 8px; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+.dlg-h { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-family: var(--display); font-size: 19px; background: #e9ebee; border-bottom: 2px solid var(--line2); position: sticky; top: 0; z-index: 2; }
+.xbtn { margin-inline-start: auto; flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 26px; line-height: 1; background: #fff; border: 2px solid var(--line2); border-radius: 8px; cursor: pointer; color: var(--ink); }
+.xbtn:hover { border-color: var(--bad); color: var(--bad); }
+.dlg-body { padding: 14px 16px; display: grid; gap: 12px; }
+.dlg-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--plate); color: #fff; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--plate), 0 8px 20px rgba(0,0,0,.25); border-radius: 8px; padding: 10px 18px; font-weight: 700; display: none; z-index: 50; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { display: block; }
+
+/* System admin additions */
+.alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.alerts li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; border-radius: 8px; padding: 10px 12px; font-weight: 700; border: 2px solid; }
+.alerts li.bad { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+.alerts li.warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.alerts li span { color: var(--ink); }
+.okline { display: flex; align-items: center; gap: 8px; background: var(--ok-soft); color: var(--ok); border-radius: 8px; padding: 10px 12px; font-weight: 700; }
+.wtc { display: inline-flex; justify-content: center; align-items: center; min-width: 38px; height: 24px; font-family: var(--display); border-radius: 4px; }
+.wtc.wt-g { background: var(--ok-soft); color: var(--ok); } .wtc.wt-y { background: var(--warn-soft); color: var(--warn); } .wtc.wt-r { background: var(--bad); color: #fff; }
+.better { color: var(--ok); font-weight: 800; } .worse { color: var(--bad); font-weight: 800; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip { background: var(--bg); color: var(--muted); }
+.chip.no, .chip.bad, .chip.ok, .chip.role { }
+.adm-list li { align-items: center; }
+.ops { display: grid; gap: 12px; }
+.op { border: 2px solid var(--line2); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; background: #fff; }
+.op.on { border-color: var(--ok); }
+.op-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 17px; }
+.op-m { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+.op-m svg.i { color: var(--muted); }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.checks label, .check1 { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; border: 2px solid var(--line2); border-radius: 8px; padding: 0 12px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.checks label:has(input:checked), .check1:has(input:checked) { border-color: var(--action); background: var(--action-soft); }
+.checks input, .check1 input { width: 18px; height: 18px; accent-color: var(--action); }
+.b1:disabled { background: var(--line2); cursor: not-allowed; }
+</style>
+<style id="green">
+/* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
+:root {
+  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
+  --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
+  --soft: #eef2ef; --soft2: #e3e9e5;
+  --shadow: 0 8px 30px rgba(15, 30, 20, .08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
+  --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+}
+body { background: var(--page); font-family: var(--body); }
+.intro h1 { font-weight: 600; }
+
+/* מסגרת ומסך */
+.frame { border: 0; border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px -36px rgba(15, 30, 20, .35); }
+.screen { background: var(--bg); border-radius: 24px; }
+
+/* פס עליון: לבן, לא גרפיט */
+.m-top, .a-top { background: #fff; color: var(--ink); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.m-top { min-height: 66px; padding: 10px 18px; border-radius: 24px 24px 0 0; }
+.brand { font-weight: 600; font-size: 20px; color: var(--ink); }
+.brand span { opacity: 1; color: var(--muted); font-weight: 400; }
+.m-clock { font-weight: 500; color: var(--ink); }
+.top-note { color: var(--muted); }
+.search input { border: 0; background: var(--soft); border-radius: 999px; height: 44px; padding: 0 18px; color: var(--ink); }
+.search input:focus { outline: none; box-shadow: 0 0 0 2px var(--action); background: #fff; }
+.m-kpi { background: var(--soft); border: 0; border-radius: 999px; color: var(--ink); padding: 4px 14px; }
+.m-kpi.hot { background: var(--bad-soft); color: var(--bad); }
+.btn-new { background: var(--action); color: #fff; box-shadow: none; border-radius: 999px; font-weight: 600; padding: 0 20px; height: 44px; }
+.results, .combo-list { border: 0; border-radius: 18px; box-shadow: var(--shadow-pop); padding: 6px; }
+.res { border-radius: 12px; border-bottom: 0; }
+.res:hover, .combo-list li.hl, .combo-list li:hover { background: var(--soft); }
+
+/* פאנלים: כרטיס לבן צף */
+.panel { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.m-h, .p-h, .dlg-h { background: transparent; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 600; padding: 12px 16px; border-radius: 0; }
+.p-h { border-radius: 20px 20px 0 0; }
+.m-h { font-size: 16px; }
+.p-h h2, .sec-h h2 { font-weight: 600; }
+.m-count { background: var(--soft); color: var(--muted); border-radius: 999px; font-weight: 500; font-family: var(--body); }
+.sec { border-bottom-color: var(--line); }
+.sec-h .num { border-radius: 50%; box-shadow: none; background: var(--action); font-weight: 600; font-size: 14px; }
+
+/* כפתורים */
+.b1 { border-radius: 14px; font-weight: 600; height: 48px; padding: 0 22px; background: var(--action); }
+.b1:hover { background: #12913f; }
+.b1:disabled { background: var(--soft2); color: var(--muted); }
+.b1.danger { background: var(--bad); }
+.b2, .b3, .bsm, .stops .rm, .brk button { border: 0; background: var(--soft); border-radius: 14px; font-weight: 500; color: var(--ink); }
+.b2 { height: 48px; }
+.b2:hover, .b3:hover, .bsm:hover, .stops .rm:hover { background: var(--soft2); color: var(--ink); border-color: transparent; }
+.bsm { border-radius: 10px; }
+.bdanger, .b3.danger { color: var(--bad); }
+.b3.danger:hover, .bdanger:hover, .stops .rm:hover { color: var(--bad); }
+.fbtn { border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; color: var(--muted); }
+.fbtn.on { background: var(--ink); color: #fff; }
+.xbtn { border: 0; background: var(--soft); border-radius: 50%; color: var(--ink); }
+.xbtn:hover { background: var(--bad-soft); color: var(--bad); }
+.icon-btn { border-radius: 12px; }
+button:focus-visible, a:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* טפסים */
+select, .inp, input[type=text], input[type=tel], input[type=time], input[type=email], input[type=number], input[type=date], input[type=password] { border: 1.5px solid var(--line2); border-radius: 12px; background: #fff; }
+select:focus, .inp:focus, input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.seg { border: 0; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; height: auto; min-height: 40px; }
+.seg label { border: 0 !important; border-radius: 10px; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg.err { box-shadow: 0 0 0 2px var(--bad); }
+.needs label, .checks label, .check1 { border-radius: 999px; }
+.filebtn { border-radius: 14px; }
+
+/* טבלאות */
+th { background: #fff; font-weight: 500; color: var(--muted); border-bottom-color: var(--line); }
+td { border-bottom-color: var(--line); }
+tbody tr.sel td, tr.drv.open td { background: #effaf3; }
+tbody tr.q:hover td, tr.drv:hover td { background: #f6f9f7; }
+tr.dx td { background: var(--bg); }
+
+/* תגיות, לוחיות, מצבים */
+.chip, .st, .dl { border-radius: 999px; }
+.chip.need, .chip.noapp { border-width: 1.5px; }
+.wt { border-radius: 10px; font-weight: 600; }
+.pl { border-radius: 8px; box-shadow: none; background: var(--ink); font-weight: 600; }
+.pl-name, .pl.cl-num { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ico { border-width: 1.5px; border-radius: 8px; }
+.warnline, .known, .dup, .family, .editbar, .legal, .script, .status, .cert, .acc { border-radius: 16px; }
+.known { border: 0; background: var(--action-soft); }
+.script { border: 0; background: var(--soft); }
+
+/* מפה */
+.map { background: #e9eeea; }
+.legend, .map-cap { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(15, 30, 20, .10); }
+.minimap { border-radius: 16px; overflow: hidden; }
+.mapdlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+
+/* הצעה לנהג */
+.prop { border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+.prop-tabs { background: var(--soft); padding: 4px; border-radius: 14px; margin: 10px 10px 0; gap: 4px; }
+.prop-tabs button { color: var(--muted); opacity: 1; border: 0; border-radius: 10px; font-weight: 500; padding: 8px 12px; font-size: 14px; }
+.prop-tabs button.on { background: var(--ink); color: #fff; }
+.prop-head b { font-weight: 600; }
+
+/* חלונות קופצים והודעות */
+.dlg-back, .mapback { background: rgba(18, 26, 20, .35); }
+.dlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+.dlg-h { background: #fff; }
+.toast { background: var(--ink); border: 0; border-radius: 999px; box-shadow: 0 10px 28px rgba(15, 30, 20, .3); }
+
+/* מנהל עיר ומנהל מערכת */
+.tabs a { border: 0; border-radius: 999px; background: transparent; }
+.tabs a:hover { background: var(--soft); }
+.tabs a.on { background: var(--ink); color: #fff; }
+.tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.tile .v { font-weight: 600; }
+.tile.alert { box-shadow: inset 0 0 0 2px var(--bad), var(--shadow); }
+.lm-list, .list, .alerts li, .op, .adm-list li { border-radius: 16px; }
+.op.on { box-shadow: inset 0 0 0 2px var(--action); }
+
+/* מוקדן */
+.panel .sum { border-radius: 14px; }
+.person { border-radius: 14px; border-width: 1.5px; }
+.newp { border-radius: 16px; border-width: 1.5px; }
+.readback { border-radius: 20px; overflow: hidden; }
+.readback .ph { background: var(--ink); font-weight: 600; }
+.minimap .dst { border-radius: 50%; box-shadow: 0 0 0 3px #fff; background: var(--action); }
+.tryit button { border-radius: 999px; }
+
+/* אפליקציית הנהג */
+.sim { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.a-brand { font-weight: 600; }
+.a-menu { color: var(--ink); border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; }
+.a-foot { border-top: 0; box-shadow: 0 -8px 24px rgba(15, 30, 20, .08); border-radius: 24px 24px 0 0; }
+.state { border-radius: 20px; }
+.state .big { font-weight: 600; }
+.state.trip { border: 0; background: var(--action-soft); color: var(--ink); }
+.state.done { border: 0; background: var(--soft); }
+.btn-main, .btn-free { border-radius: 18px; font-weight: 600; background: var(--action); }
+.btn-sec { border: 0; background: var(--soft); color: var(--ink); border-radius: 18px; font-weight: 500; }
+.btn-sec.on { background: var(--ink); color: #fff; }
+.btn-low { border: 0; background: var(--soft); border-radius: 16px; font-weight: 500; }
+.brk { border-radius: 16px; border-width: 1.5px; }
+.offer { border: 0; border-radius: 24px; box-shadow: var(--shadow); }
+.offer-h { background: var(--action); font-weight: 600; }
+.stop { border: 0; border-radius: 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.stop.end { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.go { border-radius: 14px; font-weight: 600; }
+.go.call { border: 0; background: var(--soft); color: var(--ink); }
+.dist { color: var(--action); }
+.phone .dlg { border-radius: 24px 24px 0 0; }
+.dlg-body label.opt { border-radius: 14px; }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>מסך מנהל המערכת: אב-טיפוס לחיץ</h1>
+    <p>גרסה 2: נוספו תמונת מצב של כל הערים עם התראות, דוחות, מנהלי מערכת ומדיניות אבטחה. מנהל המערכת של המפלגה פותח ערים, ממנה מנהלי עיר, פותח מבצעי בחירות, וקובע את כללי הפרטיות. הוא לא רואה נתוני מצביעים, רק מספרים מצרפיים. מתאים גם לטלפון. כל הנתונים הם דוגמה.</p>
+  </div>
+
+  <div class="frame">
+    <div class="m-top">
+      <div class="brand">מטה הסעות<span>מנהל מערכת · המפלגה</span></div>
+      <div class="top-note" id="topNote"></div>
+    </div>
+    <div class="shell">
+      <nav class="tabs" id="tabs" aria-label="תפריט מנהל המערכת"></nav>
+      <main id="view" class="panel" aria-live="polite"></main>
+    </div>
+  </div>
+</div>
+
+<div class="dlg-back" id="dlgBack">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg-h"><span id="dlgTitle"></span><button class="xbtn" type="button" id="dlgX" aria-label="סגור">×</button></div>
+    <div class="dlg-body" id="dlgBody"></div>
+    <div class="dlg-acts" id="dlgActs"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var P = {
+    cities: '<path d="M3 21h18"/><path d="M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 10h3M13 14h3M13 18h3"/>',
+    ops: '<rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M8 10V4h8v6"/><path d="M10 7h4"/>',
+    certs: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+    log: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+    party: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
+    check: '<path d="m5 12 5 5 9-10"/>',
+    warn: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+    pause: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
+    play: '<path d="M7 5v14l12-7z"/>',
+    live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    reports: '<path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8M21 17v-3"/>',
+    sysusers: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><path d="M17 4.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"/>',
+    security: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/>',
+    car: '<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    export: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/>'
+  };
+  function I(n) { return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>'; }
+
+  // ---------- Example data (fictional) ----------
+  var LOCALITIES = ["בני ברק","ירושלים","בית שמש","אלעד","מודיעין עילית","ביתר עילית","בית שאן","אשדוד","חיפה","צפת","טבריה","רכסים","פתח תקווה","נתניה","ערד","קריית גת"];
+  var PARTY = { name: "המפלגה לדוגמה", privacyName: "עו\"ד רחל לוי", privacyEmail: "privacy@party.example", legalEmail: "legal@party.example", deleteDays: 7 };
+  var OPS = [
+    {id: 2, type: "knesset", name: "בחירות לכנסת", date: "2026-12-01", status: "active", cities: [1, 2, 3, 4]},
+    {id: 1, type: "local",   name: "בחירות לרשויות המקומיות", date: "2024-02-27", status: "closed", cities: [1, 2]}
+  ];
+  var CITIES = [
+    {id: 1, name: "בני ברק",       active: true,  admins: [{name: "שרה כהן", email: "sara@example.org"}], setup: {clusters: true, streets: true, comms: true, base: true,  users: true,  hq: true},  today: {req: 551, wait: 14}},
+    {id: 2, name: "ירושלים",       active: true,  admins: [{name: "דוד לוין", email: "david@example.org"}, {name: "חנה גולד", email: "hana@example.org"}], setup: {clusters: true, streets: true, comms: true, base: false, users: true, hq: true}, today: {req: 812, wait: 22}},
+    {id: 3, name: "בית שמש",       active: true,  admins: [{name: "יוסי פרץ", email: "yossi@example.org"}], setup: {clusters: true, streets: true, comms: false, base: false, users: false, hq: true}, today: {req: 0, wait: 0}},
+    {id: 4, name: "אלעד",          active: true,  admins: [], setup: {clusters: false, streets: false, comms: false, base: false, users: false, hq: false}, today: {req: 0, wait: 0}},
+    {id: 5, name: "מודיעין עילית", active: false, admins: [{name: "משה ברגר", email: "moshe@example.org"}], setup: {clusters: true, streets: true, comms: true, base: false, users: true, hq: true}, today: {req: 0, wait: 0}}
+  ];
+  // Live numbers per city today (example; aggregates only, no voter data)
+  var LIVE = {
+    1: {req: 551, wait: 14, maxWait: 38, avgWait: 12, free: 2, busy: 6, adminSeen: "לפני 2 דקות"},
+    2: {req: 812, wait: 22, maxWait: 26, avgWait: 15, free: 0, busy: 11, adminSeen: "לפני 5 דקות"},
+    3: {req: 96,  wait: 3,  maxWait: 9,  avgWait: 6,  free: 3, busy: 2, adminSeen: "לפני שעתיים"},
+    4: {req: 0,   wait: 0,  maxWait: 0,  avgWait: 0,  free: 0, busy: 0, adminSeen: ""}
+  };
+  var SYSADMINS = [{name: "מנהל ראשי (אתה)", email: "admin@party.example", me: true, last: "עכשיו"}, {name: "אבי שטרן", email: "avi@party.example", last: "אתמול 21:10"}];
+  var SEC = {code: true, remember: "day", idle: 30, attempts: 5, lock: 15};
+  // Report rows per operation (example)
+  var REPORT = {
+    2: [
+      {city: "בני ברק", req: 551, arrived: 92, avg: 12, max: 38, cancel: 18, peak: "10:30", prevAvg: 19},
+      {city: "ירושלים", req: 812, arrived: 89, avg: 15, max: 41, cancel: 31, peak: "11:00", prevAvg: 21},
+      {city: "בית שמש", req: 96,  arrived: 95, avg: 6,  max: 14, cancel: 2,  peak: "09:30", prevAvg: null},
+      {city: "אלעד",    req: 0,   arrived: 0,  avg: 0,  max: 0,  cancel: 0,  peak: "",      prevAvg: null}
+    ],
+    1: [
+      {city: "בני ברק", req: 498, arrived: 85, avg: 19, max: 62, cancel: 27, peak: "11:30", prevAvg: null},
+      {city: "ירושלים", req: 744, arrived: 81, avg: 21, max: 70, cancel: 40, peak: "12:00", prevAvg: null}
+    ]
+  };
+  var STEPS = [["clusters", "אשכולות"], ["streets", "רחובות"], ["comms", "קהילות"], ["base", "בייס מצביעים"], ["users", "משתמשים"], ["hq", "טלפון המטה"]];
+  var CERTS = [
+    {city: "בני ברק",  op: "בחירות לרשויות המקומיות, 2024", file: "voters_bb_2024.csv", rows: 45120, at: "05.03.2024, 09:00", by: "מחיקה אוטומטית"},
+    {city: "ירושלים",  op: "בחירות לרשויות המקומיות, 2024", file: "voters_jlm.xlsx",    rows: 98340, at: "05.03.2024, 09:00", by: "מחיקה אוטומטית"}
+  ];
+  var LOG = [
+    {at: "22.11.2026 11:40", who: "שרה כהן", city: "בני ברק", what: "ייבוא בייס מצביעים (48,212 רשומות)"},
+    {at: "22.11.2026 10:15", who: "מנהל מערכת", city: "אלעד", what: "פתיחת עיר"},
+    {at: "22.11.2026 10:02", who: "דוד לוין", city: "ירושלים", what: "הוספת משתמש: מוקדן 4"},
+    {at: "21.11.2026 18:30", who: "יוסי פרץ", city: "בית שמש", what: "עריכת אשכול: ישיבת תפארת"},
+    {at: "21.11.2026 16:05", who: "מנהל מערכת", city: "כל הערים", what: "פתיחת מבצע: בחירות לכנסת, 1 בדצמבר 2026"},
+    {at: "05.03.2024 09:00", who: "המערכת", city: "ירושלים", what: "מחיקה אוטומטית של בייס מצביעים, ונשלח אישור מחיקה"}
+  ];
+
+  // ---------- Helpers ----------
+  function hebDate(iso) { var p = iso.split("-"), m = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"]; return Number(p[2]) + " ב" + m[Number(p[1]) - 1] + " " + p[0]; }
+  function addDays(iso, n) { var d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function hl(text, q) { var e = esc(text); if (!q) return e; var i = text.indexOf(q); return i < 0 ? e : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length)); }
+  function mark(el, cls) { el.classList.remove("err", "good"); if (cls) el.classList.add(cls); }
+  function setErr(el, msgEl, text) { mark(el, text ? "err" : "good"); msgEl.textContent = text || ""; return !text; }
+  function emailErr(v, list) { return !v ? "חובה להקליד אימייל." : (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "כתובת אימייל לא תקינה." : (list && list.some(function (a) { return a.email === v; }) ? "כבר קיים." : "")); }
+  function activeOp() { return OPS.filter(function (o) { return o.status === "active"; })[0]; }
+  function cityById(id) { return CITIES.filter(function (c) { return c.id === id; })[0]; }
+  function doneSteps(c) { return STEPS.filter(function (s) { return c.setup[s[0]]; }).length; }
+  var tt;
+  function toast(s) { var x = $("toast"); x.textContent = s; x.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { x.classList.remove("show"); }, 3200); }
+
+  // ---------- Dialog (X, click outside, Esc) ----------
+  var lastFocus = null;
+  function openDlg(title, body, acts) {
+    lastFocus = document.activeElement;
+    $("dlgTitle").textContent = title; $("dlgBody").innerHTML = body; $("dlgActs").innerHTML = acts;
+    $("dlgBack").classList.add("show");
+    var first = $("dlgBody").querySelector("input, select"); (first || $("dlgX")).focus();
+  }
+  function closeDlg() { $("dlgBack").classList.remove("show"); if (lastFocus && lastFocus.isConnected) lastFocus.focus(); }
+  $("dlgX").addEventListener("click", closeDlg);
+  $("dlgBack").addEventListener("click", function (e) { if (e.target === this) closeDlg(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("dlgBack").classList.contains("show") && !document.querySelector(".combo-list.show")) closeDlg(); });
+
+  // ---------- Locality combobox (pick from list only) ----------
+  function combo(input, list, source, onPick) {
+    var idx = -1, items = [];
+    function render() {
+      var q = input.value.trim();
+      items = source().filter(function (s) { return !q || s.indexOf(q) >= 0; }).slice(0, 8);
+      idx = items.length ? 0 : -1;
+      list.innerHTML = items.length ? items.map(function (s, i) { return '<li data-i="' + i + '"' + (i === 0 ? ' class="hl"' : '') + '>' + hl(s, q) + '</li>'; }).join("") : '<li class="empty">אין התאמה, או שהעיר כבר פתוחה.</li>';
+      list.classList.add("show");
+    }
+    function pick(i) { input.value = items[i]; list.classList.remove("show"); onPick(items[i]); }
+    input.addEventListener("focus", render);
+    input.addEventListener("input", function () { onPick(null); render(); });
+    input.addEventListener("keydown", function (e) {
+      if (!list.classList.contains("show")) return;
+      var lis = list.querySelectorAll("li[data-i]");
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && lis.length) { e.preventDefault(); idx = (idx + (e.key === "ArrowDown" ? 1 : -1) + lis.length) % lis.length; lis.forEach(function (li, i) { li.classList.toggle("hl", i === idx); }); }
+      else if (e.key === "Enter" && idx >= 0) { e.preventDefault(); pick(idx); }
+      else if (e.key === "Escape") { e.stopPropagation(); list.classList.remove("show"); }
+    });
+    list.addEventListener("mousedown", function (e) { var li = e.target.closest("li[data-i]"); if (!li) return; e.preventDefault(); pick(Number(li.getAttribute("data-i"))); });
+    input.addEventListener("blur", function () { setTimeout(function () { list.classList.remove("show"); }, 120); });
+  }
+
+  // ---------- Tabs ----------
+  var TABS = [["live", "תמונת מצב"], ["cities", "ערים"], ["ops", "מבצעי בחירות"], ["reports", "דוחות"], ["certs", "אישורי מחיקה"], ["log", "יומן פעולות"], ["sysusers", "מנהלי מערכת"], ["security", "אבטחה"], ["party", "פרטיות והגדרות"]];
+  $("tabs").innerHTML = TABS.map(function (x) { return '<a href="#' + x[0] + '" data-tab="' + x[0] + '">' + I(x[0]) + '<span>' + x[1] + '</span></a>'; }).join("");
+  var V = {};
+
+  // ---------- Cities ----------
+  V.cities = function () {
+    var op = activeOp(), act = CITIES.filter(function (c) { return c.active; });
+    var rows = CITIES.map(function (c) {
+      var n = doneSteps(c), inOp = op && op.cities.indexOf(c.id) >= 0;
+      var prog = n === STEPS.length ? '<span class="chip ok">' + I("check") + 'מוכנה</span>' : '<span class="chip no">' + n + ' מתוך ' + STEPS.length + ' שלבים</span>';
+      return '<tr><td class="nm" data-l="עיר">' + esc(c.name) + (c.active ? '' : ' <span class="chip">מושבתת</span>') + '</td>' +
+        '<td data-l="הקמה">' + prog + '</td>' +
+        '<td class="wrap" data-l="מנהלי עיר">' + (c.admins.length ? c.admins.map(function (a) { return esc(a.name); }).join(", ") : '<span class="chip bad">' + I("warn") + 'אין מנהל</span>') + '</td>' +
+        '<td data-l="היום">' + (inOp && c.today.req ? c.today.req + ' פניות · ' + c.today.wait + ' ממתינים' : '<span class="muted">' + (inOp ? 'עוד לא התחילה' : 'לא במבצע הנוכחי') + '</span>') + '</td>' +
+        '<td class="act"><button class="b3" type="button" data-city="' + c.id + '">' + I("edit") + 'ניהול</button></td></tr>';
+    }).join("");
+    return '<div class="p-h"><h2>' + I("cities") + 'ערים</h2><span class="muted">' + act.length + ' ערים פעילות</span><div class="tools"><button class="b1" type="button" id="addCity">' + I("plus") + 'עיר חדשה</button></div></div>' +
+      '<div class="p-b"><div class="legal">' + I("lock") + '<span>מנהל המערכת לא רואה נתוני מצביעים או פונים. מוצגים כאן רק מספרים מצרפיים.</span></div>' +
+      '<table class="rt"><colgroup><col style="width:24%"><col style="width:150px"><col><col style="width:200px"><col style="width:100px"></colgroup><thead><tr><th>עיר</th><th>הקמה</th><th>מנהלי עיר</th><th>היום</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  };
+  function newCityDlg() {
+    var picked = "";
+    openDlg("עיר חדשה",
+      '<div class="f combo"><label for="nCity">איזו עיר?<span class="req">*</span></label><input type="text" id="nCity" placeholder="הקלד חלק משם העיר"><ul class="combo-list" id="nCityList"></ul><div class="msg" id="nCityMsg"></div></div>' +
+      '<div class="f"><label for="nCopy">להעתיק הגדרות מעיר קיימת</label><select id="nCopy"><option value="">לא להעתיק</option>' + CITIES.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join("") + '</select><span class="hint">מועתקות רק הגדרות: קהילות ושעות פעילות. לא מועתקים אשכולות, רחובות או נתונים.</span></div>' +
+      '<div class="grid2"><div class="f"><label for="nAdmName">שם מנהל העיר<span class="req">*</span></label><input type="text" id="nAdmName"><div class="msg" id="nAdmNameMsg"></div></div>' +
+      '<div class="f"><label for="nAdmEmail">אימייל מנהל העיר<span class="req">*</span></label><input type="email" id="nAdmEmail" dir="ltr" style="text-align:right"><div class="msg" id="nAdmEmailMsg"></div></div></div>' +
+      '<p class="lead">מנהל העיר יקבל מייל עם קישור לקביעת סיסמה, ויתחיל להקים את העיר.</p>',
+      '<button class="b1" type="button" id="nSave">' + I("check") + 'פתח עיר ושלח הזמנה</button><button class="b2" type="button" id="nCancel">ביטול</button>');
+    combo($("nCity"), $("nCityList"), function () { return LOCALITIES.filter(function (l) { return !CITIES.some(function (c) { return c.name === l; }); }); }, function (s) { picked = s || ""; if (s) setErr($("nCity"), $("nCityMsg"), ""); });
+    function vC() { return setErr($("nCity"), $("nCityMsg"), picked && $("nCity").value === picked ? "" : "יש לבחור עיר מהרשימה."); }
+    function vN() { return setErr($("nAdmName"), $("nAdmNameMsg"), $("nAdmName").value.trim() ? "" : "חובה להקליד שם."); }
+    function vE() { return setErr($("nAdmEmail"), $("nAdmEmailMsg"), emailErr($("nAdmEmail").value.trim())); }
+    $("nCity").addEventListener("blur", function () { setTimeout(vC, 150); }); $("nAdmName").addEventListener("blur", vN); $("nAdmEmail").addEventListener("blur", vE);
+    $("nCancel").addEventListener("click", closeDlg);
+    $("nSave").addEventListener("click", function () {
+      if (![vC(), vN(), vE()].every(Boolean)) return;
+      var copy = $("nCopy").value ? cityById(Number($("nCopy").value)) : null;
+      CITIES.push({id: Date.now(), name: picked, active: true, admins: [{name: $("nAdmName").value.trim(), email: $("nAdmEmail").value.trim()}], setup: {clusters: false, streets: false, comms: !!copy, base: false, users: false, hq: false}, today: {req: 0, wait: 0}});
+      var op = activeOp(); if (op) op.cities.push(CITIES[CITIES.length - 1].id);
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: picked, what: "פתיחת עיר" + (copy ? ", עם העתקת הגדרות מ" + copy.name : "")});
+      closeDlg(); toast(picked + " נפתחה, ונשלחה הזמנה למנהל העיר."); show("cities");
+    });
+  }
+  function cityDlg(c) {
+    var op = activeOp(), inOp = op && op.cities.indexOf(c.id) >= 0;
+    var steps = STEPS.map(function (s) { return '<li><span>' + s[1] + '</span>' + (c.setup[s[0]] ? '<span class="chip ok">' + I("check") + 'הושלם</span>' : '<span class="chip no">חסר</span>') + '</li>'; }).join("");
+    var admins = c.admins.length ? c.admins.map(function (a, i) {
+      return '<li><span><b>' + esc(a.name) + '</b> · <span dir="ltr">' + esc(a.email) + '</span></span><button class="icon-btn" type="button" data-rm-adm="' + i + '" aria-label="הסר את ' + esc(a.name) + '" title="הסר">' + I("trash") + '</button></li>';
+    }).join("") : '<li class="muted">אין מנהל עיר. בלי מנהל אי אפשר להקים את העיר.</li>';
+    openDlg("ניהול " + c.name,
+      '<h3 class="section-t">' + I("check") + 'הקמת העיר</h3><ul class="list">' + steps + '</ul>' +
+      '<p class="lead">' + (c.setup.base ? "הבייס הוא אחד השלבים, אבל העיר יכולה לעבוד גם בלעדיו (אימות ידני)." : "בלי בייס העיר עובדת עם אימות ידני לכל פנייה.") + '</p>' +
+      '<h3 class="section-t">' + I("user") + 'מנהלי עיר</h3><ul class="list adm-list" id="admList">' + admins + '</ul>' +
+      '<div class="grid2"><div class="f"><label for="aName">שם<span class="req">*</span></label><input type="text" id="aName"><div class="msg" id="aNameMsg"></div></div>' +
+      '<div class="f"><label for="aEmail">אימייל<span class="req">*</span></label><input type="email" id="aEmail" dir="ltr" style="text-align:right"><div class="msg" id="aEmailMsg"></div></div></div>' +
+      '<div><button class="b2" type="button" id="aAdd">' + I("plus") + 'הוסף מנהל עיר ושלח הזמנה</button></div>' +
+      '<h3 class="section-t">' + I("ops") + 'מבצע נוכחי</h3><p class="lead">' + (op ? (inOp ? "העיר משתתפת ב" : "העיר לא משתתפת ב") + op.name + ", " + hebDate(op.date) + "." : "אין מבצע פעיל.") + '</p>',
+      '<button class="b2" type="button" id="cToggle">' + (c.active ? I("pause") + 'השבת את העיר' : I("play") + 'הפעל את העיר') + '</button><button class="b2" type="button" id="cClose">סגור</button>');
+    $("cClose").addEventListener("click", closeDlg);
+    $("admList").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-rm-adm]"); if (!b) return;
+      var a = c.admins.splice(Number(b.getAttribute("data-rm-adm")), 1)[0];
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: c.name, what: "הסרת מנהל עיר: " + a.name});
+      toast(a.name + " הוסר."); show("cities"); cityDlg(c);
+    });
+    $("aAdd").addEventListener("click", function () {
+      var ok = [setErr($("aName"), $("aNameMsg"), $("aName").value.trim() ? "" : "חובה להקליד שם."), setErr($("aEmail"), $("aEmailMsg"), emailErr($("aEmail").value.trim(), c.admins))].every(Boolean);
+      if (!ok) return;
+      c.admins.push({name: $("aName").value.trim(), email: $("aEmail").value.trim()});
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: c.name, what: "הוספת מנהל עיר: " + $("aName").value.trim()});
+      toast("נשלחה הזמנה במייל."); show("cities"); cityDlg(c);
+    });
+    $("cToggle").addEventListener("click", function () {
+      if (!c.active) { c.active = true; closeDlg(); toast(c.name + " הופעלה."); show("cities"); return; }
+      openDlg("להשבית את " + c.name + "?", '<p class="lead" style="color:var(--ink)">המשתמשים של העיר לא יוכלו להיכנס. הנתונים נשמרים, ואפשר להפעיל שוב בכל רגע.</p>',
+        '<button class="b1 danger" type="button" id="offYes">' + I("pause") + 'השבת</button><button class="b2" type="button" id="offNo">ביטול</button>');
+      $("offNo").addEventListener("click", function () { cityDlg(c); });
+      $("offYes").addEventListener("click", function () { c.active = false; LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: c.name, what: "השבתת עיר"}); closeDlg(); toast(c.name + " הושבתה."); show("cities"); });
+    });
+  }
+
+  // ---------- Election operations ----------
+  V.ops = function () {
+    var cards = OPS.map(function (o) {
+      var del = addDays(o.date, PARTY.deleteDays);
+      return '<div class="op' + (o.status === "active" ? " on" : "") + '"><div class="op-h"><b>' + esc(o.name) + '</b>' + (o.status === "active" ? '<span class="chip ok">פעיל</span>' : '<span class="chip">נסגר</span>') + '</div>' +
+        '<div class="op-m">' + I("calendar") + 'יום הבחירות: ' + hebDate(o.date) + '</div>' +
+        '<div class="op-m">' + I("cities") + o.cities.length + ' ערים: ' + o.cities.map(function (id) { var c = cityById(id); return c ? esc(c.name) : ""; }).join(", ") + '</div>' +
+        '<div class="op-m">' + I("trash") + (o.status === "active" ? 'מחיקת הבייסים: ' + hebDate(del) + ' (' + PARTY.deleteDays + ' ימים אחרי הבחירות)' : 'הבייסים נמחקו, והאישורים נשלחו') + '</div>' +
+        (o.status === "active" ? '<div><button class="b2" type="button" id="closeOp">' + I("lock") + 'סגור את המבצע</button></div>' : '') + '</div>';
+    }).join("");
+    return '<div class="p-h"><h2>' + I("ops") + 'מבצעי בחירות</h2><div class="tools"><button class="b1" type="button" id="addOp"' + (activeOp() ? ' disabled title="אפשר לפתוח מבצע חדש רק אחרי שסוגרים את הפעיל"' : '') + '>' + I("plus") + 'מבצע חדש</button></div></div>' +
+      '<div class="p-b"><p class="lead">כל מבצע (כנסת או רשויות, ותאריך) הוא מסגרת נפרדת לפניות, לנסיעות ולנהגים. בסגירת מבצע מתוזמנת מחיקת הבייסים של כל הערים שבו.</p><div class="ops">' + cards + '</div></div>';
+  };
+  function opDlg() {
+    openDlg("מבצע בחירות חדש",
+      '<div class="f"><span>סוג הבחירות<span class="req">*</span></span><div class="seg" id="oTypeSeg"><label><input type="radio" name="oType" value="knesset">כנסת</label><label><input type="radio" name="oType" value="local">רשויות מקומיות</label></div><div class="msg" id="oTypeMsg"></div></div>' +
+      '<div class="f"><label for="oDate">יום הבחירות<span class="req">*</span></label><input type="date" id="oDate"><div class="msg" id="oDateMsg"></div></div>' +
+      '<div class="f"><span>אילו ערים משתתפות?<span class="req">*</span></span><div class="checks" id="oCities">' + CITIES.filter(function (c) { return c.active; }).map(function (c) { return '<label><input type="checkbox" value="' + c.id + '" checked>' + esc(c.name) + '</label>'; }).join("") + '</div><div class="msg" id="oCitiesMsg"></div></div>' +
+      '<label class="check1"><input type="checkbox" id="oCopy" checked>להעתיק מהמבצע הקודם: אשכולות, רחובות, קהילות, משתמשים ונהגים שמורים</label>',
+      '<button class="b1" type="button" id="oSave">' + I("check") + 'פתח מבצע</button><button class="b2" type="button" id="oCancel">ביטול</button>');
+    $("oCancel").addEventListener("click", closeDlg);
+    $("oSave").addEventListener("click", function () {
+      var tp = document.querySelector('input[name="oType"]:checked'), cs = Array.prototype.slice.call($("oCities").querySelectorAll("input:checked")).map(function (i) { return Number(i.value); });
+      $("oTypeSeg").classList.toggle("err", !tp); $("oTypeMsg").textContent = tp ? "" : "יש לבחור סוג.";
+      var okD = setErr($("oDate"), $("oDateMsg"), $("oDate").value ? "" : "יש לבחור תאריך.");
+      $("oCitiesMsg").textContent = cs.length ? "" : "יש לבחור לפחות עיר אחת.";
+      if (!tp || !okD || !cs.length) return;
+      OPS.unshift({id: Date.now(), type: tp.value, name: tp.value === "knesset" ? "בחירות לכנסת" : "בחירות לרשויות המקומיות", date: $("oDate").value, status: "active", cities: cs});
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "פתיחת מבצע: " + OPS[0].name + ", " + hebDate(OPS[0].date)});
+      closeDlg(); toast("המבצע נפתח."); show("ops");
+    });
+  }
+
+  // ---------- Deletion certificates ----------
+  V.certs = function () {
+    return '<div class="p-h"><h2>' + I("certs") + 'אישורי מחיקה</h2><span class="muted">מכל הערים · נשלחים גם במייל ל' + esc(PARTY.privacyName) + '</span></div><div class="p-b">' +
+      (CERTS.length ? '<table class="rt"><colgroup><col style="width:16%"><col><col style="width:110px"><col style="width:170px"><col style="width:96px"></colgroup><thead><tr><th>עיר</th><th>מבצע</th><th>מצביעים</th><th>נמחק</th><th></th></tr></thead><tbody>' +
+        CERTS.map(function (c, i) { return '<tr><td class="nm" data-l="עיר">' + esc(c.city) + '</td><td data-l="מבצע">' + esc(c.op) + '</td><td data-l="מצביעים">' + c.rows.toLocaleString("he-IL") + '</td><td data-l="נמחק">' + c.at + '</td><td class="act"><button class="b3" type="button" data-cert="' + i + '">' + I("certs") + 'הצג</button></td></tr>'; }).join("") + '</tbody></table>'
+        : '<div class="lm-empty">אין עדיין אישורי מחיקה.</div>') + '</div>';
+  };
+  function certHtml(c) {
+    return '<div class="cert"><h3>אישור מחיקת בייס מצביעים</h3><dl>' +
+      '<dt>עיר</dt><dd>' + esc(c.city) + '</dd><dt>מבצע</dt><dd>' + esc(c.op) + '</dd><dt>קובץ</dt><dd>' + esc(c.file) + '</dd>' +
+      '<dt>מצביעים</dt><dd>' + c.rows.toLocaleString("he-IL") + '</dd><dt>נמחק</dt><dd>' + c.at + '</dd><dt>על ידי</dt><dd>' + esc(c.by) + '</dd>' +
+      '<dt>מה נמחק</dt><dd>כל רשומות הבייס, מהמסד ומכל הגיבויים. פניות שנקלטו בשיחה לא נמחקו.</dd><dt>נשלח אל</dt><dd>' + esc(PARTY.privacyEmail) + ', ומנהל העיר</dd></dl></div>';
+  }
+
+  // ---------- Audit log ----------
+  V.log = function () {
+    var f = V.log.city || "", q = V.log.q || "";
+    var cities = []; LOG.forEach(function (l) { if (cities.indexOf(l.city) < 0) cities.push(l.city); });
+    var list = LOG.filter(function (l) { return (!f || l.city === f) && (!q || (l.what + " " + l.who).indexOf(q) >= 0); });
+    return '<div class="p-h"><h2>' + I("log") + 'יומן פעולות</h2><span class="muted">כל פעולה רגישה נרשמת, ואי אפשר למחוק רשומות מהיומן</span></div><div class="p-b">' +
+      '<div class="lm-bar"><div class="f"><label for="logQ">חיפוש</label><div class="with-ico">' + I("search") + '<input type="search" id="logQ" value="' + esc(q) + '" placeholder="פעולה או משתמש"></div></div>' +
+      '<div class="f"><label for="logCity">עיר</label><select id="logCity"><option value="">כל הערים</option>' + cities.map(function (c) { return '<option' + (c === f ? " selected" : "") + '>' + esc(c) + '</option>'; }).join("") + '</select></div></div>' +
+      '<div class="lm-count">מוצגות ' + list.length + ' מתוך ' + LOG.length + ' רשומות</div>' +
+      '<table class="rt"><colgroup><col style="width:150px"><col style="width:16%"><col style="width:16%"><col></colgroup><thead><tr><th>מתי</th><th>מי</th><th>עיר</th><th>פעולה</th></tr></thead><tbody>' +
+      (list.map(function (l) { return '<tr><td data-l="מתי">' + l.at + '</td><td data-l="מי">' + hl(l.who, q) + '</td><td data-l="עיר">' + esc(l.city) + '</td><td class="wrap" data-l="פעולה">' + hl(l.what, q) + '</td></tr>'; }).join("") || '<tr><td colspan="4" class="muted">אין רשומות שמתאימות לחיפוש.</td></tr>') +
+      '</tbody></table></div>';
+  };
+
+  // ---------- Party privacy and settings ----------
+  V.party = function () {
+    var op = activeOp();
+    return '<div class="p-h"><h2>' + I("party") + 'פרטיות והגדרות</h2></div><div class="p-b">' +
+      '<div class="grid2">' +
+        '<div class="f"><label for="pName">שם המפלגה<span class="req">*</span></label><input type="text" id="pName" value="' + esc(PARTY.name) + '"><div class="msg" id="pNameMsg"></div></div>' +
+        '<div class="f"><label for="pPrivName">ממונה הפרטיות<span class="req">*</span></label><input type="text" id="pPrivName" value="' + esc(PARTY.privacyName) + '"><div class="msg" id="pPrivNameMsg"></div></div>' +
+        '<div class="f"><label for="pPriv">אימייל ממונה הפרטיות<span class="req">*</span></label><input type="email" id="pPriv" dir="ltr" style="text-align:right" value="' + esc(PARTY.privacyEmail) + '"><div class="msg" id="pPrivMsg"></div><span class="hint">לכאן נשלחים אישורי המחיקה מכל הערים.</span></div>' +
+        '<div class="f"><label for="pLegal">אימייל היועץ המשפטי</label><input type="email" id="pLegal" dir="ltr" style="text-align:right" value="' + esc(PARTY.legalEmail) + '"><div class="msg" id="pLegalMsg"></div></div>' +
+        '<div class="f"><label for="pDays">מחיקת הבייסים, ימים אחרי יום הבחירות<span class="req">*</span></label><input type="text" id="pDays" inputmode="numeric" maxlength="3" value="' + PARTY.deleteDays + '"><div class="msg" id="pDaysMsg"></div>' +
+          '<span class="hint">' + (op ? 'במבצע הנוכחי: מחיקה ב-' + hebDate(addDays(op.date, PARTY.deleteDays)) + '.' : '') + ' לקבוע לפי היועץ המשפטי.</span></div>' +
+      '</div>' +
+      '<div><button class="b1" type="button" id="saveParty">' + I("check") + 'שמור</button></div></div>';
+  };
+
+  // ---------- Live status across cities ----------
+  function wcls(m) { return m >= 30 ? "wt-r" : (m >= 15 ? "wt-y" : "wt-g"); }
+  function daysTo(iso) { return Math.round((new Date(iso + "T12:00:00") - new Date("2026-11-22T12:00:00")) / 86400000); }
+  function alerts() {
+    var op = activeOp(), out = [];
+    if (!op) return out;
+    var days = daysTo(op.date);
+    op.cities.forEach(function (id) {
+      var c = cityById(id), L = LIVE[id] || {};
+      if (!c) return;
+      if (!c.admins.length) out.push({lvl: "bad", city: c.name, text: "אין מנהל עיר"});
+      if (L.maxWait >= 30) out.push({lvl: "bad", city: c.name, text: "המתנה חריגה: " + L.maxWait + " דקות"});
+      if (L.wait >= 10 && L.free === 0) out.push({lvl: "warn", city: c.name, text: "אין נהגים פנויים, ו-" + L.wait + " ממתינים"});
+      if (doneSteps(c) < STEPS.length && days >= 0 && days <= 14) out.push({lvl: "warn", city: c.name, text: "ההקמה לא הושלמה (" + doneSteps(c) + " מתוך " + STEPS.length + "), " + days + " ימים לבחירות"});
+    });
+    return out;
+  }
+  V.live = function () {
+    var op = activeOp();
+    if (!op) return '<div class="p-h"><h2>' + I("live") + 'תמונת מצב</h2></div><div class="p-b"><div class="lm-empty">אין מבצע פעיל.</div></div>';
+    var ids = op.cities, sum = function (k) { return ids.reduce(function (a, id) { return a + ((LIVE[id] || {})[k] || 0); }, 0); };
+    var worst = ids.map(function (id) { return {id: id, m: (LIVE[id] || {}).maxWait || 0}; }).sort(function (a, b) { return b.m - a.m; })[0];
+    var al = alerts();
+    var tiles = '<div class="tiles">' +
+      '<div class="tile"><span class="k">' + I("phone") + 'פניות היום</span><span class="v">' + sum("req") + '</span></div>' +
+      '<div class="tile"><span class="k">' + I("clock") + 'ממתינים עכשיו</span><span class="v">' + sum("wait") + '</span></div>' +
+      '<div class="tile' + (worst && worst.m >= 30 ? ' alert' : '') + '"><span class="k">' + I("warn") + 'המתנה הארוכה</span><span class="v">' + (worst ? worst.m : 0) + '<small>דקות</small></span>' + (worst && worst.m ? '<span class="muted">' + esc(cityById(worst.id).name) + '</span>' : '') + '</div>' +
+      '<div class="tile"><span class="k">' + I("car") + 'נהגים פנויים / בנסיעה</span><span class="v">' + sum("free") + ' / ' + sum("busy") + '</span></div>' +
+      '<div class="tile"><span class="k">' + I("cities") + 'ערים במבצע</span><span class="v">' + ids.length + '</span></div>' +
+    '</div>';
+    var alertHtml = al.length ? '<ul class="alerts">' + al.map(function (a) { return '<li class="' + a.lvl + '">' + I("warn") + '<b>' + esc(a.city) + '</b><span>' + esc(a.text) + '</span></li>'; }).join("") + '</ul>'
+      : '<div class="okline">' + I("check") + 'אין התראות. כל הערים עובדות כרגיל.</div>';
+    var rows = ids.map(function (id) {
+      var c = cityById(id), L = LIVE[id] || {};
+      return '<tr><td class="nm" data-l="עיר">' + esc(c.name) + '</td><td data-l="פניות היום">' + (L.req || 0) + '</td><td data-l="ממתינים">' + (L.wait || 0) + '</td>' +
+        '<td data-l="המתנה ארוכה"><span class="wtc ' + wcls(L.maxWait || 0) + '">' + (L.maxWait || 0) + '</span> <span class="muted">דקות</span></td>' +
+        '<td data-l="נהגים">' + (L.free || 0) + ' פנויים · ' + (L.busy || 0) + ' בנסיעה</td><td data-l="מנהל עיר" class="muted">' + (L.adminSeen ? "מחובר " + L.adminSeen : "לא נכנס היום") + '</td></tr>';
+    }).join("");
+    return '<div class="p-h"><h2>' + I("live") + 'תמונת מצב</h2><span class="muted">כל הערים במבצע · נכון ל-11:42</span></div><div class="p-b">' + tiles +
+      '<h3 class="section-t">' + I("warn") + 'התראות (' + al.length + ')</h3>' + alertHtml +
+      '<h3 class="section-t">' + I("cities") + 'לפי עיר</h3>' +
+      '<table class="rt"><colgroup><col style="width:18%"><col style="width:100px"><col style="width:90px"><col style="width:130px"><col><col style="width:170px"></colgroup><thead><tr><th>עיר</th><th>פניות היום</th><th>ממתינים</th><th>המתנה ארוכה</th><th>נהגים</th><th>מנהל עיר</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  };
+
+  // ---------- Reports after the elections ----------
+  V.reports = function () {
+    var opId = V.reports.op || OPS[0].id, op = OPS.filter(function (o) { return o.id === opId; })[0], rows = REPORT[opId] || [];
+    var tot = rows.reduce(function (a, r) { a.req += r.req; a.cancel += r.cancel; return a; }, {req: 0, cancel: 0});
+    var body = rows.map(function (r) {
+      var diff = r.prevAvg == null ? '<span class="muted">אין השוואה</span>' : '<span class="' + (r.avg <= r.prevAvg ? "better" : "worse") + '">' + (r.avg - r.prevAvg > 0 ? "+" : "") + (r.avg - r.prevAvg) + ' דקות</span>';
+      return '<tr><td class="nm" data-l="עיר">' + esc(r.city) + '</td><td data-l="פניות">' + r.req + '</td><td data-l="הגיעו לקלפי">' + (r.req ? r.arrived + "%" : "—") + '</td>' +
+        '<td data-l="המתנה ממוצעת">' + (r.req ? r.avg + " דקות" : "—") + '</td><td data-l="המתנה ארוכה">' + (r.req ? r.max + " דקות" : "—") + '</td><td data-l="בוטלו">' + r.cancel + '</td>' +
+        '<td data-l="שעת שיא">' + (r.peak || "—") + '</td><td data-l="ממוצע מול המבצע הקודם">' + diff + '</td></tr>';
+    }).join("");
+    return '<div class="p-h"><h2>' + I("reports") + 'דוחות</h2><div class="tools"><button class="b2" type="button" id="exportRep">' + I("export") + 'ייצוא ל-Excel</button></div></div><div class="p-b">' +
+      '<div class="f" style="max-width:420px"><label for="repOp">מבצע</label><select id="repOp">' + OPS.map(function (o) { return '<option value="' + o.id + '"' + (o.id === opId ? " selected" : "") + '>' + esc(o.name) + ', ' + hebDate(o.date) + (o.status === "active" ? " (פעיל)" : "") + '</option>'; }).join("") + '</select></div>' +
+      '<p class="lead">מדדי ההצלחה מהאפיון, לכל עיר: פניות, אחוז שהגיעו לקלפי, זמני המתנה, ביטולים ושעת השיא, ושינוי בהמתנה הממוצעת לעומת המבצע הקודם. ' + (op.status === "active" ? "המבצע פעיל, והמספרים מתעדכנים." : "") + '</p>' +
+      '<div class="lm-count">סך הכול: ' + tot.req + ' פניות · ' + tot.cancel + ' ביטולים</div>' +
+      '<table class="rt"><colgroup><col style="width:14%"><col style="width:80px"><col style="width:100px"><col style="width:110px"><col style="width:110px"><col style="width:70px"><col style="width:80px"><col></colgroup><thead><tr><th>עיר</th><th>פניות</th><th>הגיעו לקלפי</th><th>המתנה ממוצעת</th><th>המתנה ארוכה</th><th>בוטלו</th><th>שעת שיא</th><th>ממוצע מול המבצע הקודם</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+  };
+
+  // ---------- System admins ----------
+  V.sysusers = function () {
+    return '<div class="p-h"><h2>' + I("sysusers") + 'מנהלי מערכת</h2><span class="muted">רואים את כל הערים, בלי נתוני מצביעים</span><div class="tools"><button class="b1" type="button" id="addSys">' + I("plus") + 'מנהל מערכת חדש</button></div></div><div class="p-b">' +
+      '<table class="rt"><colgroup><col><col style="width:36%"><col style="width:150px"><col style="width:96px"></colgroup><thead><tr><th>שם</th><th>אימייל</th><th>כניסה אחרונה</th><th></th></tr></thead><tbody>' +
+      SYSADMINS.map(function (a, i) { return '<tr><td class="nm" data-l="שם">' + esc(a.name) + '</td><td data-l="אימייל"><span dir="ltr">' + esc(a.email) + '</span></td><td class="muted" data-l="כניסה אחרונה">' + a.last + '</td><td class="act">' + (a.me ? '<span class="muted">זה אתה</span>' : '<button class="b3 danger" type="button" data-del-sys="' + i + '">' + I("trash") + 'הסר</button>') + '</td></tr>'; }).join("") +
+      '</tbody></table><p class="lead">אי אפשר להסיר את עצמך, ותמיד נשאר לפחות מנהל מערכת אחד.</p></div>';
+  };
+  function sysDlg() {
+    openDlg("מנהל מערכת חדש",
+      '<div class="f"><label for="sEmail">אימייל<span class="req">*</span></label><input type="email" id="sEmail" dir="ltr" style="text-align:right"><div class="msg" id="sEmailMsg"></div></div>' +
+      '<div class="f"><label for="sName">שם<span class="req">*</span></label><input type="text" id="sName"><div class="msg" id="sNameMsg"></div></div>' +
+      '<div class="legal">' + I("warn") + '<span>מנהל מערכת יכול לפתוח ולהשבית ערים, לסגור מבצעים ולשנות את כללי הפרטיות והאבטחה.</span></div>',
+      '<button class="b1" type="button" id="sSave">' + I("check") + 'הוסף ושלח הזמנה</button><button class="b2" type="button" id="sCancel">ביטול</button>');
+    function vE() { return setErr($("sEmail"), $("sEmailMsg"), emailErr($("sEmail").value.trim(), SYSADMINS)); }
+    function vN() { return setErr($("sName"), $("sNameMsg"), $("sName").value.trim() ? "" : "חובה להקליד שם."); }
+    $("sEmail").addEventListener("blur", vE); $("sName").addEventListener("blur", vN);
+    $("sCancel").addEventListener("click", closeDlg);
+    $("sSave").addEventListener("click", function () {
+      if (![vE(), vN()].every(Boolean)) return;
+      SYSADMINS.push({name: $("sName").value.trim(), email: $("sEmail").value.trim(), last: "עוד לא נכנס"});
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "הוספת מנהל מערכת: " + $("sName").value.trim()});
+      closeDlg(); toast("נשלחה הזמנה במייל."); show("sysusers");
+    });
+  }
+
+  // ---------- Security policy ----------
+  V.security = function () {
+    var opt = function (id, list, cur) { return '<select id="' + id + '">' + list.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? " selected" : "") + '>' + o[1] + '</option>'; }).join("") + '</select>'; };
+    return '<div class="p-h"><h2>' + I("security") + 'אבטחה</h2><span class="muted">חל על כל המשתמשים בכל הערים</span></div><div class="p-b">' +
+      '<div class="f"><span>קוד במייל בכל כניסה ממכשיר חדש<span class="req">*</span></span><div class="seg"><label><input type="radio" name="secCode" value="1"' + (SEC.code ? " checked" : "") + '>חובה</label><label><input type="radio" name="secCode" value="0"' + (!SEC.code ? " checked" : "") + '>לא חובה</label></div>' +
+        '<div class="legal" id="secCodeWarn" style="' + (SEC.code ? "display:none" : "") + '">' + I("warn") + '<span>בלי קוד במייל, סיסמה שדלפה מספיקה כדי להיכנס למערכת עם נתוני בוחרים. לא מומלץ.</span></div></div>' +
+      '<div class="grid2">' +
+        '<div class="f"><label for="secRemember">המכשיר נזכר למשך<span class="req">*</span></label>' + opt("secRemember", [["8h", "8 שעות"], ["day", "יום אחד"], ["week", "שבוע"]], SEC.remember) + '<span class="hint">בזמן הזה לא מבקשים שוב קוד.</span></div>' +
+        '<div class="f"><label for="secIdle">ניתוק אחרי חוסר פעילות<span class="req">*</span></label>' + opt("secIdle", [[15, "15 דקות"], [30, "30 דקות"], [60, "שעה"], [240, "4 שעות"]], SEC.idle) + '<span class="hint">ביום הבחירות כדאי ארוך יותר, כדי לא לנתק מוקדנים באמצע עבודה.</span></div>' +
+        '<div class="f"><label for="secAttempts">ניסיונות כניסה שגויים עד נעילה<span class="req">*</span></label>' + opt("secAttempts", [[3, "3"], [5, "5"], [10, "10"]], SEC.attempts) + '</div>' +
+        '<div class="f"><label for="secLock">משך הנעילה<span class="req">*</span></label>' + opt("secLock", [[15, "15 דקות"], [30, "30 דקות"], [60, "שעה"]], SEC.lock) + '<span class="hint">מנהל העיר יכול לשחרר נעילה מוקדם.</span></div>' +
+      '</div><div><button class="b1" type="button" id="saveSec">' + I("check") + 'שמור</button></div></div>';
+  };
+
+  // ---------- Routing (hash) ----------
+  var current = "live";
+  function show(tab) {
+    if (!V[tab]) tab = "live";
+    current = tab;
+    document.querySelectorAll("#tabs a").forEach(function (a) { var on = a.getAttribute("data-tab") === tab; a.classList.toggle("on", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    $("view").innerHTML = V[tab]();
+    var op = activeOp();
+    $("topNote").innerHTML = I("calendar") + (op ? op.name + " · " + hebDate(op.date) : "אין מבצע פעיל");
+  }
+  function route() { show((location.hash || "#live").slice(1)); }
+  window.addEventListener("hashchange", route);
+
+  // ---------- Actions (delegated) ----------
+  $("view").addEventListener("click", function (e) {
+    var x;
+    if ((x = e.target.closest("#addCity"))) { newCityDlg(); return; }
+    if ((x = e.target.closest("#exportRep"))) { toast("במערכת: יורד קובץ Excel עם הדוח."); return; }
+    if ((x = e.target.closest("#addSys"))) { sysDlg(); return; }
+    if ((x = e.target.closest("[data-del-sys]"))) {
+      var si = Number(x.getAttribute("data-del-sys")), sa = SYSADMINS[si];
+      if (SYSADMINS.length <= 1) { toast("תמיד נשאר לפחות מנהל מערכת אחד."); return; }
+      openDlg("להסיר את " + sa.name + "?", '<p class="lead" style="color:var(--ink)">הוא לא יוכל להיכנס יותר כמנהל מערכת.</p>', '<button class="b1 danger" type="button" id="sDelYes">' + I("trash") + 'הסר</button><button class="b2" type="button" id="sDelNo">ביטול</button>');
+      $("sDelNo").addEventListener("click", closeDlg);
+      $("sDelYes").addEventListener("click", function () { SYSADMINS.splice(si, 1); LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "הסרת מנהל מערכת: " + sa.name}); closeDlg(); toast("הוסר."); show("sysusers"); });
+      return;
+    }
+    if ((x = e.target.closest("#saveSec"))) {
+      SEC.code = document.querySelector('input[name="secCode"]:checked').value === "1"; SEC.remember = $("secRemember").value; SEC.idle = Number($("secIdle").value); SEC.attempts = Number($("secAttempts").value); SEC.lock = Number($("secLock").value);
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "שינוי מדיניות אבטחה"});
+      show("security"); toast("מדיניות האבטחה נשמרה, ותחול מהכניסה הבאה של כל משתמש."); return;
+    }
+    if ((x = e.target.closest("[data-city]"))) { cityDlg(cityById(Number(x.getAttribute("data-city")))); return; }
+    if ((x = e.target.closest("#addOp"))) { opDlg(); return; }
+    if ((x = e.target.closest("#closeOp"))) {
+      var op = activeOp();
+      openDlg("לסגור את המבצע?", '<p class="lead" style="color:var(--ink)">הערים יפסיקו לקבל פניות במבצע הזה. מחיקת הבייסים תתבצע ב-' + hebDate(addDays(op.date, PARTY.deleteDays)) + ', ויישלחו אישורי מחיקה. הנתונים שנקלטו בשיחות נשמרים לפי ההחלטה באפיון.</p>',
+        '<button class="b1 danger" type="button" id="opYes">' + I("lock") + 'סגור את המבצע</button><button class="b2" type="button" id="opNo">ביטול</button>');
+      $("opNo").addEventListener("click", closeDlg);
+      $("opYes").addEventListener("click", function () { op.status = "closed"; LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "סגירת מבצע: " + op.name}); closeDlg(); toast("המבצע נסגר."); show("ops"); });
+      return;
+    }
+    if ((x = e.target.closest("[data-cert]"))) { openDlg("אישור מחיקה", certHtml(CERTS[Number(x.getAttribute("data-cert"))]), '<button class="b2" type="button" id="certClose">סגור</button>'); $("certClose").addEventListener("click", closeDlg); return; }
+    if ((x = e.target.closest("#saveParty"))) {
+      var ok = [
+        setErr($("pName"), $("pNameMsg"), $("pName").value.trim() ? "" : "חובה."),
+        setErr($("pPrivName"), $("pPrivNameMsg"), $("pPrivName").value.trim() ? "" : "חובה."),
+        setErr($("pPriv"), $("pPrivMsg"), emailErr($("pPriv").value.trim())),
+        setErr($("pLegal"), $("pLegalMsg"), $("pLegal").value.trim() ? emailErr($("pLegal").value.trim()) : ""),
+        setErr($("pDays"), $("pDaysMsg"), /^\d+$/.test($("pDays").value) && Number($("pDays").value) > 0 ? "" : "מספר ימים, לפחות 1.")
+      ].every(Boolean);
+      if (!ok) return;
+      PARTY.name = $("pName").value.trim(); PARTY.privacyName = $("pPrivName").value.trim(); PARTY.privacyEmail = $("pPriv").value.trim(); PARTY.legalEmail = $("pLegal").value.trim(); PARTY.deleteDays = Number($("pDays").value);
+      LOG.unshift({at: "22.11.2026 11:42", who: "מנהל מערכת", city: "כל הערים", what: "שינוי הגדרות פרטיות"});
+      show("party"); toast("נשמר."); return;
+    }
+  });
+  $("view").addEventListener("input", function (e) {
+    if (e.target.id === "logQ") { V.log.q = e.target.value; var pos = e.target.selectionStart; show("log"); $("logQ").focus(); $("logQ").setSelectionRange(pos, pos); }
+    if (e.target.id === "pDays") e.target.value = e.target.value.replace(/\D/g, "");
+  });
+  $("view").addEventListener("change", function (e) {
+    if (e.target.id === "logCity") { V.log.city = e.target.value; show("log"); }
+    if (e.target.id === "repOp") { V.reports.op = Number(e.target.value); show("reports"); }
+    if (e.target.name === "secCode") $("secCodeWarn").style.display = e.target.value === "0" ? "" : "none";
+  });
+  $("view").addEventListener("focusout", function (e) {
+    if (e.target.id === "pPriv") setErr(e.target, $("pPrivMsg"), emailErr(e.target.value.trim()));
+    if (e.target.id === "pName" || e.target.id === "pPrivName") setErr(e.target, $(e.target.id + "Msg"), e.target.value.trim() ? "" : "חובה.");
+  });
+
+  route();
+})();
+</script>

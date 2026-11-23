@@ -1,0 +1,497 @@
+<title>אפליקציית הנהג</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* Driver app (PWA) prototype. DESIGN.md: graphite sign plates, sign-blue action, Secular One for numbers/headings, big targets (56px+), one main action per state. Light-only. */
+:root {
+  --page: #e7e9ec; --page-muted: #555c66; --page-line: #cdd1d7;
+  --bg: #f1f2f4; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --plate2: #2a3039; --action: #0b4c9e; --action-soft: #e6eefa;
+  --ok: #1f7a3a; --ok-soft: #e3f1e7; --warn: #a15f00; --warn-soft: #fdefd2; --bad: #c92a2a; --bad-soft: #fbe5e5;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); direction: rtl; font-size: 16px; line-height: 1.5; }
+.page { max-width: 1100px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: start; }
+@media (max-width: 860px) { .page { grid-template-columns: minmax(0, 1fr); } .phone-wrap { order: -1; } }
+.intro { display: grid; gap: 10px; min-width: 0; }
+.intro h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 4vw, 32px); margin: 0; }
+.intro p { margin: 0; color: var(--page-muted); }
+.sim { background: #fff; border: 2px solid var(--line2); border-radius: 8px; padding: 14px 16px; display: grid; gap: 10px; }
+.sim h2 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; }
+.sim .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sim .note { font-size: 14px; color: var(--muted); }
+.b2 { font: inherit; font-weight: 700; font-size: 14.5px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 14px; height: 42px; cursor: pointer; white-space: nowrap; color: var(--ink); }
+.b2:hover { border-color: var(--action); color: var(--action); }
+.rules { margin: 0; padding-inline-start: 20px; color: var(--ink); font-size: 15px; }
+.rules li { margin-bottom: 4px; }
+
+/* Phone frame (only for the prototype). The app itself is the content inside. */
+.phone-wrap { display: flex; justify-content: center; align-self: start; }
+.phone { width: 390px; max-width: 100%; min-height: 720px; border: 10px solid #0e1116; border-radius: 34px; background: var(--bg); overflow: clip; display: flex; flex-direction: column; box-shadow: 0 16px 40px rgba(0,0,0,.25); position: relative; }
+
+/* App */
+.a-top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--plate); color: #fff; padding: 12px 16px 10px; border-bottom: 4px solid #fff; box-shadow: 0 4px 0 var(--plate); display: flex; align-items: center; gap: 10px; flex: none; }
+.a-brand { font-family: var(--display); font-size: 19px; }
+.a-who { font-size: 14px; opacity: .85; }
+.a-menu { margin-inline-start: auto; font: inherit; font-weight: 700; font-size: 14px; color: #fff; background: transparent; border: 2px solid rgba(255,255,255,.85); border-radius: 8px; height: 40px; padding: 0 12px; cursor: pointer; }
+.a-body { flex: 1; padding: 18px 14px 14px; display: grid; gap: 14px; align-content: start; }
+.a-foot:empty { display: none; }
+.dist { font-size: 15px; font-weight: 700; color: var(--action); }
+.dist b { font-family: var(--display); font-weight: 400; font-size: 17px; }
+.total { font-size: 16px; font-weight: 700; }
+.total b { font-family: var(--display); font-weight: 400; font-size: 19px; }
+.a-foot { position: sticky; bottom: 0; z-index: 5; flex: none; padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px)); background: #fff; border-top: 2px solid var(--line2); display: grid; gap: 8px; }
+
+.state { border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.state .big { font-family: var(--display); font-size: 26px; line-height: 1.2; }
+.state .sub { font-size: 16px; }
+.brk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff; border: 2px dashed var(--warn); color: var(--warn); border-radius: 10px; padding: 8px 12px; font-weight: 800; font-size: 16px; }
+.brk button { margin-inline-start: auto; font: inherit; font-size: 14px; font-weight: 700; min-height: 40px; border: 2px solid var(--line2); border-radius: 8px; background: #fff; color: var(--ink); padding: 0 12px; cursor: pointer; }
+.state.free { background: var(--ok-soft); color: var(--ok); border: 2px solid var(--ok); }
+.state.soon { background: var(--warn-soft); color: var(--warn); border: 2px solid var(--warn); }
+.state.trip { background: var(--action-soft); color: var(--action); border: 2px solid var(--action); }
+.state.done { background: #fff; color: var(--muted); border: 2px solid var(--line2); }
+
+.btn-main { font-family: var(--display); font-size: 21px; width: 100%; min-height: 60px; border: 0; border-radius: 10px; background: var(--action); color: #fff; cursor: pointer; }
+.btn-main:active { transform: translateY(1px); }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn-sec { font-family: var(--display); font-size: 18px; min-height: 56px; border: 2px solid var(--plate); border-radius: 10px; background: #fff; color: var(--plate); cursor: pointer; }
+.btn-sec.on { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.btn-free { font-family: var(--display); font-size: 20px; min-height: 58px; border: 0; border-radius: 10px; background: var(--ok); color: #fff; cursor: pointer; width: 100%; }
+.btn-low { font: inherit; font-weight: 700; font-size: 15px; min-height: 48px; border: 2px solid var(--line2); border-radius: 10px; background: #fff; color: var(--ink); cursor: pointer; width: 100%; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+.offer { background: #fff; border: 3px solid var(--action); border-radius: 10px; overflow: hidden; }
+.offer-h { background: var(--action); color: #fff; font-family: var(--display); font-size: 20px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.offer-h .timer { margin-inline-start: auto; font-size: 18px; background: rgba(255,255,255,.18); border-radius: 6px; padding: 0 10px; font-variant-numeric: tabular-nums; }
+.offer-in { padding: 12px 14px; display: grid; gap: 12px; }
+.sum { font-size: 16px; }
+
+/* Route with stops */
+.stops { list-style: none; margin: 0; padding: 0 30px 0 0; position: relative; display: grid; gap: 12px; }
+.stops::before { content: ""; position: absolute; top: 20px; bottom: 20px; right: 9px; border-right: 5px solid var(--action); }
+.stop { position: relative; background: #fff; border: 2px solid var(--line2); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.stop::before { content: ""; position: absolute; right: -30px; top: 18px; width: 18px; height: 18px; background: #fff; border: 5px solid var(--action); border-radius: 50%; }
+.stop.end { border-color: var(--plate); }
+.stop.end::before { display: none; }
+.stop.end .pl { position: absolute; right: -40px; top: 12px; }
+.stop .n { font-family: var(--display); font-size: 13px; color: var(--muted); }
+.stop .addr { font-family: var(--display); font-size: 21px; line-height: 1.25; }
+.stop .who { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stop .notes { font-size: 15px; color: var(--muted); }
+.stop .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.go { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border-radius: 10px; font-family: var(--display); font-size: 18px; text-decoration: none; }
+.go.waze { background: var(--action); color: #fff; }
+.go.call { background: #fff; color: var(--plate); border: 2px solid var(--plate); }
+.phone-num { direction: ltr; unicode-bidi: isolate; white-space: nowrap; font-weight: 800; }
+.pl { display: inline-flex; justify-content: center; align-items: center; min-width: 34px; height: 26px; padding: 0 7px; font-family: var(--display); font-size: 15px; border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; white-space: nowrap; }
+.pl-name { background: #fff; color: var(--plate); box-shadow: inset 0 0 0 2px var(--plate); font-family: var(--body); font-weight: 800; font-size: 13px; }
+.ico { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 26px; border: 2px solid var(--plate); border-radius: 5px; color: var(--plate); flex: none; }
+.ico svg { width: 18px; height: 18px; }
+.chip { display: inline-flex; align-items: center; font-weight: 800; font-size: 13px; border-radius: 5px; padding: 1px 8px; white-space: nowrap; }
+.chip.need { color: var(--plate); border: 2px solid var(--plate); }
+.chip.back { background: var(--warn-soft); color: var(--warn); }
+.ret { background: var(--warn-soft); color: var(--warn); border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 15.5px; }
+.loc { font-size: 13px; color: var(--muted); text-align: center; }
+
+/* Dialog (menu, decline): X, click outside, Esc */
+.dlg-back { position: fixed; inset: 0; background: rgba(18,21,25,.5); display: none; align-items: flex-end; justify-content: center; z-index: 30; }
+.dlg-back.show { display: flex; }
+.dlg { width: min(390px, 100%); max-height: 90vh; overflow-y: auto; background: #fff; border-radius: 14px 14px 0 0; padding: 0 0 calc(14px + env(safe-area-inset-bottom, 0px)); }
+.dlg-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-family: var(--display); font-size: 19px; border-bottom: 2px solid var(--line2); }
+.xbtn { margin-inline-start: auto; flex: none; width: 46px; height: 46px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 28px; line-height: 1; background: #fff; border: 2px solid var(--line2); border-radius: 8px; cursor: pointer; color: var(--ink); }
+.dlg-body { padding: 14px; display: grid; gap: 10px; }
+.dlg-body label.opt { display: flex; align-items: center; gap: 10px; min-height: 52px; border: 2px solid var(--line2); border-radius: 10px; padding: 0 14px; font-size: 17px; font-weight: 700; cursor: pointer; }
+.dlg-body label.opt:has(input:checked) { border-color: var(--action); background: var(--action-soft); }
+.dlg-body input[type=radio] { width: 20px; height: 20px; accent-color: var(--action); }
+.inp { font: inherit; font-size: 17px; width: 100%; height: 52px; border: 2px solid var(--line2); border-radius: 10px; padding: 0 12px; }
+.inp.err { border-color: var(--bad); background: var(--bad-soft); }
+.msg { font-size: 14px; font-weight: 700; color: var(--bad); min-height: 20px; }
+.req { color: var(--bad); font-weight: 800; margin-inline-start: 3px; }
+.toast { position: fixed; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); width: min(360px, calc(100% - 32px)); background: var(--plate); color: #fff; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--plate), 0 8px 20px rgba(0,0,0,.25); border-radius: 10px; padding: 12px 14px; font-weight: 700; display: none; z-index: 20; text-align: center; }
+.toast.show { display: block; }
+</style>
+<style id="green">
+/* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
+:root {
+  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
+  --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
+  --soft: #eef2ef; --soft2: #e3e9e5;
+  --shadow: 0 8px 30px rgba(15, 30, 20, .08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
+  --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+}
+body { background: var(--page); font-family: var(--body); }
+.intro h1 { font-weight: 600; }
+
+/* מסגרת ומסך */
+.frame { border: 0; border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px -36px rgba(15, 30, 20, .35); }
+.screen { background: var(--bg); border-radius: 24px; }
+
+/* פס עליון: לבן, לא גרפיט */
+.m-top, .a-top { background: #fff; color: var(--ink); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.m-top { min-height: 66px; padding: 10px 18px; border-radius: 24px 24px 0 0; }
+.brand { font-weight: 600; font-size: 20px; color: var(--ink); }
+.brand span { opacity: 1; color: var(--muted); font-weight: 400; }
+.m-clock { font-weight: 500; color: var(--ink); }
+.top-note { color: var(--muted); }
+.search input { border: 0; background: var(--soft); border-radius: 999px; height: 44px; padding: 0 18px; color: var(--ink); }
+.search input:focus { outline: none; box-shadow: 0 0 0 2px var(--action); background: #fff; }
+.m-kpi { background: var(--soft); border: 0; border-radius: 999px; color: var(--ink); padding: 4px 14px; }
+.m-kpi.hot { background: var(--bad-soft); color: var(--bad); }
+.btn-new { background: var(--action); color: #fff; box-shadow: none; border-radius: 999px; font-weight: 600; padding: 0 20px; height: 44px; }
+.results, .combo-list { border: 0; border-radius: 18px; box-shadow: var(--shadow-pop); padding: 6px; }
+.res { border-radius: 12px; border-bottom: 0; }
+.res:hover, .combo-list li.hl, .combo-list li:hover { background: var(--soft); }
+
+/* פאנלים: כרטיס לבן צף */
+.panel { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.m-h, .p-h, .dlg-h { background: transparent; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 600; padding: 12px 16px; border-radius: 0; }
+.p-h { border-radius: 20px 20px 0 0; }
+.m-h { font-size: 16px; }
+.p-h h2, .sec-h h2 { font-weight: 600; }
+.m-count { background: var(--soft); color: var(--muted); border-radius: 999px; font-weight: 500; font-family: var(--body); }
+.sec { border-bottom-color: var(--line); }
+.sec-h .num { border-radius: 50%; box-shadow: none; background: var(--action); font-weight: 600; font-size: 14px; }
+
+/* כפתורים */
+.b1 { border-radius: 14px; font-weight: 600; height: 48px; padding: 0 22px; background: var(--action); }
+.b1:hover { background: #12913f; }
+.b1:disabled { background: var(--soft2); color: var(--muted); }
+.b1.danger { background: var(--bad); }
+.b2, .b3, .bsm, .stops .rm, .brk button { border: 0; background: var(--soft); border-radius: 14px; font-weight: 500; color: var(--ink); }
+.b2 { height: 48px; }
+.b2:hover, .b3:hover, .bsm:hover, .stops .rm:hover { background: var(--soft2); color: var(--ink); border-color: transparent; }
+.bsm { border-radius: 10px; }
+.bdanger, .b3.danger { color: var(--bad); }
+.b3.danger:hover, .bdanger:hover, .stops .rm:hover { color: var(--bad); }
+.fbtn { border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; color: var(--muted); }
+.fbtn.on { background: var(--ink); color: #fff; }
+.xbtn { border: 0; background: var(--soft); border-radius: 50%; color: var(--ink); }
+.xbtn:hover { background: var(--bad-soft); color: var(--bad); }
+.icon-btn { border-radius: 12px; }
+button:focus-visible, a:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* טפסים */
+select, .inp, input[type=text], input[type=tel], input[type=time], input[type=email], input[type=number], input[type=date], input[type=password] { border: 1.5px solid var(--line2); border-radius: 12px; background: #fff; }
+select:focus, .inp:focus, input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.seg { border: 0; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; height: auto; min-height: 40px; }
+.seg label { border: 0 !important; border-radius: 10px; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg.err { box-shadow: 0 0 0 2px var(--bad); }
+.needs label, .checks label, .check1 { border-radius: 999px; }
+.filebtn { border-radius: 14px; }
+
+/* טבלאות */
+th { background: #fff; font-weight: 500; color: var(--muted); border-bottom-color: var(--line); }
+td { border-bottom-color: var(--line); }
+tbody tr.sel td, tr.drv.open td { background: #effaf3; }
+tbody tr.q:hover td, tr.drv:hover td { background: #f6f9f7; }
+tr.dx td { background: var(--bg); }
+
+/* תגיות, לוחיות, מצבים */
+.chip, .st, .dl { border-radius: 999px; }
+.chip.need, .chip.noapp { border-width: 1.5px; }
+.wt { border-radius: 10px; font-weight: 600; }
+.pl { border-radius: 8px; box-shadow: none; background: var(--ink); font-weight: 600; }
+.pl-name, .pl.cl-num { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ico { border-width: 1.5px; border-radius: 8px; }
+.warnline, .known, .dup, .family, .editbar, .legal, .script, .status, .cert, .acc { border-radius: 16px; }
+.known { border: 0; background: var(--action-soft); }
+.script { border: 0; background: var(--soft); }
+
+/* מפה */
+.map { background: #e9eeea; }
+.legend, .map-cap { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(15, 30, 20, .10); }
+.minimap { border-radius: 16px; overflow: hidden; }
+.mapdlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+
+/* הצעה לנהג */
+.prop { border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+.prop-tabs { background: var(--soft); padding: 4px; border-radius: 14px; margin: 10px 10px 0; gap: 4px; }
+.prop-tabs button { color: var(--muted); opacity: 1; border: 0; border-radius: 10px; font-weight: 500; padding: 8px 12px; font-size: 14px; }
+.prop-tabs button.on { background: var(--ink); color: #fff; }
+.prop-head b { font-weight: 600; }
+
+/* חלונות קופצים והודעות */
+.dlg-back, .mapback { background: rgba(18, 26, 20, .35); }
+.dlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+.dlg-h { background: #fff; }
+.toast { background: var(--ink); border: 0; border-radius: 999px; box-shadow: 0 10px 28px rgba(15, 30, 20, .3); }
+
+/* מנהל עיר ומנהל מערכת */
+.tabs a { border: 0; border-radius: 999px; background: transparent; }
+.tabs a:hover { background: var(--soft); }
+.tabs a.on { background: var(--ink); color: #fff; }
+.tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.tile .v { font-weight: 600; }
+.tile.alert { box-shadow: inset 0 0 0 2px var(--bad), var(--shadow); }
+.lm-list, .list, .alerts li, .op, .adm-list li { border-radius: 16px; }
+.op.on { box-shadow: inset 0 0 0 2px var(--action); }
+
+/* מוקדן */
+.panel .sum { border-radius: 14px; }
+.person { border-radius: 14px; border-width: 1.5px; }
+.newp { border-radius: 16px; border-width: 1.5px; }
+.readback { border-radius: 20px; overflow: hidden; }
+.readback .ph { background: var(--ink); font-weight: 600; }
+.minimap .dst { border-radius: 50%; box-shadow: 0 0 0 3px #fff; background: var(--action); }
+.tryit button { border-radius: 999px; }
+
+/* אפליקציית הנהג */
+.sim { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.a-brand { font-weight: 600; }
+.a-menu { color: var(--ink); border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; }
+.a-foot { border-top: 0; box-shadow: 0 -8px 24px rgba(15, 30, 20, .08); border-radius: 24px 24px 0 0; }
+.state { border-radius: 20px; }
+.state .big { font-weight: 600; }
+.state.trip { border: 0; background: var(--action-soft); color: var(--ink); }
+.state.done { border: 0; background: var(--soft); }
+.btn-main, .btn-free { border-radius: 18px; font-weight: 600; background: var(--action); }
+.btn-sec { border: 0; background: var(--soft); color: var(--ink); border-radius: 18px; font-weight: 500; }
+.btn-sec.on { background: var(--ink); color: #fff; }
+.btn-low { border: 0; background: var(--soft); border-radius: 16px; font-weight: 500; }
+.brk { border-radius: 16px; border-width: 1.5px; }
+.offer { border: 0; border-radius: 24px; box-shadow: var(--shadow); }
+.offer-h { background: var(--action); font-weight: 600; }
+.stop { border: 0; border-radius: 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.stop.end { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.go { border-radius: 14px; font-weight: 600; }
+.go.call { border: 0; background: var(--soft); color: var(--ink); }
+.dist { color: var(--action); }
+.phone .dlg { border-radius: 24px 24px 0 0; }
+.dlg-body label.opt { border-radius: 14px; }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>אפליקציית הנהג: אב-טיפוס לחיץ</h1>
+    <p>האפליקציה נפתחת מקישור אישי ב-SMS ונשמרת על מסך הבית (PWA). אין סיסמה, ואין חנות אפליקציות. כל הנתונים הם דוגמה.</p>
+    <div class="sim">
+      <h2>הדמיה: מה המשבץ עושה</h2>
+      <div class="row">
+        <button class="b2" type="button" id="simOffer">המשבץ שולח נסיעה</button>
+        <button class="b2" type="button" id="simUpdate">המשבץ מעדכן את הנסיעה</button>
+        <button class="b2" type="button" id="simReset">התחל מחדש</button>
+      </div>
+      <div class="note">הכפתורים כאן מחוץ לטלפון רק כדי להדגים. בטלפון עצמו יש לנהג רק מה שצריך לו.</div>
+    </div>
+    <div class="sim">
+      <h2>הכללים שהמסך עובד לפיהם</h2>
+      <ul class="rules">
+        <li>לנהג שלושה כפתורים בלבד: מאשר נסיעה, מתפנה בעוד 5 / 10, פנוי. שאר הסטטוסים מעדכן המשבץ.</li>
+        <li>כל מצב מציג פעולה ראשית אחת, גדולה ובולטת.</li>
+        <li>המסך נגלל כמו עמוד רגיל, והפס העליון וכפתורי הפעולה נשארים קבועים במקום.</li>
+        <li>לכל עצירה: מרחק וזמן נסיעה מהנקודה הקודמת, כתובת גדולה, מי עולה, כפתור "נווט בווייז" וכפתור "התקשר". למעלה: סך כל המסלול.</li>
+        <li>הפסקה וסיום עבודה נמצאים בתפריט. בזמן נסיעה, "הפסקה" מסמנת שאחרי הנסיעה הנהג יוצא להפסקה, והמשבץ לא שולח לו נסיעה נוספת. טלפון המטה מגיע מהגדרות העיר שמנהל העיר ממלא.</li>
+        <li>נסיעה שלא אושרה תוך 2 דקות מגיעה למשבץ כהתראה.</li>
+        <li>המיקום נשלח בכל לחיצה על כפתור. במסך הבית אין מעקב ברקע.</li>
+        <li>חלון נפתח מלמטה, ונסגר ב-X, בלחיצה מחוץ לו, וב-Esc.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phone-wrap">
+    <div class="phone" id="phone">
+      <div class="a-top">
+        <div><div class="a-brand">מטה הסעות</div><div class="a-who">ישראל שטיין · 6 מקומות</div></div>
+        <button class="a-menu" type="button" id="btnMenu">תפריט</button>
+      </div>
+      <div class="a-body" id="body"></div>
+      <div class="a-foot" id="foot"></div>
+
+      <div class="dlg-back" id="menuBack">
+        <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+          <div class="dlg-h"><span id="menuTitle">תפריט</span><button class="xbtn" type="button" data-close="menuBack" aria-label="סגור">×</button></div>
+          <div class="dlg-body">
+            <div>טלפון המטה: <span class="phone-num" id="hqPhone"></span></div>
+            <a class="go call" id="hqCall" href="#">התקשר למטה</a>
+            <button class="btn-low" type="button" id="btnBreak">יוצא להפסקה קצרה</button>
+            <button class="btn-low" type="button" id="btnDone">סיימתי לעבוד היום</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dlg-back" id="declineBack">
+        <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="decTitle">
+          <div class="dlg-h"><span id="decTitle">למה אתה לא יכול לקחת?</span><button class="xbtn" type="button" data-close="declineBack" aria-label="סגור">×</button></div>
+          <div class="dlg-body">
+            <label class="opt"><input type="radio" name="dec" value="רחוק מדי">רחוק מדי</label>
+            <label class="opt"><input type="radio" name="dec" value="אין מספיק מקום ברכב">אין מספיק מקום ברכב</label>
+            <label class="opt"><input type="radio" name="dec" value="צריך הפסקה">צריך הפסקה</label>
+            <label class="opt"><input type="radio" name="dec" value="אחר">אחר</label>
+            <input class="inp" id="decOther" type="text" maxlength="80" placeholder="פרט בקצרה" aria-label="פרט בקצרה (חובה)" style="display:none">
+            <div class="msg" id="decMsg"></div>
+            <button class="btn-main" type="button" id="decSend">שלח למשבץ</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var WC = '<span class="ico" role="img" aria-label="כיסא גלגלים" title="כיסא גלגלים"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="3.6" r="1.9" fill="currentColor" stroke="none"/><path d="M11 7v6.5h5.5l2.5 5.5"/><path d="M11 10.5h4.5"/><path d="M8 10.8a5.6 5.6 0 1 0 7.8 6.7"/></svg></span>';
+  // Example trip (fictional people). Coordinates are only for the Waze link.
+  // The HQ phone comes from the city settings that the city admin fills in.
+  var CITY = { hqPhone: "035550100" };
+  // km / min: driving distance and time from the previous point (the driver's location for the first stop).
+  function trip() {
+    return {
+      stops: [
+        {addr: "הרב כהנמן 88", ent: "", who: "מרים וייס", pax: 1, phone: "0548455120", notes: "", needs: [], back: false, ll: "32.0841,34.8361", km: 1.4, min: 5},
+        {addr: "השומר 3", ent: "", who: "דבורה לנדאו", pax: 1, phone: "0533318412", notes: "לצלצל באינטרקום", needs: [], back: true, ll: "32.0866,34.8331", km: 0.8, min: 3}
+      ],
+      dest: {plate: "תפארת", isName: true, name: "ישיבת תפארת", addr: "הרב כהנמן 70", ll: "32.0828,34.8350", km: 0.9, min: 4}
+    };
+  }
+  function kmTxt(k) { return String(k).replace(".", "."); }
+  function distHtml(km, min, from) { return '<div class="dist"><b>' + kmTxt(km) + '</b> ק"מ · כ-<b>' + min + '</b> דקות ' + from + '</div>'; }
+  function totalHtml(t) {
+    var km = t.stops.reduce(function (s, x) { return s + x.km; }, t.dest.km), min = t.stops.reduce(function (s, x) { return s + x.min; }, t.dest.min);
+    return '<div class="total">כל המסלול: <b>' + (Math.round(km * 10) / 10) + '</b> ק"מ · כ-<b>' + min + '</b> דקות נסיעה</div>';
+  }
+  var S = { mode: "free", soon: 0, trip: null, timer: null, left: 120, breakAfter: false };
+
+  function fmt(d) { return d.length === 10 ? d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6) : d.slice(0,2) + "-" + d.slice(2,5) + "-" + d.slice(5); }
+  function waze(ll) { return "https://waze.com/ul?ll=" + ll + "&navigate=yes"; }
+  var tt;
+  function toast(s) { var t = $("toast"); t.textContent = s; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove("show"); }, 3200); }
+
+  function stopsHtml(t, withActs) {
+    var h = '<ol class="stops">';
+    t.stops.forEach(function (s, i) {
+      h += '<li class="stop"><span class="n">איסוף ' + (i + 1) + '</span>' + distHtml(s.km, s.min, i === 0 ? "ממך" : "מהעצירה הקודמת") +
+        '<div class="addr">' + s.addr + (s.ent ? ', כניסה ' + s.ent : '') + '</div>' +
+        '<div class="who">' + s.who + (s.pax > 1 ? ' · ' + s.pax + ' נוסעים' : '') + s.needs.map(function (n) { return n === "כיסא גלגלים" ? WC : '<span class="chip need">' + n + '</span>'; }).join("") +
+          (s.back ? '<span class="chip back">חוזר איתך הביתה</span>' : '') + '</div>' +
+        (s.notes ? '<div class="notes">' + s.notes + '</div>' : '') +
+        (withActs ? '<div class="acts"><a class="go waze" href="' + waze(s.ll) + '" target="_blank" rel="noopener">נווט בווייז</a><a class="go call" href="tel:' + s.phone + '">התקשר</a></div><div class="notes">טלפון: <span class="phone-num">' + fmt(s.phone) + '</span></div>' : '') +
+      '</li>';
+    });
+    var d = t.dest;
+    h += '<li class="stop end"><span class="pl' + (d.isName ? ' pl-name' : '') + '">' + d.plate + '</span><span class="n">יעד</span>' + distHtml(d.km, d.min, "מהעצירה האחרונה") +
+      '<div class="addr">' + d.name + '</div><div class="notes">' + d.addr + '</div>' +
+      (withActs ? '<div class="acts"><a class="go waze" href="' + waze(d.ll) + '" target="_blank" rel="noopener">נווט בווייז</a></div>' : '') + '</li></ol>';
+    return h;
+  }
+  function backNote(t) {
+    var back = t.stops.filter(function (s) { return s.back; }).map(function (s) { return s.who; });
+    return back.length ? '<div class="ret">אחרי ההצבעה: לחכות ליד הקלפי ולהחזיר הביתה את ' + back.join(" ו") + '.</div>' : '';
+  }
+
+  function render() {
+    var b = $("body"), f = $("foot");
+    clearInterval(S.timer);
+    if (S.mode === "free") {
+      b.innerHTML = '<div class="state free"><div class="big">פנוי</div><div class="sub">מחכה לנסיעה. כשתגיע נסיעה, הטלפון יצלצל.</div></div>' +
+        '<div class="loc">המיקום שלך נשלח למשבץ בכל לחיצה על כפתור.</div>';
+      f.innerHTML = '';
+    } else if (S.mode === "offer") {
+      var t = S.trip, pax = t.stops.reduce(function (s, x) { return s + x.pax; }, 0);
+      b.innerHTML = '<div class="offer"><div class="offer-h">נסיעה חדשה<span class="timer" id="timer"></span></div><div class="offer-in">' +
+        '<div class="sum">' + t.stops.length + ' עצירות · ' + pax + ' נוסעים · אל ' + t.dest.name + '</div>' + totalHtml(t) + stopsHtml(t, false) + backNote(t) + '</div></div>';
+      f.innerHTML = '<button class="btn-main" type="button" data-go="accept">מאשר נסיעה</button><button class="btn-low" type="button" data-go="decline">לא יכול לקחת</button>';
+      tick(); S.timer = setInterval(tick, 1000);
+    } else if (S.mode === "trip" || S.mode === "soon") {
+      var st = S.mode === "soon"
+        ? '<div class="state soon"><div class="big">מתפנה בעוד ' + S.soon + ' דקות</div><div class="sub">המשבץ יודע, ומכין לך את הנסיעה הבאה.</div></div>'
+        : '<div class="state trip"><div class="big">בנסיעה</div><div class="sub">לחץ "מתפנה" כשאתה בדרך להוריד את הנוסעים האחרונים.</div></div>';
+      var brk = S.breakAfter ? '<div class="brk">אחרי הנסיעה: הפסקה. המשבץ לא ישלח לך נסיעה נוספת.<button type="button" data-go="nobreak">ביטול</button></div>' : '';
+      b.innerHTML = st + brk + totalHtml(S.trip) + stopsHtml(S.trip, true) + backNote(S.trip);
+      f.innerHTML = '<div class="btn-row"><button class="btn-sec' + (S.soon === 5 ? ' on' : '') + '" type="button" data-go="soon5">מתפנה בעוד 5</button><button class="btn-sec' + (S.soon === 10 ? ' on' : '') + '" type="button" data-go="soon10">מתפנה בעוד 10</button></div>' +
+        '<button class="btn-free" type="button" data-go="free">פנוי</button>';
+    } else if (S.mode === "break") {
+      b.innerHTML = '<div class="state done"><div class="big">בהפסקה</div><div class="sub">לא יגיעו אליך נסיעות עד שתחזור.</div></div>';
+      f.innerHTML = '<button class="btn-free" type="button" data-go="free">חזרתי, אני פנוי</button>';
+    } else if (S.mode === "done") {
+      b.innerHTML = '<div class="state done"><div class="big">סיימת לעבוד</div><div class="sub">תודה רבה! הפרטים שלך שמורים, ואפשר לחזור בכל רגע.</div></div>';
+      f.innerHTML = '<button class="btn-free" type="button" data-go="free">חזרתי לעבוד</button>';
+    }
+  }
+  function tick() {
+    var el = $("timer"); if (!el) return;
+    var m = Math.floor(S.left / 60), s = ("0" + (S.left % 60)).slice(-2);
+    el.textContent = m + ":" + s;
+    if (S.left <= 0) { clearInterval(S.timer); el.textContent = "המשבץ קיבל התראה"; return; }
+    S.left--;
+  }
+
+  $("phone").addEventListener("click", function (e) {
+    var g = e.target.closest("[data-go]"); if (!g) return;
+    var v = g.getAttribute("data-go");
+    if (v === "accept") { S.mode = "trip"; S.soon = 0; toast("אישרת. המשבץ רואה שאתה בדרך."); }
+    else if (v === "decline") { openDlg("declineBack"); return; }
+    else if (v === "soon5" || v === "soon10") { S.mode = "soon"; S.soon = v === "soon5" ? 5 : 10; toast("המשבץ יודע שאתה מתפנה בעוד " + S.soon + " דקות."); }
+    else if (v === "free") {
+      S.soon = 0; S.trip = null;
+      if (S.breakAfter) { S.breakAfter = false; S.mode = "break"; toast("הנסיעה הסתיימה. עברת להפסקה."); }
+      else { S.mode = "free"; toast("עודכן: פנוי."); }
+    }
+    else if (v === "nobreak") { S.breakAfter = false; toast("בוטל. אחרי הנסיעה תהיה פנוי לנסיעה הבאה."); }
+    else if (v === "break") { S.mode = "break"; toast("עודכן: בהפסקה."); }
+    render();
+  });
+
+  // Dialogs: X, click outside, Esc
+  function openDlg(id) { $(id).classList.add("show"); var x = $(id).querySelector(".xbtn"); if (x) x.focus(); }
+  function closeDlg(id) { $(id).classList.remove("show"); }
+  document.querySelectorAll("[data-close]").forEach(function (b) { b.addEventListener("click", function () { closeDlg(b.getAttribute("data-close")); }); });
+  ["menuBack", "declineBack"].forEach(function (id) { $(id).addEventListener("click", function (e) { if (e.target === this) closeDlg(id); }); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeDlg("menuBack"); closeDlg("declineBack"); } });
+  $("btnMenu").addEventListener("click", function () {
+    var inTrip = S.mode === "trip" || S.mode === "soon";
+    $("btnBreak").textContent = inTrip ? (S.breakAfter ? "כבר מסומן: הפסקה אחרי הנסיעה" : "אחרי הנסיעה הזאת אני יוצא להפסקה") : "יוצא להפסקה קצרה";
+    openDlg("menuBack");
+  });
+  $("hqPhone").textContent = fmt(CITY.hqPhone);
+  $("hqCall").href = "tel:" + CITY.hqPhone;
+  $("btnBreak").addEventListener("click", function () {
+    closeDlg("menuBack");
+    if (S.mode === "offer") { toast("קודם לאשר או לדחות את הנסיעה החדשה."); return; }
+    if (S.mode === "trip" || S.mode === "soon") { S.breakAfter = true; render(); toast("המשבץ יודע: אחרי הנסיעה הזאת אתה יוצא להפסקה."); return; }
+    if (S.mode === "break") { toast("אתה כבר בהפסקה."); return; }
+    S.mode = "break"; render(); toast("עודכן: בהפסקה.");
+  });
+  $("btnDone").addEventListener("click", function () {
+    if (S.mode === "trip" || S.mode === "soon" || S.mode === "offer") { closeDlg("menuBack"); toast("אפשר לסיים רק כשאין נסיעה פעילה."); return; }
+    S.mode = "done"; closeDlg("menuBack"); render();
+  });
+  document.querySelectorAll('input[name="dec"]').forEach(function (r) {
+    r.addEventListener("change", function () { $("decOther").style.display = r.value === "אחר" ? "block" : "none"; $("decMsg").textContent = ""; if (r.value === "אחר") $("decOther").focus(); });
+  });
+  $("decSend").addEventListener("click", function () {
+    var r = document.querySelector('input[name="dec"]:checked');
+    if (!r) { $("decMsg").textContent = "יש לבחור סיבה."; return; }
+    if (r.value === "אחר" && !$("decOther").value.trim()) { $("decOther").classList.add("err"); $("decMsg").textContent = "יש לכתוב הסבר קצר."; return; }
+    closeDlg("declineBack"); S.mode = "free"; S.trip = null; render(); toast("המשבץ קיבל את ההודעה, והנסיעה תעבור לנהג אחר.");
+  });
+  $("decOther").addEventListener("input", function () { if (this.value.trim()) { this.classList.remove("err"); $("decMsg").textContent = ""; } });
+
+  // Simulation (outside the phone)
+  $("simOffer").addEventListener("click", function () {
+    if (S.mode === "trip" || S.mode === "soon") { toast("בנסיעה. נסיעה חדשה תגיע אחרי שתתפנה."); return; }
+    S.mode = "offer"; S.trip = trip(); S.left = 120; render(); toast("נסיעה חדשה! הטלפון מצלצל.");
+  });
+  $("simUpdate").addEventListener("click", function () {
+    if (!S.trip || S.mode === "offer") { toast("אין נסיעה פעילה לעדכן."); return; }
+    S.trip.stops[0].ent = "ב"; S.trip.stops[0].notes = "המשבץ עדכן: כניסה ב, יורדת לבד";
+    render(); toast("המשבץ עדכן את הנסיעה.");
+  });
+  $("simReset").addEventListener("click", function () { clearInterval(S.timer); S = { mode: "free", soon: 0, trip: null, timer: null, left: 120, breakAfter: false }; render(); window.scrollTo(0, 0); });
+
+  render();
+})();
+</script>

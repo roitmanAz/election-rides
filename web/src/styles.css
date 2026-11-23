@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Design tokens from docs/DESIGN.md ("green" direction, after Wavespace). Light only, right-to-left. */
+@theme {
+  --font-sans: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+
+  --color-page: #e8ede9;
+  --color-bg: #f2f5f3;
+  --color-surface: #ffffff;
+  --color-ink: #121a14;
+  --color-muted: #5f6b63;
+  --color-line: #e6ebe7;
+  --color-line2: #d3dbd5;
+  --color-soft: #eef2ef;
+  --color-soft2: #e3e9e5;
+
+  --color-action: #16a34a;
+  --color-action-hover: #12913f;
+  --color-action-soft: #e8f7ee;
+
+  /* Wait scale: used only for waiting times, never for anything else. */
+  --color-ok: #1f7a3a;
+  --color-ok-soft: #e4f3e8;
+  --color-warn: #a15f00;
+  --color-warn-soft: #fdf0d8;
+  --color-bad: #c92a2a;
+  --color-bad-soft: #fde8e8;
+
+  --radius-card: 20px;
+  --radius-frame: 24px;
+  --radius-btn: 14px;
+
+  --shadow-card: 0 8px 30px rgba(15, 30, 20, 0.08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, 0.22);
+}
+
+@layer base {
+  html {
+    direction: rtl;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 3px solid var(--color-action);
+    outline-offset: 2px;
+  }
+}

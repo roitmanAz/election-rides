@@ -1,0 +1,958 @@
+<title>מסך המשבץ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* Dispatcher prototype. Design rules from DESIGN.md: graphite sign plates, sign-blue action only, wait scale green/amber/red, Secular One for numbers/headings, route line to the polling cluster, dense, light-only. */
+:root {
+  --page: #e7e9ec; --page-muted: #555c66; --page-line: #cdd1d7;
+  --bg: #f1f2f4; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --plate2: #2a3039; --action: #0b4c9e; --action-soft: #e6eefa;
+  --ok: #1f7a3a; --ok-soft: #e3f1e7; --warn: #a15f00; --warn-soft: #fdefd2; --bad: #c92a2a; --bad-soft: #fbe5e5;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); direction: rtl; font-size: 16px; line-height: 1.5; }
+.page { max-width: 1480px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; }
+.intro { max-width: 90ch; display: grid; gap: 6px; margin-bottom: 18px; }
+.intro h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 4vw, 32px); margin: 0; }
+.intro p { margin: 0; color: var(--page-muted); }
+.frame { border: 1px solid var(--page-line); border-radius: 6px; background: var(--bg); }
+
+/* Fluid: the screen fills the page width and never scrolls sideways. */
+.screen { position: relative; width: 100%; background: var(--bg); font-size: 14.5px; }
+.m-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--plate); color: #fff; padding: 8px 16px; min-height: 56px; border-bottom: 4px solid #fff; box-shadow: 0 4px 0 var(--plate); }
+.brand { font-family: var(--display); font-size: 22px; white-space: nowrap; }
+.brand span { font-family: var(--body); font-size: 13px; opacity: .75; margin-inline-start: 8px; }
+.kpis { display: flex; flex-wrap: wrap; gap: 6px; }
+.m-kpi { display: flex; align-items: baseline; gap: 6px; background: var(--plate2); padding: 2px 10px; border-radius: 6px; border: 2px solid rgba(255,255,255,.85); white-space: nowrap; }
+.m-kpi b { font-family: var(--display); font-weight: 400; font-size: 19px; }
+.m-kpi span { font-size: 12px; }
+.m-kpi.hot { background: var(--bad); }
+.m-clock { font-family: var(--display); font-size: 24px; }
+.search { position: relative; width: 300px; max-width: 100%; margin-inline-start: auto; }
+.search input { width: 100%; height: 36px; font: inherit; font-size: 14.5px; border: 2px solid rgba(255,255,255,.85); border-radius: 6px; padding: 0 10px; }
+.results { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: min(560px, calc(100vw - 48px)); background: #fff; color: var(--ink); border: 2px solid var(--plate); border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,.25); z-index: 30; padding: 6px; max-height: 420px; overflow: auto; }
+.results.show { display: block; }
+.res { padding: 8px 10px; display: grid; gap: 3px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.res:hover { background: var(--bg); }
+.res:last-child { border-bottom: 0; }
+.res .r1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.res .r2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.res-empty { padding: 10px; color: var(--muted); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(300px, 360px); gap: 12px; padding: 16px 12px 12px; height: 800px; }
+@media (max-width: 1250px) {
+  .main { grid-template-columns: minmax(0, 1fr) minmax(290px, 340px); height: auto; }
+  .main > .panel { height: 720px; }
+  .center { grid-column: 1 / -1; order: 3; }
+  .map { min-height: 420px; }
+}
+@media (max-width: 820px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .main > .panel { height: auto; max-height: 640px; }
+}
+.panel { background: var(--surface); border: 2px solid var(--line2); border-radius: 8px; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.m-h { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-family: var(--display); font-size: 16px; background: #e9ebee; border-bottom: 2px solid var(--line2); flex: none; }
+.m-count { font-family: var(--display); font-size: 13px; border-radius: 4px; padding: 0 8px; background: var(--plate); color: #fff; }
+.m-h { flex-wrap: wrap; }
+.m-h .tools { margin-inline-start: auto; display: flex; flex-wrap: wrap; gap: 4px; }
+.fbtn { font: inherit; font-family: var(--body); font-size: 13.5px; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 11px; height: 34px; cursor: pointer; }
+.fbtn.on { background: var(--plate); color: #fff; border-color: var(--plate); }
+.scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+td { overflow: hidden; text-overflow: ellipsis; }
+th, td { text-align: right; white-space: nowrap; }
+th { position: sticky; top: 0; background: #fff; font-weight: 800; font-size: 12px; padding: 5px 8px; color: var(--muted); border-bottom: 1px solid var(--line2); z-index: 1; }
+td { padding: 0 8px; height: 34px; border-bottom: 1px solid var(--line); }
+tbody tr.q { cursor: pointer; }
+tbody tr.q:hover td { background: #f6f7f8; }
+tbody tr.sel td { background: var(--action-soft); }
+tbody tr.inprop td:first-child { box-shadow: inset -4px 0 0 var(--action); }
+.nm { font-weight: 800; }
+.kind { font-weight: 500; font-size: 12.5px; color: var(--muted); margin-inline-start: 4px; }
+td.flags-cell { white-space: normal; padding-block: 4px; }
+.wt { display: inline-flex; justify-content: center; align-items: center; min-width: 38px; height: 23px; font-family: var(--display); font-size: 14.5px; border-radius: 4px; }
+.wt-g { background: var(--ok-soft); color: var(--ok); } .wt-y { background: var(--warn-soft); color: var(--warn); } .wt-r { background: var(--bad); color: #fff; }
+.pl { display: inline-flex; justify-content: center; align-items: center; min-width: 34px; height: 24px; padding: 0 7px; font-family: var(--display); font-size: 14px; border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; flex: none; white-space: nowrap; }
+.pl-name { background: #fff; color: var(--plate); box-shadow: inset 0 0 0 2px var(--plate); font-family: var(--body); font-weight: 800; font-size: 12.5px; }
+.route { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; }
+.route .from { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.route .dash { flex: 1; min-width: 18px; border-top: 3px dotted var(--line2); }
+.route .arr { flex: none; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 8px solid var(--action); margin-inline-start: -5px; }
+tr.sel .route .dash { border-top-color: var(--action); }
+.dl { font-weight: 800; padding: 1px 6px; border-radius: 4px; font-size: 12.5px; background: var(--plate); color: #ffc266; }
+.dl.dl-soon { background: var(--bad); color: #fff; }
+.chip { display: inline-flex; align-items: center; font-weight: 800; font-size: 11.5px; border-radius: 4px; padding: 0 6px; height: 20px; white-space: nowrap; }
+.chip.need { color: var(--plate); border: 2px solid var(--plate); }
+.chip.approx { background: var(--warn-soft); color: var(--warn); border: 1px dashed var(--warn); }
+.chip.pend { background: var(--warn-soft); color: var(--warn); }
+.chip.sep { background: var(--bg); color: var(--muted); border: 1px solid var(--line2); }
+.chip.noapp { color: var(--muted); border: 2px dashed var(--line2); }
+.flags { display: flex; flex-wrap: wrap; gap: 3px; }
+.muted { color: var(--muted); }
+.nowrap { white-space: nowrap; unicode-bidi: isolate; display: inline-block; }
+.st { font-weight: 800; font-size: 12px; padding: 1px 7px; border-radius: 4px; white-space: nowrap; }
+.st-q { background: var(--warn-soft); color: var(--warn); } .st-a { background: var(--action-soft); color: var(--action); } .st-d { background: var(--ok-soft); color: var(--ok); } .st-x { background: #e6e8eb; color: var(--muted); }
+.ds-free { background: var(--ok); color: #fff; } .ds-soon { background: var(--warn-soft); color: var(--warn); } .ds-busy { background: #e6e8eb; color: var(--muted); } .ds-done { background: #fff; color: var(--muted); border: 1px solid var(--line2); }
+
+/* Center: details + map */
+.center { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+.center > .panel:last-child { flex: 1; }
+.details { display: none; }
+.details.show { display: flex; }
+.details { flex: none; }
+.det-body { padding: 10px 14px; display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 4px 12px; font-size: 14px; overflow-y: auto; max-height: 330px; }
+.det-body .k { color: var(--muted); font-weight: 700; font-size: 12.5px; padding-top: 2px; }
+.det-body .v { min-width: 0; }
+.warnline { grid-column: 1 / -1; background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 13.5px; }
+.det-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 14px 12px; border-top: 1px solid var(--line); }
+.why { color: var(--bad); font-weight: 700; font-size: 13.5px; }
+.xbtn { margin-inline-start: auto; flex: none; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 26px; line-height: 1; background: #fff; border: 2px solid var(--line2); border-radius: 8px; cursor: pointer; color: var(--ink); }
+.xbtn:hover { border-color: var(--bad); color: var(--bad); }
+.b1 { font-family: var(--display); font-size: 15px; border: 0; border-radius: 6px; padding: 0 18px; height: 42px; cursor: pointer; background: var(--action); color: #fff; white-space: nowrap; }
+.b1:disabled { background: var(--line2); cursor: not-allowed; }
+.b2 { font: inherit; font-weight: 700; font-size: 14.5px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 14px; height: 42px; cursor: pointer; white-space: nowrap; color: var(--ink); }
+.b2:hover { border-color: var(--action); color: var(--action); }
+.b3 { font: inherit; font-weight: 700; font-size: 14px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 12px; min-width: 40px; height: 38px; cursor: pointer; white-space: nowrap; }
+.b3:hover { border-color: var(--action); color: var(--action); }
+.bdanger { color: var(--bad); }
+.bdanger:hover { border-color: var(--bad); color: var(--bad); }
+button:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+.cancel-form { display: none; gap: 8px; align-items: start; flex-wrap: wrap; width: 100%; }
+.cancel-form.show { display: flex; }
+select, .inp { font: inherit; font-size: 14.5px; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; height: 42px; padding: 0 10px; }
+select:focus, .inp:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.err { border-color: var(--bad) !important; background: var(--bad-soft) !important; }
+.good { border-color: var(--ok) !important; }
+.msg { font-size: 12.5px; font-weight: 700; min-height: 18px; }
+.msg.err-t { color: var(--bad); }
+.req { color: var(--bad); font-weight: 800; margin-inline-start: 3px; }
+
+.map { position: relative; flex: 1; min-height: 300px; background: #eef2ee; }
+.map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pin { position: absolute; transform: translate(50%, -50%); width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); cursor: pointer; }
+.pin.g { background: var(--ok); } .pin.y { background: #d99a00; } .pin.r { background: var(--bad); }
+.pin.approx { outline: 2px dashed var(--warn); outline-offset: 2px; }
+.pin.sel { width: 18px; height: 18px; box-shadow: 0 0 0 3px var(--action); z-index: 3; }
+.car { position: absolute; transform: translate(50%, -50%); min-width: 22px; height: 18px; padding: 0 3px; border-radius: 4px; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-size: 11px; color: #fff; background: var(--ok); }
+.car.soon { background: #d99a00; } .car.busy { background: var(--muted); } .car.done { background: #fff; color: var(--muted); }
+.car.cur { box-shadow: 0 0 0 3px var(--action); z-index: 3; }
+.mplate { position: absolute; transform: translate(50%, -50%); z-index: 2; }
+.legend { position: absolute; bottom: 8px; right: 8px; background: rgba(255,255,255,.95); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; color: var(--muted); max-width: calc(100% - 16px); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 4px; vertical-align: -1px; }
+.legend i.sq { border-radius: 2px; }
+.map-cap { position: absolute; top: 8px; left: 8px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.9); padding: 0 6px; border-radius: 4px; }
+
+/* Proposal */
+.prop { border: 3px solid var(--action); border-radius: 8px; margin: 10px; flex: none; }
+.prop-tabs { display: flex; flex-wrap: wrap; gap: 0; background: var(--action); }
+.prop-tabs button { font: inherit; font-family: var(--display); font-size: 14px; color: #fff; background: transparent; border: 0; padding: 10px 14px; font-size: 15px; cursor: pointer; white-space: nowrap; opacity: .75; border-bottom: 3px solid transparent; }
+.prop-tabs button.on { opacity: 1; border-bottom-color: #fff; }
+.prop-in { padding: 10px 12px; }
+.prop-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.prop-head b { font-family: var(--display); font-weight: 400; font-size: 17px; }
+.seats { margin-inline-start: auto; font-weight: 800; font-size: 13px; color: var(--muted); }
+.stops { list-style: none; margin: 0; padding: 0 24px 0 0; position: relative; display: grid; gap: 7px; }
+.stops::before { content: ""; position: absolute; top: 11px; bottom: 11px; right: 7px; border-right: 4px solid var(--action); }
+.stops li { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13.5px; }
+.stops li::before { content: ""; position: absolute; right: -22px; top: 50%; width: 13px; height: 13px; margin-top: -6.5px; background: #fff; border: 4px solid var(--action); border-radius: 50%; }
+.stops li.end::before { display: none; }
+/* The end stop starts on the line itself: the plate covers the line's end, and the name follows it without overlap. */
+.stops li.end { margin-inline-start: -32px; min-height: 26px; }
+.stops .rm { margin-inline-start: auto; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; cursor: pointer; padding: 0 12px; height: 34px; }
+.stops .rm:hover { color: var(--bad); border-color: var(--bad); }
+.ico { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; border: 2px solid var(--plate); border-radius: 4px; color: var(--plate); flex: none; vertical-align: middle; }
+.ico svg { width: 16px; height: 16px; }
+.riders { margin: 0; padding-inline-start: 18px; }
+.riders li { margin-bottom: 2px; }
+.cancel-other { display: none; margin-top: 6px; }
+.cancel-other.show { display: block; }
+.script { margin-top: 10px; border: 2px dashed var(--line2); border-radius: 6px; padding: 8px 10px; font-size: 13.5px; background: var(--bg); }
+.script b.t { display: block; font-family: var(--display); font-weight: 400; font-size: 14px; margin-bottom: 2px; }
+.prop-acts { display: flex; gap: 8px; margin-top: 10px; }
+.prop-acts .b1 { flex: 1; }
+.empty-prop { padding: 14px; color: var(--muted); }
+
+/* Drivers */
+tr.drv { cursor: pointer; }
+tr.drv:hover td { background: #f6f7f8; }
+tr.drv.open td { background: var(--action-soft); }
+tr.dx td { height: auto; padding: 8px 10px 10px; background: var(--bg); white-space: normal; }
+.dx-grid { display: grid; gap: 6px; font-size: 13.5px; }
+.dx-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.dx-status { display: grid; grid-template-columns: repeat(4, auto); gap: 4px; justify-content: start; }
+.dx-status .b3 { font-size: 13px; padding: 0 7px; min-width: 0; }
+.dx-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dx-top .small { margin-inline-start: auto; }
+.bsm { font: inherit; font-weight: 700; font-size: 12.5px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 9px; height: 32px; cursor: pointer; white-space: nowrap; color: var(--ink); }
+.bsm:hover { border-color: var(--action); color: var(--action); }
+.bsm:disabled { color: var(--line2); cursor: not-allowed; border-color: var(--line); }
+.vrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Add driver dialog */
+.dlg-back { position: absolute; inset: 0; background: rgba(18,21,25,.45); display: none; align-items: center; justify-content: center; z-index: 40; }
+.dlg-back.show { display: flex; }
+.dlg { width: min(520px, calc(100% - 32px)); background: #fff; border-radius: 8px; border: 3px solid var(--plate); box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+.dlg .m-h { font-size: 18px; }
+.known { display: none; border: 2px solid var(--action); background: var(--action-soft); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.known.show { display: grid; gap: 8px; }
+.known .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Map: zoom and pan inside the box; enlarged view in a dialog over most of the page */
+.map { overflow: hidden; touch-action: none; cursor: grab; }
+.map.dragging { cursor: grabbing; }
+.map-inner { position: absolute; inset: 0; transform-origin: center center; }
+.mapback { position: fixed; inset: 0; background: rgba(18,21,25,.5); display: none; align-items: center; justify-content: center; z-index: 45; padding: 16px; }
+.mapback.show { display: flex; }
+.mapdlg { width: min(1400px, 100%); height: min(900px, 100%); background: #fff; border: 3px solid var(--plate); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+.mapdlg .m-h .tools { margin-inline-start: auto; }
+.mapdlg .xbtn { margin-inline-start: 8px; }
+.mapdlg .map { flex: 1; }
+.wt-lbl { display: inline-flex; align-items: center; gap: 6px; font-family: var(--body); font-size: 13px; color: var(--muted); }
+.dlg-body { padding: 14px 16px; display: grid; gap: 10px; }
+.fld { display: grid; gap: 3px; font-weight: 700; font-size: 13px; color: var(--muted); }
+.fld .inp, .fld select { width: 100%; height: 40px; font-size: 15.5px; }
+.seg { display: inline-flex; border: 2px solid var(--line2); border-radius: 6px; overflow: hidden; height: 38px; width: max-content; }
+.seg label { display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-weight: 700; font-size: 14.5px; color: var(--ink); border-inline-start: 1px solid var(--line2); }
+.seg label:first-child { border-inline-start: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--action); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: -3px; }
+.seg.err { border-color: var(--bad); }
+.dlg-acts { display: flex; gap: 8px; padding: 0 16px 16px; }
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--plate); color: #fff; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--plate), 0 8px 20px rgba(0,0,0,.25); border-radius: 8px; padding: 10px 18px; font-weight: 700; display: none; z-index: 50; max-width: calc(100% - 32px); }
+.toast.show { display: block; }
+</style>
+<style id="green">
+/* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
+:root {
+  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
+  --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
+  --soft: #eef2ef; --soft2: #e3e9e5;
+  --shadow: 0 8px 30px rgba(15, 30, 20, .08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
+  --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+}
+body { background: var(--page); font-family: var(--body); }
+.intro h1 { font-weight: 600; }
+
+/* מסגרת ומסך */
+.frame { border: 0; border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px -36px rgba(15, 30, 20, .35); }
+.screen { background: var(--bg); border-radius: 24px; }
+
+/* פס עליון: לבן, לא גרפיט */
+.m-top, .a-top { background: #fff; color: var(--ink); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.m-top { min-height: 66px; padding: 10px 18px; border-radius: 24px 24px 0 0; }
+.brand { font-weight: 600; font-size: 20px; color: var(--ink); }
+.brand span { opacity: 1; color: var(--muted); font-weight: 400; }
+.m-clock { font-weight: 500; color: var(--ink); }
+.top-note { color: var(--muted); }
+.search input { border: 0; background: var(--soft); border-radius: 999px; height: 44px; padding: 0 18px; color: var(--ink); }
+.search input:focus { outline: none; box-shadow: 0 0 0 2px var(--action); background: #fff; }
+.m-kpi { background: var(--soft); border: 0; border-radius: 999px; color: var(--ink); padding: 4px 14px; }
+.m-kpi.hot { background: var(--bad-soft); color: var(--bad); }
+.btn-new { background: var(--action); color: #fff; box-shadow: none; border-radius: 999px; font-weight: 600; padding: 0 20px; height: 44px; }
+.results, .combo-list { border: 0; border-radius: 18px; box-shadow: var(--shadow-pop); padding: 6px; }
+.res { border-radius: 12px; border-bottom: 0; }
+.res:hover, .combo-list li.hl, .combo-list li:hover { background: var(--soft); }
+
+/* פאנלים: כרטיס לבן צף */
+.panel { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.m-h, .p-h, .dlg-h { background: transparent; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 600; padding: 12px 16px; border-radius: 0; }
+.p-h { border-radius: 20px 20px 0 0; }
+.m-h { font-size: 16px; }
+.p-h h2, .sec-h h2 { font-weight: 600; }
+.m-count { background: var(--soft); color: var(--muted); border-radius: 999px; font-weight: 500; font-family: var(--body); }
+.sec { border-bottom-color: var(--line); }
+.sec-h .num { border-radius: 50%; box-shadow: none; background: var(--action); font-weight: 600; font-size: 14px; }
+
+/* כפתורים */
+.b1 { border-radius: 14px; font-weight: 600; height: 48px; padding: 0 22px; background: var(--action); }
+.b1:hover { background: #12913f; }
+.b1:disabled { background: var(--soft2); color: var(--muted); }
+.b1.danger { background: var(--bad); }
+.b2, .b3, .bsm, .stops .rm, .brk button { border: 0; background: var(--soft); border-radius: 14px; font-weight: 500; color: var(--ink); }
+.b2 { height: 48px; }
+.b2:hover, .b3:hover, .bsm:hover, .stops .rm:hover { background: var(--soft2); color: var(--ink); border-color: transparent; }
+.bsm { border-radius: 10px; }
+.bdanger, .b3.danger { color: var(--bad); }
+.b3.danger:hover, .bdanger:hover, .stops .rm:hover { color: var(--bad); }
+.fbtn { border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; color: var(--muted); }
+.fbtn.on { background: var(--ink); color: #fff; }
+.xbtn { border: 0; background: var(--soft); border-radius: 50%; color: var(--ink); }
+.xbtn:hover { background: var(--bad-soft); color: var(--bad); }
+.icon-btn { border-radius: 12px; }
+button:focus-visible, a:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* טפסים */
+select, .inp, input[type=text], input[type=tel], input[type=time], input[type=email], input[type=number], input[type=date], input[type=password] { border: 1.5px solid var(--line2); border-radius: 12px; background: #fff; }
+select:focus, .inp:focus, input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.seg { border: 0; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; height: auto; min-height: 40px; }
+.seg label { border: 0 !important; border-radius: 10px; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg.err { box-shadow: 0 0 0 2px var(--bad); }
+.needs label, .checks label, .check1 { border-radius: 999px; }
+.filebtn { border-radius: 14px; }
+
+/* טבלאות */
+th { background: #fff; font-weight: 500; color: var(--muted); border-bottom-color: var(--line); }
+td { border-bottom-color: var(--line); }
+tbody tr.sel td, tr.drv.open td { background: #effaf3; }
+tbody tr.q:hover td, tr.drv:hover td { background: #f6f9f7; }
+tr.dx td { background: var(--bg); }
+
+/* תגיות, לוחיות, מצבים */
+.chip, .st, .dl { border-radius: 999px; }
+.chip.need, .chip.noapp { border-width: 1.5px; }
+.wt { border-radius: 10px; font-weight: 600; }
+.pl { border-radius: 8px; box-shadow: none; background: var(--ink); font-weight: 600; }
+.pl-name, .pl.cl-num { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ico { border-width: 1.5px; border-radius: 8px; }
+.warnline, .known, .dup, .family, .editbar, .legal, .script, .status, .cert, .acc { border-radius: 16px; }
+.known { border: 0; background: var(--action-soft); }
+.script { border: 0; background: var(--soft); }
+
+/* מפה */
+.map { background: #e9eeea; }
+.legend, .map-cap { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(15, 30, 20, .10); }
+.minimap { border-radius: 16px; overflow: hidden; }
+.mapdlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+
+/* הצעה לנהג */
+.prop { border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+.prop-tabs { background: var(--soft); padding: 4px; border-radius: 14px; margin: 10px 10px 0; gap: 4px; }
+.prop-tabs button { color: var(--muted); opacity: 1; border: 0; border-radius: 10px; font-weight: 500; padding: 8px 12px; font-size: 14px; }
+.prop-tabs button.on { background: var(--ink); color: #fff; }
+.prop-head b { font-weight: 600; }
+
+/* חלונות קופצים והודעות */
+.dlg-back, .mapback { background: rgba(18, 26, 20, .35); }
+.dlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+.dlg-h { background: #fff; }
+.toast { background: var(--ink); border: 0; border-radius: 999px; box-shadow: 0 10px 28px rgba(15, 30, 20, .3); }
+
+/* מנהל עיר ומנהל מערכת */
+.tabs a { border: 0; border-radius: 999px; background: transparent; }
+.tabs a:hover { background: var(--soft); }
+.tabs a.on { background: var(--ink); color: #fff; }
+.tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.tile .v { font-weight: 600; }
+.tile.alert { box-shadow: inset 0 0 0 2px var(--bad), var(--shadow); }
+.lm-list, .list, .alerts li, .op, .adm-list li { border-radius: 16px; }
+.op.on { box-shadow: inset 0 0 0 2px var(--action); }
+
+/* מוקדן */
+.panel .sum { border-radius: 14px; }
+.person { border-radius: 14px; border-width: 1.5px; }
+.newp { border-radius: 16px; border-width: 1.5px; }
+.readback { border-radius: 20px; overflow: hidden; }
+.readback .ph { background: var(--ink); font-weight: 600; }
+.minimap .dst { border-radius: 50%; box-shadow: 0 0 0 3px #fff; background: var(--action); }
+.tryit button { border-radius: 999px; }
+
+/* אפליקציית הנהג */
+.sim { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.a-brand { font-weight: 600; }
+.a-menu { color: var(--ink); border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; }
+.a-foot { border-top: 0; box-shadow: 0 -8px 24px rgba(15, 30, 20, .08); border-radius: 24px 24px 0 0; }
+.state { border-radius: 20px; }
+.state .big { font-weight: 600; }
+.state.trip { border: 0; background: var(--action-soft); color: var(--ink); }
+.state.done { border: 0; background: var(--soft); }
+.btn-main, .btn-free { border-radius: 18px; font-weight: 600; background: var(--action); }
+.btn-sec { border: 0; background: var(--soft); color: var(--ink); border-radius: 18px; font-weight: 500; }
+.btn-sec.on { background: var(--ink); color: #fff; }
+.btn-low { border: 0; background: var(--soft); border-radius: 16px; font-weight: 500; }
+.brk { border-radius: 16px; border-width: 1.5px; }
+.offer { border: 0; border-radius: 24px; box-shadow: var(--shadow); }
+.offer-h { background: var(--action); font-weight: 600; }
+.stop { border: 0; border-radius: 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.stop.end { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.go { border-radius: 14px; font-weight: 600; }
+.go.call { border: 0; background: var(--soft); color: var(--ink); }
+.dist { color: var(--action); }
+.phone .dlg { border-radius: 24px 24px 0 0; }
+.dlg-body label.opt { border-radius: 14px; }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>מסך המשבץ: אב-טיפוס לחיץ</h1>
+    <p>אין שיבוץ מראש: כל נהג שפנוי או מתפנה מקבל הצעה. התור ממוין לפי אורך ההמתנה. ההצעות מתחילות מהפנייה שמחכה הכי הרבה ומתאימה לרכב, לפי כללי המגדר, המקומות ברכב, הצרכים והקרבה. דדליין שנשארו עד אליו 30 דקות או פחות נצבע באדום. כל הנתונים הם דוגמה.</p>
+    <p>בנהג חדש אפשר להקליד 054-800-0771 (נהג שסיים לעבוד היום) או 052-700-1234 (נהג מבחירות קודמות), והמסך יציע להחזיר אותו.</p>
+    <p>אפשר לנסות: לאשר הצעה, להסיר תחנה, ללחוץ על פנייה בתור ולהוסיף אותה להצעה (המסך מסביר למה לא, אם היא לא מתאימה), לבטל פנייה, ללחוץ על נהג בלי אפליקציה ולעדכן בשמו, ולהוסיף נהג חדש.</p>
+  </div>
+
+  <div class="frame"><div class="screen" id="screen">
+    <div class="m-top">
+      <div class="brand">מטה הסעות<span>משבץ · עיר לדוגמה</span></div>
+      <div class="search"><input type="text" id="q" placeholder="חיפוש פנייה: טלפון, ת&quot;ז או שם" aria-label="חיפוש פנייה"><div class="results" id="results"></div></div>
+      <div class="m-clock">11:42</div>
+    </div>
+
+    <div class="main">
+      <section class="panel" aria-label="תור פניות">
+        <div class="m-h">תור פניות <span class="m-count" id="qCount"></span>
+          <div class="tools" id="filters">
+            <button class="fbtn on" type="button" data-f="all">הכול</button>
+            <button class="fbtn" type="button" data-f="ג">גברים</button>
+            <button class="fbtn" type="button" data-f="נ">נשים</button>
+            <button class="fbtn" type="button" data-f="משפחה">משפחות</button>
+            <button class="fbtn" type="button" data-f="wc">נגישות</button>
+            <button class="fbtn" type="button" data-f="pending">ממתין לאימות</button>
+          </div>
+        </div>
+        <div class="scroll"><table><colgroup><col style="width:58px"><col style="width:29%"><col><col style="width:84px"><col style="width:112px"></colgroup><thead><tr><th style="white-space:normal;line-height:1.15">דקות המתנה</th><th>שם</th><th>מאיפה ולאן</th><th>זמן</th><th>סימונים</th></tr></thead><tbody id="queue"></tbody></table></div>
+      </section>
+
+      <div class="center">
+        <section class="panel details" id="details" aria-label="פרטי פנייה"></section>
+        <section class="panel" aria-label="מפה">
+          <div class="m-h">מפה<div class="tools"><button class="b3" type="button" data-zoom="in" data-target="map" aria-label="התקרב">+</button><button class="b3" type="button" data-zoom="out" data-target="map" aria-label="התרחק">−</button><button class="b3" type="button" data-zoom="reset" data-target="map">איפוס</button><button class="b3" type="button" id="btnMapBig">הגדל</button></div></div>
+          <div class="map" id="map"></div>
+        </section>
+      </div>
+
+      <section class="panel" aria-label="הצעות ונהגים">
+        <div id="prop"></div>
+        <div class="m-h" style="border-top:2px solid var(--line2)">נהגים <span class="m-count" id="dCount"></span><div class="tools"><button class="b3" type="button" id="btnAddDrv">+ נהג חדש</button></div></div>
+        <div class="scroll"><table><colgroup><col><col style="width:116px"><col style="width:66px"></colgroup><tbody id="drivers"></tbody></table></div>
+      </section>
+    </div>
+
+    <div class="dlg-back" id="dlgBack">
+      <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+        <div class="m-h"><span id="dlgTitle">נהג חדש</span><button class="xbtn" type="button" id="dX" aria-label="סגור">×</button></div>
+        <div class="dlg-body">
+          <div class="fld"><label for="dPhone">מה מספר הטלפון?<span class="req">*</span></label><input class="inp" id="dPhone" type="tel" inputmode="numeric" dir="ltr" style="text-align:right"><div class="msg" id="dPhoneMsg"></div></div>
+          <div class="known" id="known"></div>
+          <div class="fld"><label for="dName">מה השם המלא?<span class="req">*</span></label><input class="inp" id="dName" type="text"><div class="msg" id="dNameMsg"></div></div>
+          <div class="fld"><label for="dSeats">כמה מקומות פנויים יש ברכב?<span class="req">*</span></label>
+            <select id="dSeats"><option value="">בחר</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select><div class="msg" id="dSeatsMsg"></div></div>
+          <div class="fld"><span>הרכב מתאים לכיסא גלגלים?</span><div class="seg"><label><input type="radio" name="dWc" value="0" checked>לא</label><label><input type="radio" name="dWc" value="1">כן</label></div></div>
+          <div class="fld"><span>יש לך סמארטפון?<span class="req">*</span></span><div class="seg" id="dAppSeg"><label><input type="radio" name="dApp" value="1">כן</label><label><input type="radio" name="dApp" value="0">לא</label></div><div class="msg" id="dAppMsg"></div></div>
+        </div>
+        <div class="dlg-acts"><button class="b1" type="button" id="dSave">הוסף נהג</button><button class="b2" type="button" id="dCancel">ביטול</button></div>
+      </div>
+    </div>
+    <div class="mapback" id="mapBack">
+      <div class="mapdlg" role="dialog" aria-modal="true" aria-label="מפה מוגדלת">
+        <div class="m-h">מפה<div class="tools"><button class="b3" type="button" data-zoom="in" data-target="mapBig" aria-label="התקרב">+</button><button class="b3" type="button" data-zoom="out" data-target="mapBig" aria-label="התרחק">−</button><button class="b3" type="button" data-zoom="reset" data-target="mapBig">איפוס</button></div><button class="xbtn" type="button" id="mapX" aria-label="סגור">×</button></div>
+        <div class="map" id="mapBig"></div>
+      </div>
+    </div>
+  </div></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var NOW = 11 * 60 + 42;
+  // ---------- Example data (fictional) ----------
+  var CL = {
+    c1: {num: 1,    name: "תלמוד תורה אור החיים", short: "אור החיים", boxes: "31–35", x: 70, y: 38},
+    c2: {num: 2,    name: "בית ספר בית יעקב",      short: "בית יעקב",  boxes: "10–14", x: 24, y: 48},
+    c3: {num: null, name: "ישיבת תפארת",           short: "תפארת",     boxes: "19–23", x: 46, y: 72},
+    c4: {num: 4,    name: "מתנ\"ס השומר",          short: "השומר",     boxes: "6–9",   x: 86, y: 24},
+    c5: {num: null, name: "בית הכנסת הגדול",       short: "הגדול",     boxes: "40–42", x: 58, y: 12}
+  };
+  function P(n, id, sx, box) { return {n: n, id: id, sx: sx, box: box || null}; }
+  function R(n, addr, phone) { return {n: n, addr: addr, phone: phone}; }
+  var Q = [
+    {no:1179, ppl:[P("יעקב פרידמן","032144586","ג",34)], kind:"ג", addr:"רבי עקיבא 112", ent:"", notes:"", phone:"0527123456", cl:"c1", wt:38, dl:"", reason:"", ret:"wait", needs:[], comm:"ליטאים", approx:false, x:64, y:30, op:"מוקדן 3", t:"11:04"},
+    {no:1181, ppl:[P("רחל כהן","058812334","נ",12), P("שמואל כהן","058812326","ג",12)], kind:"משפחה", addr:"חזון איש 41", ent:"ב", notes:"קומה 3, יורדים לבד", phone:"039187744", cl:"c2", wt:31, dl:"", reason:"", ret:"wait", needs:["הליכון"], comm:"", approx:false, x:30, y:58, op:"מוקדן 1", t:"11:11"},
+    {no:1185, ppl:[P("מרים וייס","051777316","נ",21)], kind:"נ", addr:"הרב כהנמן 88", ent:"", notes:"", phone:"0548455120", cl:"c3", wt:27, dl:"12:30", reason:"יציאה מהעיר", ret:"sep", needs:[], comm:"גור", approx:false, x:40, y:80, op:"מוקדן 2", t:"11:15"},
+    {no:1186, ppl:[P("חיים ברגר","023456783","ג",11)], kind:"ג", addr:"רש\"י 19", ent:"", notes:"", phone:"0533127745", cl:"c2", wt:19, dl:"12:15", reason:"טיפול רפואי", ret:"wait", needs:["כיסא גלגלים"], comm:"", approx:false, x:20, y:40, op:"מוקדן 3", t:"11:23"},
+    {no:1187, ppl:[P("אהרן גרינברג","027154980","ג",33)], kind:"ג", addr:"דסלר 7", ent:"", notes:"", phone:"0548801123", cl:"c1", wt:24, dl:"", reason:"", ret:"wait", needs:[], comm:"", approx:false, x:74, y:52, op:"מוקדן 1", t:"11:18"},
+    {no:1188, ppl:[P("דבורה לנדאו","025889120","נ",20)], kind:"נ", addr:"השומר 3", ent:"", notes:"", phone:"0533318412", cl:"c3", wt:17, dl:"", reason:"", ret:"wait", needs:[], comm:"ויז'ניץ", approx:false, x:52, y:62, op:"מוקדן 2", t:"11:25"},
+    {no:1189, ppl:[P("משה רוזנברג","039775411","ג",34)], kind:"ג", addr:"סוקולוב 60", ent:"", notes:"", phone:"0504412290", cl:"c1", wt:15, dl:"", reason:"", ret:"wait", needs:[], comm:"", approx:false, x:68, y:36, op:"מוקדן 3", t:"11:27"},
+    {no:1190, ppl:[P("יצחק הלפרין","014422876","ג",7), P("פנינה הלפרין","014422884","נ",7)], kind:"משפחה", addr:"אהרונוביץ 22", ent:"", notes:"", phone:"0527700990", cl:"c4", wt:14, dl:"", reason:"", ret:"none", needs:[], comm:"בעלזא", approx:false, x:88, y:34, op:"מוקדן 1", t:"11:28"},
+    {no:1191, ppl:[P("נחמה פישר","","נ",null)], kind:"נ", addr:"חזון איש 9", ent:"", notes:"לצלצל באינטרקום", phone:"036181234", cl:"c2", wt:9, dl:"", reason:"", ret:"wait", needs:["צריך עזרה"], comm:"", approx:false, pending:true, x:34, y:48, op:"מוקדן 2", t:"11:33"},
+    {no:1192, ppl:[P("שלמה גולדברג","031457720","ג",22)], kind:"ג", addr:"הרב כהנמן 220", ent:"", notes:"", phone:"0583264400", cl:"c3", wt:8, dl:"", reason:"", ret:"wait", needs:[], comm:"", approx:true, x:42, y:86, op:"מוקדן 3", t:"11:34"},
+    {no:1193, ppl:[P("רבקה טננבאום","033098127","נ",32)], kind:"נ", addr:"סוקולוב 31", ent:"", notes:"", phone:"0527700451", cl:"c1", wt:4, dl:"", reason:"", ret:"wait", needs:[], comm:"", approx:false, pending:true, x:66, y:44, op:"מוקדן 1", t:"11:38"},
+    {no:1194, ppl:[P("בנימין פולק","029991234","ג",35), P("שרה פולק","029991242","נ",35)], kind:"משפחה", addr:"רבי עקיבא 140", ent:"", notes:"", phone:"0504190022", cl:"c1", wt:2, dl:"", reason:"", ret:"wait", needs:["כיסא גלגלים"], comm:"", approx:false, x:76, y:24, op:"מוקדן 2", t:"11:40"},
+    {no:1195, ppl:[P("מאיר שוורץ","037712054","ג",34)], kind:"ג", addr:"דסלר 30", ent:"", notes:"", phone:"0533004411", cl:"c1", wt:1, dl:"", reason:"", ret:"wait", needs:[], comm:"", approx:false, x:76, y:46, op:"מוקדן 3", t:"11:41"},
+    {no:1196, ppl:[P("גיטל רבינוביץ","035560218","נ",41)], kind:"נ", addr:"הרב שך 50", ent:"", notes:"", phone:"0548877001", cl:"c5", wt:1, dl:"", reason:"", ret:"wait", needs:[], comm:"סאטמר", approx:false, x:56, y:20, op:"מוקדן 1", t:"11:41"}
+  ];
+  Q.forEach(function (r) { r.st = "בתור"; });
+  var D = [
+    {id:"d1", name:"אברהם גולד",     phone:"0527741200", seats:4, wc:false, app:true,  st:"soon", soon:5,  x:66, y:34, trip:{n:3, cl:"c1", stage:"בדרך חזרה", riders:[R("אליהו שפירא","ירושלים 12","0504412299"), R("מנחם ויס","עזרא 4","0533019922"), R("ברוך לוי","עזרא 9","0548100200")]}},
+    {id:"d2", name:"ישראל שטיין",    phone:"0548812001", seats:6, wc:false, app:true,  st:"free", x:32, y:54, trip:null},
+    {id:"d3", name:"נפתלי רוט",      phone:"0548811220", seats:4, wc:true,  app:false, st:"free", x:20, y:36, trip:null},
+    {id:"d4", name:"יהודה ברנשטיין", phone:"0533001122", seats:4, wc:false, app:true,  st:"soon", soon:10, x:44, y:80, trip:{n:2, cl:"c3", stage:"הורד בקלפי", riders:[R("חנה זילברמן","רש\"י 40","0527700222"), R("צביה אדלר","דסלר 18","0533104455")]}},
+    {id:"d5", name:"זאב הירש",       phone:"0504488123", seats:4, wc:false, app:true,  st:"busy", x:24, y:62, trip:{n:3, cl:"c2", stage:"נאסף", riders:[R("דוד קרמר","השומר 12","0548112233"), R("יוסף בלום","אהרונוביץ 5","0527711040"), R("שלום גרין","עזרא 20","0533550066")]}},
+    {id:"d6", name:"מרדכי וקסלר",    phone:"0527001188", seats:3, wc:true,  app:true,  st:"busy", x:54, y:76, trip:{n:2, cl:"c3", stage:"בדרך לאיסוף", riders:[R("אסתר ומרדכי ברק","הרב שך 14","036199880")]}},
+    {id:"d7", name:"שמחה פרנקל",     phone:"039180055",  seats:4, wc:false, app:false, st:"busy", x:70, y:40, trip:{n:4, cl:"c1", stage:"הורד בקלפי", riders:[R("משפחת קליין (4)","דסלר 22","0527788001")]}},
+    {id:"d8", name:"פנחס לוינסון",   phone:"0583310044", seats:4, wc:false, app:true,  st:"busy", x:88, y:16, trip:{n:1, cl:"c4", stage:"נאסף", riders:[R("אברהם הורוביץ","ז'בוטינסקי 98","0504400771")]}},
+    {id:"d9", name:"גדליה אורבך",    phone:"0548000771", seats:6, wc:false, app:true,  st:"done", x:60, y:56, trip:null}
+  ];
+  var DONE = [
+    {no:1176, ppl:[P("אליהו שפירא","038812239","ג",12)], phone:"0504412299", cl:"c2", st:"שובץ", t:"11:05", info:"נהג: זאב הירש"},
+    {no:1150, ppl:[P("אסתר מרגליות","027154998","נ",33)], phone:"0548801199", cl:"c1", st:"נסגר", t:"10:40", info:"הוחזרה הביתה ב-11:20"}
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var ui = { sel: null, filter: "all", openDrv: null, propIdx: 0 };
+  var props = [];
+
+  // ---------- Helpers ----------
+  function wcls(m) { return m >= 30 ? "wt-r" : (m >= 15 ? "wt-y" : "wt-g"); }
+  // A request whose deadline is 30 minutes away or less counts as red, whatever its wait.
+  function wclsR(r) { return dlSoon(r) ? "wt-r" : wcls(r.wt); }
+  function hhmm(m) { return Math.floor(m / 60) + ":" + ("0" + (m % 60)).slice(-2); }
+  function toMin(s) { var p = s.split(":"); return Number(p[0]) * 60 + Number(p[1]); }
+  function fmtPhone(d) { return d.length === 10 ? d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6) : (d.length === 9 ? d.slice(0,2) + "-" + d.slice(2,5) + "-" + d.slice(5) : d); }
+  function names(r) { var n = r.ppl.map(function (p) { return p.n; }); return n.length === 1 ? n[0] : n.slice(0, -1).join(", ") + " ו" + n[n.length - 1]; }
+  function shortNames(r) { if (r.kind !== "משפחה") return r.ppl[0].n; var last = r.ppl[0].n.split(" ").slice(-1)[0]; return "משפחת " + last; }
+  function kindLabel(r) { return r.kind === "ג" ? "גבר" : (r.kind === "נ" ? "אישה" : "משפחה · " + r.ppl.length); }
+  function clLabel(c) { var k = CL[c]; return (k.num ? "אשכול " + k.num + " · " : "") + k.name; }
+  function plate(c) { var k = CL[c], tip = k.name + ' · ' + k.addr0; return k.num ? '<span class="pl" title="' + tip + '">' + k.num + '</span>' : '<span class="pl pl-name" title="' + tip + '">' + k.short + '</span>'; }
+  function pax(r) { return r.ppl.length; }
+  var WC_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="3.6" r="1.9" fill="currentColor" stroke="none"/><path d="M11 7v6.5h5.5l2.5 5.5"/><path d="M11 10.5h4.5"/><path d="M8 10.8a5.6 5.6 0 1 0 7.8 6.7"/></svg>';
+  function wcIcon() { return '<span class="ico" role="img" aria-label="כיסא גלגלים" title="כיסא גלגלים">' + WC_SVG + '</span>'; }
+  function needHtml(n) { return n === "כיסא גלגלים" ? wcIcon() : '<span class="chip need">' + n + '</span>'; }
+  function dist(a, b) { return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2)); }
+  function score(r) { var s = r.wt; if (r.dl) { var left = toMin(r.dl) - NOW; if (left < 60) s += 60 - left; } return s; }
+  // Queue order: requests whose deadline is 30 minutes away or less come first (nearest deadline first); then longest wait first.
+  function queued() {
+    return Q.filter(function (r) { return r.st === "בתור"; }).sort(function (a, b) {
+      var sa = dlSoon(a), sb = dlSoon(b);
+      if (sa && sb) return toMin(a.dl) - toMin(b.dl);
+      if (sa) return -1;
+      if (sb) return 1;
+      return b.wt - a.wt;
+    });
+  }
+  function dlSoon(r) { return r.dl && toMin(r.dl) - NOW <= 30; }
+  function byNo(no) { return Q.filter(function (r) { return r.no === no; })[0]; }
+  function hasWc(r) { return r.needs.indexOf("כיסא גלגלים") >= 0; }
+  var tt;
+  function toast(s) { var t = $("toast"); t.textContent = s; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove("show"); }, 3400); }
+
+  // ---------- Rules: who may ride together ----------
+  function compat(p, r) {
+    var d = p.drv, used = p.stops.reduce(function (s, x) { return s + pax(x); }, 0);
+    if (p.stops.indexOf(r) >= 0) return "כבר בהצעה";
+    if (hasWc(r) && !d.wc) return "הרכב לא נגיש";
+    if (used + pax(r) > d.seats) return "אין מקום ברכב";
+    if (p.stops.length) {
+      if (r.kind === "משפחה" || p.stops[0].kind === "משפחה") return "משפחה נוסעת לבד";
+      if (r.kind !== p.stops[0].kind) return "ברכב " + (p.stops[0].kind === "ג" ? "גברים" : "נשים");
+    }
+    return "";
+  }
+  function orderStops(p) {
+    var left = p.stops.slice(), cur = p.drv, out = [];
+    while (left.length) { left.sort(function (a, b) { return dist(cur, a) - dist(cur, b); }); cur = left.shift(); out.push(cur); }
+    p.stops = out;
+  }
+  // A proposal for every driver who is free or about to be free. Most urgent request first, then nearby requests that fit the same car.
+  function buildProps(keepManual) {
+    var manual = {};
+    if (keepManual) props.forEach(function (p) { if (p.manual) manual[p.drv.id] = p; });
+    var taken = {};
+    Object.keys(manual).forEach(function (k) { manual[k].stops.forEach(function (r) { taken[r.no] = 1; }); });
+    var drivers = D.filter(function (d) { return d.st === "free"; }).concat(D.filter(function (d) { return d.st === "soon"; }).sort(function (a, b) { return a.soon - b.soon; }));
+    props = [];
+    drivers.forEach(function (d) {
+      if (manual[d.id]) { props.push(manual[d.id]); return; }
+      var p = { drv: d, stops: [], manual: false };
+      var q = queued().filter(function (r) { return !taken[r.no]; });
+      var first = q.filter(function (r) { return !compat(p, r); })[0];
+      if (!first) { props.push(p); return; }
+      p.stops.push(first); taken[first.no] = 1;
+      if (first.kind !== "משפחה") {
+        q.filter(function (r) { return !taken[r.no] && dist(r, first) < 22 && dist(CL[r.cl], CL[first.cl]) < 22; })
+         .forEach(function (r) { if (!compat(p, r)) { p.stops.push(r); taken[r.no] = 1; } });
+      }
+      orderStops(p);
+      props.push(p);
+    });
+    if (ui.propIdx >= props.length) ui.propIdx = 0;
+  }
+  function curProp() { return props[ui.propIdx] || null; }
+  function inAnyProp(r) { return props.some(function (p) { return p.stops.indexOf(r) >= 0; }); }
+
+  // ---------- Render ----------
+  function passFilter(r) {
+    var f = ui.filter;
+    if (f === "all") return true;
+    if (f === "wc") return hasWc(r);
+    if (f === "pending") return !!r.pending;
+    return r.kind === f;
+  }
+  function renderQueue() {
+    var q = queued();
+    $("qCount").textContent = q.length;
+    var p = curProp();
+    $("queue").innerHTML = q.filter(passFilter).map(function (r) {
+      var cls = "q" + (ui.sel === r.no ? " sel" : "") + (p && p.stops.indexOf(r) >= 0 ? " inprop" : "");
+      var flags = r.needs.map(needHtml).join("") +
+        (r.approx ? '<span class="chip approx">מיקום משוער</span>' : '') +
+        (r.pending ? '<span class="chip pend">ממתין לאימות</span>' : '') +
+        (r.ret === "sep" ? '<span class="chip sep">חזור בנפרד</span>' : (r.ret === "none" ? '<span class="chip sep">הלוך בלבד</span>' : ''));
+      return '<tr class="' + cls + '" tabindex="0" data-no="' + r.no + '">' +
+        '<td><span class="wt ' + wclsR(r) + '">' + r.wt + '</span></td>' +
+        '<td title="' + names(r) + '"><span class="nm">' + shortNames(r) + '</span><span class="kind">' + kindLabel(r) + '</span></td>' +
+        '<td><span class="route"><span class="from">' + r.addr + '</span><span class="dash"></span><span class="arr"></span>' + plate(r.cl) + '</span></td>' +
+        '<td>' + (r.dl ? '<span class="dl' + (dlSoon(r) ? ' dl-soon' : '') + '" title="' + r.reason + '">עד ' + r.dl + '</span>' : '<span class="muted">עכשיו</span>') + '</td>' +
+        '<td class="flags-cell"><div class="flags">' + flags + '</div></td></tr>';
+    }).join("") || '<tr><td colspan="5" class="muted" style="height:60px;text-align:center">אין פניות שמתאימות לסינון.</td></tr>';
+  }
+  function renderDetails() {
+    var r = ui.sel ? byNo(ui.sel) : null, box = $("details");
+    if (!r || r.st !== "בתור") { box.classList.remove("show"); box.innerHTML = ""; return; }
+    var p = curProp();
+    var people = r.ppl.map(function (x) {
+      return '<div><b>' + x.n + '</b> · ' + (x.sx === "ג" ? "גבר" : "אישה") + '</div>';
+    }).join("");
+    var boxes = []; r.ppl.forEach(function (x) { if (x.box && boxes.indexOf(x.box) < 0) boxes.push(x.box); });
+    var when = r.dl ? 'חייב לצאת עד ' + r.dl + ' (' + r.reason + ')' : 'עכשיו';
+    var addAct = "";
+    if (p) {
+      var why = compat(p, r);
+      addAct = why ? '<span class="why">לא ניתן לצרף ל' + p.drv.name + ': ' + why + '</span>'
+                   : '<button class="b1" type="button" data-act="addToProp">צרף ל' + p.drv.name + '</button>';
+    }
+    box.innerHTML =
+      '<div class="m-h">פנייה מס\' ' + r.no + '<span class="wt-lbl"><span class="wt ' + wclsR(r) + '">' + r.wt + '</span>דקות המתנה</span><button class="xbtn" type="button" data-act="close" aria-label="סגור">×</button></div>' +
+      '<div class="det-body">' +
+        (r.approx ? '<div class="warnline">גוגל לא מצא את הבניין, והמיקום משוער לפי הרחוב. כדאי לברר עם הפונה לפני השליחה.</div>' : '') +
+        (r.pending ? '<div class="k">אימות</div><div class="v vrow"><span class="chip pend">ממתין לאימות</span><button class="bsm" type="button" data-act="verify">אומת</button></div>' : '') +
+        '<div class="k">נוסעים</div><div class="v">' + people + '</div>' +
+        '<div class="k">טלפון</div><div class="v"><b dir="ltr" class="nowrap">' + fmtPhone(r.phone) + '</b></div>' +
+        '<div class="k">כתובת</div><div class="v">' + r.addr + (r.ent ? ', כניסה ' + r.ent : '') + (r.notes ? ' · <span class="muted">' + r.notes + '</span>' : '') + '</div>' +
+        '<div class="k">יעד</div><div class="v">' + clLabel(r.cl) + (boxes.length ? '<div class="muted">קלפי ' + boxes.join(", ") + '</div>' : '') + '</div>' +
+        '<div class="k">זמן</div><div class="v">' + when + '</div>' +
+        (r.ret !== "wait" ? '<div class="k">חזרה</div><div class="v">' + (r.ret === "sep" ? "חזור בנפרד, יתקשרו" : "הלוך בלבד") + '</div>' : '') +
+        (r.needs.length ? '<div class="k">צרכים</div><div class="v">' + r.needs.map(function (n) { return n === "כיסא גלגלים" ? wcIcon() + ' כיסא גלגלים' : n; }).join(", ") + '</div>' : '') +
+        (r.comm ? '<div class="k">קהילה</div><div class="v">' + r.comm + '</div>' : '') +
+        '<div class="k">התקבלה</div><div class="v">' + r.t + ' · ' + r.op + '</div>' +
+      '</div>' +
+      '<div class="det-acts">' + addAct + '<button class="b2 bdanger" type="button" data-act="cancelOpen">בטל פנייה</button>' +
+        '<div class="cancel-form" id="cancelForm"><div><select id="cancelReason" aria-label="סיבת ביטול"><option value="">למה מבטלים?*</option><option>הפונה ביטל</option><option>לא ענה לטלפון</option><option>לא נמצא בכתובת</option><option>פנייה כפולה</option><option>אחר</option></select><input class="inp cancel-other" id="cancelOther" type="text" maxlength="80" placeholder="פרט בקצרה" aria-label="פרט בקצרה (חובה)"><div class="msg" id="cancelMsg"></div></div>' +
+        '<button class="b2 bdanger" type="button" data-act="cancelDo">אשר ביטול</button><button class="b2" type="button" data-act="cancelBack">חזרה</button></div>' +
+      '</div>';
+    box.classList.add("show");
+  }
+  function renderProp() {
+    var box = $("prop");
+    if (!props.length) { box.innerHTML = '<div class="prop"><div class="empty-prop">אין כרגע נהגים פנויים או מתפנים.</div></div>'; return; }
+    var p = curProp(), d = p.drv;
+    var tabs = props.map(function (x, i) {
+      return '<button type="button" class="' + (i === ui.propIdx ? "on" : "") + '" data-tab="' + i + '">' + x.drv.name + (x.drv.st === "soon" ? " · בעוד " + x.drv.soon : " · פנוי") + '</button>';
+    }).join("");
+    var used = p.stops.reduce(function (s, x) { return s + pax(x); }, 0);
+    var stops = p.stops.map(function (r) {
+      return '<li><span class="wt ' + wclsR(r) + '">' + r.wt + '</span><b>' + shortNames(r) + '</b><span>' + r.addr + '</span>' +
+        (r.approx ? '<span class="chip approx">משוער</span>' : '') + '<button class="rm" type="button" data-rm="' + r.no + '">הסר</button></li>';
+    }).join("");
+    var cls = []; p.stops.forEach(function (r) { if (cls.indexOf(r.cl) < 0) cls.push(r.cl); });
+    stops += cls.map(function (c) { return '<li class="end">' + plate(c) + '<b>' + CL[c].name + '</b></li>'; }).join("");
+    var script = "";
+    if (!d.app && p.stops.length) {
+      script = '<div class="script"><b class="t">להקריא לנהג (בלי אפליקציה) · <span dir="ltr" class="nowrap">' + fmtPhone(d.phone) + '</span></b>' +
+        p.stops.map(function (r, i) { return (i + 1) + '. ' + r.addr + (r.ent ? ' כניסה ' + r.ent : '') + ', ' + names(r) + ', טלפון <span dir="ltr" class="nowrap">' + fmtPhone(r.phone) + '</span>.'; }).join(" ") +
+        ' ואז ל' + cls.map(function (c) { return CL[c].name + ' (' + CL[c].addr0 + ')'; }).join(" ול") + '. ' + (p.stops.some(function (r) { return r.ret === "wait"; }) ? 'לחכות ולהחזיר הביתה.' : '') + '</div>';
+    }
+    var body = p.stops.length
+      ? '<div class="prop-head"><b>' + d.name + '</b><span class="muted">' + (d.st === "soon" ? "מתפנה בעוד " + d.soon + " דקות" : "פנוי עכשיו") + (d.wc ? " · " + wcIcon() : "") + '</span><span class="seats">' + used + ' מתוך ' + d.seats + ' מקומות</span></div>' +
+        '<ul class="stops">' + stops + '</ul>' + script +
+        '<div class="prop-acts">' + (d.app ? '<button class="b1" type="button" data-act="send">אשר ושלח לנהג</button>' : '<button class="b1" type="button" data-act="send">התקשרתי, הנהג אישר</button>') +
+        '<button class="b2" type="button" data-act="skip">להצעה הבאה</button></div>'
+      : '<div class="prop-head"><b>' + d.name + '</b><span class="seats">0 מתוך ' + d.seats + ' מקומות</span></div><div class="muted">אין בתור פנייה שמתאימה לרכב הזה. אפשר ללחוץ על פנייה בתור ולהוסיף אותה ידנית.</div>';
+    box.innerHTML = '<div class="prop"><div class="prop-tabs" role="tablist">' + tabs + '</div><div class="prop-in">' + body + '</div></div>';
+  }
+  function renderDrivers() {
+    // Drivers who finished for the day are hidden; their details stay saved for when they come back.
+    var order = {free: 0, soon: 1, busy: 2};
+    var list = D.filter(function (d) { return d.st !== "done"; }).sort(function (a, b) { return order[a.st] - order[b.st]; });
+    $("dCount").textContent = list.length;
+    $("drivers").innerHTML = list.map(function (d) {
+      var stx = d.st === "free" ? "פנוי" : (d.st === "soon" ? "מתפנה בעוד " + d.soon + "" : (d.st === "busy" ? "בנסיעה · " + d.trip.n : "סיים"));
+      var row = '<tr class="drv' + (ui.openDrv === d.id ? " open" : "") + '" tabindex="0" data-drv="' + d.id + '"><td style="white-space:normal;padding-block:4px"><span class="nm">' + d.name + '</span>' + (d.app ? '' : ' <span class="chip noapp">בלי אפליקציה</span>') + '</td><td><span class="st ds-' + d.st + '">' + stx + '</span></td><td>' + d.seats + ' מק\'' + (d.wc ? ' ' + wcIcon() : '') + '</td></tr>';
+      if (ui.openDrv === d.id) {
+        var trip = d.trip
+          ? '<div>שלב: <b>' + d.trip.stage + '</b> · אל ' + clLabel(d.trip.cl) + '</div><div><b>לוקח עכשיו:</b></div><ul class="riders">' +
+            (d.trip.riders || []).map(function (x) { return '<li><b>' + x.n + '</b> · ' + x.addr + ' · <span dir="ltr" class="nowrap">' + fmtPhone(x.phone) + '</span></li>'; }).join("") + '</ul>'
+          : 'אין נסיעה פעילה.';
+        // The dispatcher can change the status of every driver, with or without the app.
+        var top = '<div class="dx-top"><span>טלפון: <b dir="ltr" class="nowrap">' + fmtPhone(d.phone) + '</b></span>' +
+          '<span class="small"><button class="bsm" type="button" data-dedit="' + d.id + '">ערוך</button> ' +
+          '<button class="bsm" type="button" data-dact="done"' + (d.trip ? ' disabled title="אפשר רק כשאין נסיעה פעילה"' : '') + '>סיים לעבוד</button></span></div>';
+        var acts = (d.trip
+            ? '<div class="dx-status"><button class="b3" type="button" data-dact="נאסף">נאסף</button><button class="b3" type="button" data-dact="הורד בקלפי">הורד בקלפי</button><button class="b3" type="button" data-dact="soon5">מתפנה בעוד 5</button><button class="b3" type="button" data-dact="free">פנוי</button></div>'
+            : '') +
+          (d.app && d.trip ? '<span class="muted">הנהג יראה את השינוי באפליקציה.</span>' : '');
+        row += '<tr class="dx"><td colspan="3"><div class="dx-grid">' + top + '<div>' + trip + '</div>' + acts + '</div></td></tr>';
+      }
+      return row;
+    }).join("");
+  }
+  // ---------- Map: zoom and pan per map box ----------
+  var VIEW = { map: {s: 1, tx: 0, ty: 0}, mapBig: {s: 1, tx: 0, ty: 0} };
+  function applyView(id) { var el = $(id), v = VIEW[id], inner = el && el.querySelector(".map-inner"); if (inner) inner.style.transform = "translate(" + v.tx + "px," + v.ty + "px) scale(" + v.s + ")"; }
+  function zoom(id, f) { var v = VIEW[id]; v.s = Math.min(4, Math.max(1, v.s * f)); if (v.s === 1) { v.tx = 0; v.ty = 0; } applyView(id); }
+  var drag = null, suppressClick = false;
+  ["map", "mapBig"].forEach(function (id) {
+    var el = $(id);
+    el.addEventListener("wheel", function (e) { e.preventDefault(); zoom(id, e.deltaY < 0 ? 1.2 : 1 / 1.2); }, { passive: false });
+    el.addEventListener("pointerdown", function (e) { if (VIEW[id].s === 1) return; drag = {id: id, x: e.clientX, y: e.clientY, tx: VIEW[id].tx, ty: VIEW[id].ty, moved: false}; el.classList.add("dragging"); });
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    VIEW[drag.id].tx = drag.tx + dx; VIEW[drag.id].ty = drag.ty + dy; applyView(drag.id);
+  });
+  window.addEventListener("pointerup", function () { if (!drag) return; suppressClick = drag.moved; $(drag.id).classList.remove("dragging"); drag = null; });
+  function openMapBig() { $("mapBack").classList.add("show"); renderMap("mapBig"); $("mapX").focus(); }
+  function closeMapBig() { $("mapBack").classList.remove("show"); $("btnMapBig").focus(); }
+  $("btnMapBig").addEventListener("click", openMapBig);
+  $("mapX").addEventListener("click", closeMapBig);
+  $("mapBack").addEventListener("click", function (e) { if (e.target === this) closeMapBig(); });
+
+  function renderMap(id) {
+    id = id || "map";
+    var p = curProp();
+    var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
+      '<g fill="#e3e9e2"><rect x="4" y="6" width="18" height="16"/><rect x="30" y="6" width="20" height="14"/><rect x="58" y="8" width="16" height="12"/><rect x="6" y="50" width="16" height="14"/><rect x="60" y="52" width="14" height="12"/><rect x="34" y="76" width="22" height="16"/><rect x="80" y="70" width="14" height="18"/></g>' +
+      '<g stroke="#ffffff" stroke-width="2.4" fill="none"><path d="M0 28 L100 24"/><path d="M0 46 L100 44"/><path d="M0 68 L100 66"/><path d="M26 0 L30 100"/><path d="M54 0 L50 100"/><path d="M76 0 L78 100"/><path d="M0 90 L100 92"/></g>';
+    if (p && p.stops.length) {
+      var pts = [p.drv].concat(p.stops);
+      var cls = []; p.stops.forEach(function (r) { if (cls.indexOf(r.cl) < 0) cls.push(r.cl); });
+      cls.forEach(function (c) { pts.push(CL[c]); });
+      svg += '<polyline fill="none" stroke="#0b4c9e" stroke-width="0.9" stroke-linejoin="round" points="' + pts.map(function (o) { return (100 - o.x) + "," + o.y; }).join(" ") + '"/>';
+    }
+    svg += '</svg>';
+    var h = '<div class="map-inner">' + svg;
+    Object.keys(CL).forEach(function (c) { var k = CL[c]; h += '<span class="mplate" style="right:' + k.x + '%;top:' + k.y + '%">' + plate(c) + '</span>'; });
+    D.forEach(function (d) {
+      if (d.st === "done") return;
+      h += '<div class="car ' + (d.st === "free" ? "" : d.st) + (p && p.drv === d ? " cur" : "") + '" style="right:' + d.x + '%;top:' + d.y + '%" title="' + d.name + '">' + d.seats + '</div>';
+    });
+    queued().forEach(function (r) {
+      h += '<div class="pin ' + (r.wt >= 30 || dlSoon(r) ? "r" : (r.wt >= 15 ? "y" : "g")) + (r.approx ? " approx" : "") + (ui.sel === r.no ? " sel" : "") + '" data-no="' + r.no + '" style="right:' + r.x + '%;top:' + r.y + '%" title="' + shortNames(r) + ', ' + r.addr + '"></div>';
+    });
+    h += '</div><div class="legend"><span><i style="background:var(--ok)"></i>עד 15</span><span><i style="background:#d99a00"></i>15–30</span><span><i style="background:var(--bad)"></i>מעל 30</span>' +
+      '<span><i style="background:#fff;outline:2px dashed var(--warn)"></i>מיקום משוער</span><span><i class="sq" style="background:var(--ok)"></i>נהג פנוי</span><span><i class="sq" style="background:#d99a00"></i>מתפנה</span><span><i class="sq" style="background:var(--muted)"></i>בנסיעה</span><span><i style="background:var(--action);border-radius:0;height:3px;width:14px"></i>מסלול ההצעה</span></div>' +
+      '<div class="map-cap">מפה לדוגמה. במערכת: מפת גוגל. גלגלת או +/− להגדלה, גרירה להזזה</div>';
+    $(id).innerHTML = h;
+    applyView(id);
+  }
+  function render() { renderQueue(); renderDetails(); renderProp(); renderDrivers(); renderMap("map"); if ($("mapBack").classList.contains("show")) renderMap("mapBig"); }
+
+  // ---------- Actions ----------
+  function sendProp() {
+    var p = curProp(); if (!p || !p.stops.length) return;
+    var d = p.drv, cls = [];
+    p.stops.forEach(function (r) { r.st = "שובץ"; r.drv = d.name; if (cls.indexOf(r.cl) < 0) cls.push(r.cl); });
+    var n = p.stops.reduce(function (s, x) { return s + pax(x); }, 0);
+    var stage = d.st === "soon" ? "מסיים נסיעה קודמת" : "בדרך לאיסוף";
+    d.st = "busy"; d.trip = {n: n, cl: cls[0], stage: stage, riders: p.stops.map(function (r) { return R(names(r), r.addr, r.phone); })};
+    toast((d.app ? "נשלח ל" : "נרשם: ") + d.name + (d.app ? "" : " אישר בטלפון") + ". " + p.stops.length + " פניות עברו ל\"שובץ\".");
+    if (p.stops.indexOf(byNo(ui.sel)) >= 0) ui.sel = null;
+    buildProps(true); render();
+  }
+  $("screen").addEventListener("click", function (e) {
+    var t;
+    if (suppressClick) { suppressClick = false; return; }
+    if ((t = e.target.closest("[data-zoom]"))) {
+      var zid = t.getAttribute("data-target"), z = t.getAttribute("data-zoom");
+      if (z === "reset") { VIEW[zid] = {s: 1, tx: 0, ty: 0}; applyView(zid); } else zoom(zid, z === "in" ? 1.4 : 1 / 1.4);
+      return;
+    }
+    if ((t = e.target.closest("[data-tab]"))) { ui.propIdx = Number(t.getAttribute("data-tab")); render(); return; }
+    if ((t = e.target.closest("[data-rm]"))) {
+      var p = curProp(), r = byNo(Number(t.getAttribute("data-rm")));
+      p.stops.splice(p.stops.indexOf(r), 1); p.manual = true; render(); return;
+    }
+    if ((t = e.target.closest("[data-act]"))) {
+      var a = t.getAttribute("data-act");
+      if (a === "send") sendProp();
+      else if (a === "skip") { ui.propIdx = (ui.propIdx + 1) % props.length; render(); }
+      else if (a === "close") { ui.sel = null; render(); }
+      else if (a === "verify") { var rv = byNo(ui.sel); rv.pending = false; toast("פנייה " + rv.no + " סומנה כאומתה."); render(); }
+      else if (a === "addToProp") { var cp = curProp(), rr = byNo(ui.sel); props.forEach(function (x) { var i = x.stops.indexOf(rr); if (i >= 0 && x !== cp) { x.stops.splice(i, 1); x.manual = true; } }); cp.stops.push(rr); cp.manual = true; orderStops(cp); render(); }
+      else if (a === "cancelOpen") { $("cancelForm").classList.add("show"); t.style.display = "none"; $("cancelReason").focus(); }
+      else if (a === "cancelBack") { renderDetails(); }
+      else if (a === "cancelDo") {
+        var sel = $("cancelReason");
+        if (!sel.value) { sel.classList.add("err"); $("cancelMsg").className = "msg err-t"; $("cancelMsg").textContent = "יש לבחור סיבה."; return; }
+        var other = $("cancelOther").value.trim();
+        if (sel.value === "אחר" && !other) { $("cancelOther").classList.add("err"); $("cancelMsg").className = "msg err-t"; $("cancelMsg").textContent = "יש לכתוב הסבר קצר."; $("cancelOther").focus(); return; }
+        var why = sel.value === "אחר" ? "אחר: " + other : sel.value;
+        var rc = byNo(ui.sel); rc.st = "בוטל"; rc.info = why;
+        toast("פנייה " + rc.no + " בוטלה: " + why + ".");
+        ui.sel = null; buildProps(true); render();
+      }
+      return;
+    }
+    if ((t = e.target.closest("[data-dedit]"))) { var de = t.getAttribute("data-dedit"); openDlg(D.filter(function (x) { return x.id === de; })[0]); return; }
+    if ((t = e.target.closest("[data-dact]"))) {
+      var d = D.filter(function (x) { return x.id === ui.openDrv; })[0], v = t.getAttribute("data-dact");
+      if (v === "free") { d.st = "free"; d.trip = null; }
+      else if (v === "soon5") { d.st = "soon"; d.soon = 5; }
+      else if (v === "done") { d.st = "done"; ui.openDrv = null; }
+      else { d.trip.stage = v; }
+      toast(v === "done" ? d.name + " סיים לעבוד והוסר מהרשימה. הפרטים שלו שמורים, אם יחזור." : "עודכן בשם " + d.name + ": " + (v === "free" ? "פנוי" : (v === "soon5" ? "מתפנה בעוד 5 דקות" : v)) + ".");
+      buildProps(true); render(); return;
+    }
+    if ((t = e.target.closest("tr[data-drv]"))) { var id = t.getAttribute("data-drv"); ui.openDrv = ui.openDrv === id ? null : id; renderDrivers(); return; }
+    if ((t = e.target.closest("[data-no]"))) { var no = Number(t.getAttribute("data-no")); ui.sel = ui.sel === no ? null : no; render(); return; }
+    if ((t = e.target.closest("[data-f]"))) {
+      ui.filter = t.getAttribute("data-f");
+      document.querySelectorAll("#filters .fbtn").forEach(function (b) { b.classList.toggle("on", b === t); });
+      renderQueue(); return;
+    }
+  });
+  $("screen").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var t = e.target;
+    if (t.matches("tr[data-no]")) { var no = Number(t.getAttribute("data-no")); ui.sel = ui.sel === no ? null : no; render(); }
+    if (t.matches("tr[data-drv]")) { var id = t.getAttribute("data-drv"); ui.openDrv = ui.openDrv === id ? null : id; renderDrivers(); }
+  });
+  $("screen").addEventListener("input", function (e) {
+    if (e.target.id === "cancelOther" && e.target.value.trim()) { e.target.classList.remove("err"); e.target.classList.add("good"); $("cancelMsg").textContent = ""; }
+  });
+  $("screen").addEventListener("change", function (e) {
+    if (e.target.id === "cancelReason") {
+      if (e.target.value) { e.target.classList.remove("err"); e.target.classList.add("good"); $("cancelMsg").textContent = ""; }
+      $("cancelOther").classList.toggle("show", e.target.value === "אחר");
+      if (e.target.value === "אחר") $("cancelOther").focus();
+    }
+  });
+
+  // ---------- Search ----------
+  function allReqs() {
+    return Q.map(function (r) {
+      var info = r.st === "בתור" ? "ממתין " + r.wt + " דקות" : (r.st === "שובץ" ? "נהג: " + r.drv : (r.info || ""));
+      return {no: r.no, ppl: r.ppl, phone: r.phone, cl: r.cl, st: r.st, t: r.t, info: info};
+    }).concat(DONE);
+  }
+  function stCls(s) { return s === "בתור" ? "st-q" : (s === "נסגר" ? "st-d" : (s === "בוטל" ? "st-x" : "st-a")); }
+  function runSearch() {
+    var q = $("q").value.trim(), box = $("results");
+    if (q.length < 2) { box.classList.remove("show"); return; }
+    var c = q.replace(/[\s-]/g, ""), isNum = /^\d+$/.test(c);
+    var hits = allReqs().filter(function (r) {
+      return isNum ? (r.phone.indexOf(c) >= 0 || r.ppl.some(function (p) { return p.id && p.id.indexOf(c) >= 0; })) : r.ppl.some(function (p) { return p.n.indexOf(q) >= 0; });
+    }).slice(0, 6);
+    box.innerHTML = hits.length ? hits.map(function (r) {
+      return '<div class="res" data-res="' + r.no + '"><div class="r1"><b>#' + r.no + '</b><b>' + r.ppl.map(function (p) { return p.n; }).join(", ") + '</b><span dir="ltr" class="nowrap">' + fmtPhone(r.phone) + '</span>' +
+        r.ppl.filter(function (p) { return p.id; }).map(function (p) { return '<span class="nowrap">ת"ז ' + p.id + '</span>'; }).join("") + '</div>' +
+        '<div class="r2"><span>אל: ' + clLabel(r.cl) + '</span></div>' +
+        '<div class="r2"><span class="st ' + stCls(r.st) + '">' + r.st + '</span><span>התקבלה ב-' + r.t + '</span><span>' + r.info + '</span></div></div>';
+    }).join("") : '<div class="res-empty">לא נמצאו פניות.</div>';
+    box.classList.add("show");
+  }
+  $("q").addEventListener("input", runSearch);
+  $("q").addEventListener("focus", runSearch);
+  $("q").addEventListener("blur", function () { setTimeout(function () { $("results").classList.remove("show"); }, 150); });
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") $("results").classList.remove("show"); });
+  $("results").addEventListener("mousedown", function (e) {
+    var r = e.target.closest("[data-res]"); if (!r) return;
+    var x = byNo(Number(r.getAttribute("data-res")));
+    if (x && x.st === "בתור") { ui.sel = x.no; ui.filter = "all"; document.querySelectorAll("#filters .fbtn").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-f") === "all"); }); render(); }
+  });
+
+  // ---------- Add driver ----------
+  function digits(s) { return (s || "").replace(/\D/g, ""); }
+  function phoneErr(d) {
+    if (!d) return "חובה להקליד מספר.";
+    var p2 = d.slice(0, 2), need = p2 === "05" || p2 === "07" ? 10 : (["02","03","04","08","09"].indexOf(p2) >= 0 ? 9 : 0);
+    if (!need) return "קידומת לא מוכרת. בדוק את המספר.";
+    if (d.length < need) return "חסרות " + (need - d.length) + " ספרות (צריך " + need + ").";
+    if (d.length > need) return "יש " + (d.length - need) + " ספרות מיותרות (צריך " + need + ").";
+    return "";
+  }
+  function setF(inp, msg, err) { inp.classList.toggle("err", !!err); inp.classList.toggle("good", !err); var m = $(msg); m.className = "msg" + (err ? " err-t" : ""); m.textContent = err || ""; }
+  function vName() { var e = $("dName").value.trim() ? "" : "חובה להקליד שם."; setF($("dName"), "dNameMsg", e); return !e; }
+  function vPhone() { var e = phoneErr(digits($("dPhone").value)); setF($("dPhone"), "dPhoneMsg", e); return !e; }
+  function vSeats() { var e = $("dSeats").value ? "" : "יש לבחור מספר מקומות."; setF($("dSeats"), "dSeatsMsg", e); return !e; }
+  function vApp() { var on = document.querySelector('input[name="dApp"]:checked'); $("dAppSeg").classList.toggle("err", !on); $("dAppMsg").className = "msg" + (on ? "" : " err-t"); $("dAppMsg").textContent = on ? "" : "יש לבחור כן או לא."; return !!on; }
+  $("dName").addEventListener("blur", vName);
+  $("dPhone").addEventListener("blur", vPhone);
+  $("dPhone").addEventListener("input", function () { if (!phoneErr(digits(this.value))) setF(this, "dPhoneMsg", ""); });
+  $("dSeats").addEventListener("change", vSeats);
+  document.querySelectorAll('input[name="dApp"]').forEach(function (r) { r.addEventListener("change", vApp); });
+  var editDrv = null;
+  function openDlg(drv) {
+    editDrv = drv && drv.id ? drv : null;
+    ["dName","dPhone","dSeats"].forEach(function (id) { $(id).value = ""; $(id).classList.remove("err", "good"); });
+    ["dNameMsg","dPhoneMsg","dSeatsMsg","dAppMsg"].forEach(function (id) { $(id).textContent = ""; });
+    document.querySelectorAll('input[name="dApp"]').forEach(function (r) { r.checked = false; });
+    $("dAppSeg").classList.remove("err");
+    document.querySelector('input[name="dWc"][value="0"]').checked = true;
+    $("known").classList.remove("show"); $("known").innerHTML = "";
+    $("dlgTitle").textContent = editDrv ? "עריכת נהג" : "נהג חדש";
+    $("dSave").textContent = editDrv ? "שמור שינויים" : "הוסף נהג";
+    if (editDrv) {
+      $("dPhone").value = editDrv.phone; $("dName").value = editDrv.name; $("dSeats").value = String(editDrv.seats);
+      document.querySelector('input[name="dWc"][value="' + (editDrv.wc ? 1 : 0) + '"]').checked = true;
+      document.querySelector('input[name="dApp"][value="' + (editDrv.app ? 1 : 0) + '"]').checked = true;
+    }
+    $("dlgBack").classList.add("show"); $("dPhone").focus();
+  }
+  // Drivers kept from earlier (finished today, or from past elections). Typing a known phone offers to bring the driver back.
+  var ARCH = [{name: "דוד כץ", phone: "0527001234", seats: 4, wc: false, app: false, last: "נהג בבחירות לכנסת 2026"}];
+  function lookupDriver() {
+    var d = digits($("dPhone").value), box = $("known");
+    if (editDrv || phoneErr(d)) { box.classList.remove("show"); return; }
+    var cur = D.filter(function (x) { return x.phone === d; })[0];
+    if (cur && cur.st !== "done") {
+      box.innerHTML = '<div>הנהג <b>' + cur.name + '</b> כבר ברשימת הנהגים של היום.</div>';
+      box.classList.add("show"); return;
+    }
+    var old = cur || ARCH.filter(function (x) { return x.phone === d; })[0];
+    if (!old) { box.classList.remove("show"); return; }
+    box.innerHTML = '<div>נמצא נהג עם המספר הזה: <b>' + old.name + '</b> · ' + old.seats + ' מקומות' + (old.wc ? ' · נגיש' : '') + ' · ' + (old.app ? 'עם סמארטפון' : 'בלי סמארטפון') + ' · ' + (cur ? 'סיים לעבוד היום' : old.last) + '</div>' +
+      '<div><b>זה הוא?</b></div><div class="acts"><button class="b1" type="button" id="kYes">כן, החזר לרשימה כפנוי</button><button class="b2" type="button" id="kNo">לא, זה נהג אחר</button></div>';
+    box.classList.add("show");
+    $("kYes").addEventListener("click", function () {
+      if (cur) { cur.st = "free"; cur.trip = null; }
+      else { D.push({id: "d" + Date.now(), name: old.name, phone: old.phone, seats: old.seats, wc: old.wc, app: old.app, st: "free", x: 48, y: 30, trip: null}); }
+      closeDlg(); toast(old.name + " חזר לרשימה כנהג פנוי."); buildProps(true); render();
+    });
+    $("kNo").addEventListener("click", function () { box.classList.remove("show"); $("dName").focus(); });
+  }
+  $("dPhone").addEventListener("input", lookupDriver);
+  function closeDlg() { $("dlgBack").classList.remove("show"); $("btnAddDrv").focus(); }
+  $("btnAddDrv").addEventListener("click", function () { openDlg(null); });
+  $("dCancel").addEventListener("click", closeDlg);
+  $("dX").addEventListener("click", closeDlg);
+  $("dlgBack").addEventListener("click", function (e) { if (e.target === this) closeDlg(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("mapBack").classList.contains("show")) closeMapBig(); });
+  $("dlgBack").addEventListener("keydown", function (e) { if (e.key === "Escape") closeDlg(); });
+  $("dSave").addEventListener("click", function () {
+    var ok = [vPhone(), vName(), vSeats(), vApp()].every(Boolean);
+    var dup = D.filter(function (x) { return x.phone === digits($("dPhone").value) && x.st !== "done" && x !== editDrv; })[0];
+    if (dup) { setF($("dPhone"), "dPhoneMsg", "הנהג כבר ברשימה."); return; }
+    if (!ok) return;
+    var app = document.querySelector('input[name="dApp"]:checked').value === "1";
+    if (editDrv) {
+      editDrv.name = $("dName").value.trim(); editDrv.phone = digits($("dPhone").value); editDrv.seats = Number($("dSeats").value);
+      editDrv.wc = document.querySelector('input[name="dWc"]:checked').value === "1"; editDrv.app = app;
+      var nm = editDrv.name; closeDlg(); toast("פרטי הנהג " + nm + " עודכנו."); buildProps(true); render(); return;
+    }
+    var d = {id: "d" + Date.now(), name: $("dName").value.trim(), phone: digits($("dPhone").value), seats: Number($("dSeats").value),
+      wc: document.querySelector('input[name="dWc"]:checked').value === "1", app: app, st: "free", x: 40 + Math.round(Math.random() * 30), y: 20 + Math.round(Math.random() * 50), trip: null};
+    D.push(d);
+    closeDlg();
+    toast(d.name + " נוסף כנהג פנוי." + (app ? " נשלח אליו קישור לאפליקציה ב-SMS." : " הוא יקבל שיבוצים בטלפון מהמשבץ."));
+    buildProps(true); render();
+  });
+
+  // Polling place street address for the read-aloud script
+  CL.c1.addr0 = "רבי עקיבא 80"; CL.c2.addr0 = "חזון איש 20"; CL.c3.addr0 = "הרב כהנמן 70"; CL.c4.addr0 = "השומר 5"; CL.c5.addr0 = "ז'בוטינסקי 120";
+
+  buildProps(false);
+  render();
+})();
+</script>

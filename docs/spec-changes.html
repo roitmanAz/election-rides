@@ -1,0 +1,60 @@
+<title>שינויי אפיון לאישור</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* Review sheet in the system's own design (DESIGN.md): graphite plates, sign blue, red = old, green = new. Light-only. */
+:root {
+  --page: #e7e9ec; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --action: #0b4c9e; --action-soft: #e6eefa;
+  --old: #b42318; --old-bg: #fdecea; --old-line: #f2b8b3;
+  --new: #1f7a3a; --new-bg: #e6f5ec; --new-line: #a9dcbd;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 16.5px; line-height: 1.65; direction: rtl; }
+.wrap { max-width: 880px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+header { display: grid; gap: 8px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 2px solid var(--line2); }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 5vw, 34px); line-height: 1.2; margin: 0; }
+.lede { color: var(--muted); margin: 0; max-width: 64ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.legend span { font-size: 14px; font-weight: 700; padding: 2px 10px; border-radius: 6px; }
+.legend .o { background: var(--old-bg); color: var(--old); }
+.legend .n { background: var(--new-bg); color: var(--new); }
+.index { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+.index a { font-family: var(--display); font-size: 15px; text-decoration: none; color: #fff; background: var(--plate); border-radius: 5px; padding: 1px 10px; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; }
+.index a:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+.changes { display: grid; gap: 18px; }
+article { background: var(--surface); border: 2px solid var(--line2); border-radius: 8px; padding: 14px 18px; scroll-margin-top: 16px; min-width: 0; }
+article h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+article h2 .num { color: var(--action); }
+.where { color: var(--muted); font-size: 14px; margin: 0 0 10px; }
+.block { border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; border: 1px solid; }
+.block:last-child { margin-bottom: 0; }
+.block .lbl { font-weight: 800; font-size: 13px; display: block; margin-bottom: 4px; }
+.block p, .block li { margin: 0 0 6px; max-width: 70ch; }
+.block p:last-child, .block li:last-child { margin-bottom: 0; }
+.block ul { margin: 0; padding-inline-start: 22px; }
+.old { background: var(--old-bg); border-color: var(--old-line); }
+.old .lbl { color: var(--old); }
+.old p, .old li { text-decoration: line-through; text-decoration-color: rgba(180,35,24,.5); }
+.new { background: var(--new-bg); border-color: var(--new-line); }
+.new .lbl { color: var(--new); }
+code { font-family: Consolas, monospace; font-size: 14px; direction: ltr; unicode-bidi: isolate; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>שינויים חדשים באפיון</h1>
+    <p class="lede">אין כרגע שינויים שמחכים לאישור. סעיפים 1–18 אושרו ונכנסו לאפיון.</p>
+    <div class="legend"><span class="o">נוסח קיים (יוסר)</span><span class="n">נוסח חדש</span></div>
+  </header>
+
+  
+
+  <div class="changes">
+  </div>
+</div>

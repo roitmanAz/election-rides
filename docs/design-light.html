@@ -1,0 +1,268 @@
+<title>כיוונים קלילים למטה ההסעות</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@300;400;500;600;700&family=Varela+Round&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap">
+<style>
+/* Three lighter treatments of the same dispatcher slice. Kept from the current language: sign-blue action, the wait scale, the cluster plate. Light-only by choice. */
+:root {
+  --page: #eceef1; --page-ink: #15181d; --page-muted: #59616c; --page-line: #d3d7dd;
+  --action: #0b4c9e; --ok: #1f7a3a; --warn: #a15f00; --bad: #c92a2a; --plate: #1a1e24;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--page-ink); font-family: "Noto Sans Hebrew", Arial, sans-serif; direction: rtl; font-size: 16px; line-height: 1.55; }
+.page { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.intro { max-width: 78ch; display: grid; gap: 8px; margin-bottom: 30px; }
+.intro h1 { font-size: clamp(26px, 4vw, 34px); font-weight: 700; margin: 0; line-height: 1.2; }
+.intro p { margin: 0; color: var(--page-muted); }
+.dir { margin-bottom: 52px; }
+.dir-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+.dir-head .n { font-weight: 700; color: var(--action); }
+.dir-head h2 { margin: 0; font-size: 24px; font-weight: 700; }
+.dir-head p { margin: 0; flex-basis: 100%; color: var(--page-muted); max-width: 84ch; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
+.notes > div { background: #fff; border: 1px solid var(--page-line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.notes h3 { margin: 0 0 4px; font-size: 14px; color: var(--page-muted); }
+.notes ul { margin: 0; padding-inline-start: 18px; font-size: 15px; }
+
+/* ---------- Shared skeleton ---------- */
+.mock { border-radius: 10px; overflow: hidden; }
+.m-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.brand { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.search { flex: 1; min-width: 160px; max-width: 320px; margin-inline-start: auto; }
+.search input { width: 100%; font: inherit; }
+.m-body { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); }
+@media (max-width: 900px) { .m-body { grid-template-columns: minmax(0, 1fr); } }
+.h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.h h3 { margin: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
+.filters button { font: inherit; cursor: pointer; }
+.row { display: grid; grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1.4fr) 84px; align-items: center; gap: 10px; }
+@media (max-width: 640px) { .row { grid-template-columns: 46px minmax(0, 1fr) 76px; } .row .route { grid-column: 2 / -1; grid-row: 2; } }
+.who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.route .from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route .line { flex: 1; min-width: 16px; }
+.when { white-space: nowrap; text-align: left; }
+.ico { display: inline-flex; vertical-align: middle; }
+.ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.stops { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; position: relative; }
+.stops li { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.acts { display: flex; gap: 8px; }
+.acts button { font: inherit; cursor: pointer; }
+.drv { display: flex; align-items: center; gap: 10px; }
+.drv .nm { flex: 1; min-width: 0; }
+.a .drv .av, .c .drv .av { display: none; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* ================= A: Airy paper ================= */
+.a { --ink: #1b2230; --muted: #667085; --line: #e6e9ee; --soft: #f6f8fb; --act-soft: #eef3fb;
+  font-family: "IBM Plex Sans Hebrew", Arial, sans-serif; background: #fff; color: var(--ink); border: 1px solid var(--page-line); font-size: 15px; }
+.a .m-top { padding: 14px 22px; border-bottom: 1px solid var(--line); }
+.a .brand .logo { font-weight: 600; font-size: 18px; letter-spacing: -.01em; }
+.a .brand .logo::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--action); margin-inline-end: 8px; }
+.a .brand .role { color: var(--muted); font-weight: 400; font-size: 14px; }
+.a .search input { height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: var(--soft); }
+.a .clock { font-weight: 300; font-size: 22px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.a .q { padding: 18px 22px; border-inline-start: 1px solid var(--line); }
+.a .side { padding: 18px 22px; display: grid; gap: 22px; align-content: start; }
+.a .h h3 { font-weight: 600; font-size: 16px; }
+.a .cnt { color: var(--muted); font-weight: 400; }
+.a .filters button { height: 32px; padding: 0 12px; border: 1px solid var(--line); background: #fff; border-radius: 999px; color: var(--muted); font-size: 13.5px; }
+.a .filters button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.a .rows { margin-top: 12px; }
+.a .row { padding: 12px 4px; border-bottom: 1px solid var(--line); }
+.a .row:last-child { border-bottom: 0; }
+.a .row:hover { background: var(--soft); }
+.a .wt { font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; }
+.a .wt::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.a .wt.g { color: var(--ok); } .a .wt.y { color: var(--warn); } .a .wt.r { color: var(--bad); }
+.a .who b { font-weight: 600; } .a .who .k { color: var(--muted); font-size: 13.5px; margin-inline-start: 6px; }
+.a .route .line { border-top: 1px dashed #c6ccd5; }
+.a .pl { font-family: "IBM Plex Sans Hebrew", sans-serif; font-weight: 600; font-size: 13px; min-width: 30px; height: 24px; padding: 0 7px; border: 1.5px solid var(--plate); border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: var(--plate); }
+.a .when { color: var(--muted); font-size: 13.5px; }
+.a .when .dl { color: var(--warn); font-weight: 600; }
+.a .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
+.a .ico { color: var(--muted); }
+.a .prop { background: var(--act-soft); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.a .prop .ph { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.a .prop .ph b { font-weight: 600; font-size: 16px; }
+.a .prop .ph span { color: var(--muted); font-size: 13.5px; }
+.a .stops { padding-inline-start: 0; padding-inline-end: 22px; }
+.a .stops::before { content: ""; position: absolute; top: 10px; bottom: 10px; right: 5px; border-right: 2px solid var(--action); }
+.a .stops li::before { content: ""; position: absolute; right: -22px; top: 50%; margin-top: -6px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid var(--action); }
+.a .stops li.end::before { background: var(--action); }
+.a .acts button { height: 42px; border-radius: 8px; padding: 0 16px; font-weight: 600; }
+.a .acts .p { flex: 1; background: var(--action); color: #fff; border: 0; }
+.a .acts .s { background: #fff; border: 1px solid #c6ccd5; color: var(--ink); }
+.a .drivers { display: grid; gap: 2px; }
+.a .drv { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.a .drv .st { font-size: 13px; font-weight: 500; }
+.a .st.free { color: var(--ok); } .a .st.soon { color: var(--warn); } .a .st.busy { color: var(--muted); }
+
+/* ================= B: Soft cards ================= */
+.b { --ink: #18212f; --muted: #6b7280; --bg: #f3f5f8; --card: #fff; --act-soft: #e9f0fb;
+  font-family: "Noto Sans Hebrew", Arial, sans-serif; background: var(--bg); color: var(--ink); font-size: 15px; }
+.b .m-top { padding: 14px 20px; background: #fff; box-shadow: 0 1px 0 rgba(16,24,40,.06); }
+.b .brand .logo { font-family: "Varela Round", "Noto Sans Hebrew", sans-serif; font-size: 20px; color: var(--action); }
+.b .brand .role { color: var(--muted); font-size: 14px; }
+.b .search input { height: 40px; border: 0; border-radius: 999px; padding: 0 16px; background: var(--bg); }
+.b .clock { font-family: "Varela Round", sans-serif; font-size: 20px; color: var(--muted); }
+.b .m-body { gap: 16px; padding: 18px; }
+.b .q, .b .prop, .b .drivers { background: var(--card); border-radius: 16px; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px rgba(16,24,40,.05); }
+.b .q { padding: 16px; }
+.b .side { display: grid; gap: 16px; align-content: start; }
+.b .h h3 { font-family: "Varela Round", sans-serif; font-weight: 400; font-size: 18px; }
+.b .cnt { background: var(--act-soft); color: var(--action); border-radius: 999px; padding: 0 10px; font-weight: 600; font-size: 13px; }
+.b .filters button { height: 34px; padding: 0 14px; border: 0; background: var(--bg); border-radius: 999px; color: var(--ink); font-size: 13.5px; }
+.b .filters button.on { background: var(--action); color: #fff; }
+.b .rows { margin-top: 12px; display: grid; gap: 6px; }
+.b .row { padding: 10px 12px; border-radius: 12px; }
+.b .row:hover { background: var(--bg); }
+.b .wt { width: 42px; height: 30px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.b .wt.g { background: #e5f4ea; color: var(--ok); } .b .wt.y { background: #fdf1dc; color: var(--warn); } .b .wt.r { background: #fde7e7; color: var(--bad); }
+.b .who b { font-weight: 600; } .b .who .k { color: var(--muted); font-size: 13.5px; margin-inline-start: 6px; }
+.b .route .line { border-top: 2px dotted #cfd5de; }
+.b .pl { font-family: "Varela Round", sans-serif; font-size: 13px; min-width: 32px; height: 26px; padding: 0 8px; border-radius: 8px; background: var(--plate); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.b .when { color: var(--muted); font-size: 13.5px; }
+.b .when .dl { background: #fdf1dc; color: var(--warn); border-radius: 999px; padding: 1px 8px; font-weight: 600; }
+.b .tag { font-size: 12px; color: var(--muted); background: var(--bg); border-radius: 999px; padding: 0 8px; }
+.b .ico { color: var(--action); }
+.b .prop { padding: 16px; display: grid; gap: 12px; border-top: 4px solid var(--action); }
+.b .prop .ph b { font-family: "Varela Round", sans-serif; font-weight: 400; font-size: 17px; }
+.b .prop .ph span { color: var(--muted); font-size: 13.5px; display: block; }
+.b .stops { padding-inline-end: 24px; }
+.b .stops::before { content: ""; position: absolute; top: 12px; bottom: 12px; right: 6px; border-right: 3px solid var(--act-soft); }
+.b .stops li::before { content: ""; position: absolute; right: -24px; top: 50%; margin-top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--action); box-shadow: 0 0 0 3px #fff; }
+.b .acts button { height: 44px; border-radius: 999px; padding: 0 18px; font-weight: 600; }
+.b .acts .p { flex: 1; background: var(--action); color: #fff; border: 0; box-shadow: 0 4px 12px rgba(11,76,158,.25); }
+.b .acts .s { background: var(--bg); border: 0; color: var(--ink); }
+.b .drivers { padding: 8px 16px; }
+.b .drv { padding: 10px 0; }
+.b .drv + .drv { border-top: 1px solid var(--bg); }
+.b .drv .av { width: 34px; height: 34px; border-radius: 50%; background: var(--bg); display: inline-flex; align-items: center; justify-content: center; font-weight: 600; color: var(--muted); flex: none; }
+.b .drv .st { font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 2px 10px; }
+.b .st.free { background: #e5f4ea; color: var(--ok); } .b .st.soon { background: #fdf1dc; color: var(--warn); } .b .st.busy { background: var(--bg); color: var(--muted); }
+
+/* ================= C: Light signage ================= */
+.c { --ink: #121519; --muted: #5d6573; --line: #e3e6ea; --soft: #f7f8fa; --act-soft: #edf2fa;
+  font-family: "Noto Sans Hebrew", Arial, sans-serif; background: #fff; color: var(--ink); border: 1px solid var(--page-line); font-size: 15px; }
+.c .m-top { padding: 12px 20px; border-top: 5px solid var(--action); border-bottom: 1px solid var(--line); }
+.c .brand .logo { font-family: "Secular One", sans-serif; font-size: 19px; background: var(--plate); color: #fff; padding: 1px 12px; border-radius: 5px; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; }
+.c .brand .role { color: var(--muted); font-size: 14px; }
+.c .search input { height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 12px; }
+.c .clock { font-family: "Secular One", sans-serif; font-size: 22px; }
+.c .q { padding: 16px 20px; border-inline-start: 1px solid var(--line); }
+.c .side { padding: 16px 20px; display: grid; gap: 20px; align-content: start; background: var(--soft); }
+.c .h h3 { font-family: "Secular One", sans-serif; font-weight: 400; font-size: 17px; }
+.c .cnt { font-family: "Secular One", sans-serif; color: var(--muted); }
+.c .filters button { height: 32px; padding: 0 12px; border: 1px solid var(--line); background: #fff; border-radius: 6px; color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.c .filters button.on { border-color: var(--action); color: var(--action); background: var(--act-soft); font-weight: 600; }
+.c .rows { margin-top: 10px; }
+.c .row { padding: 10px 10px; border-bottom: 1px solid var(--line); border-inline-start: 4px solid transparent; }
+.c .row.r { border-inline-start-color: var(--bad); } .c .row.y { border-inline-start-color: #e0a100; } .c .row.g { border-inline-start-color: #6cc08a; }
+.c .row:hover { background: var(--soft); }
+.c .wt { font-family: "Secular One", sans-serif; font-size: 18px; font-variant-numeric: tabular-nums; }
+.c .wt.g { color: var(--ok); } .c .wt.y { color: var(--warn); } .c .wt.r { color: var(--bad); }
+.c .who b { font-weight: 600; } .c .who .k { color: var(--muted); font-size: 13.5px; margin-inline-start: 6px; }
+.c .route .line { border-top: 2px dotted #c3c9d2; }
+.c .route .arr { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 7px solid var(--action); margin-inline-start: -6px; }
+.c .pl { font-family: "Secular One", sans-serif; font-size: 13.5px; min-width: 32px; height: 24px; padding: 0 7px; border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; display: inline-flex; align-items: center; justify-content: center; }
+.c .when { color: var(--muted); font-size: 13.5px; }
+.c .when .dl { color: var(--bad); font-weight: 600; }
+.c .tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; background: #fff; }
+.c .ico { color: var(--plate); }
+.c .prop { background: #fff; border: 1px solid var(--line); border-top: 3px solid var(--action); border-radius: 6px; padding: 14px 16px; display: grid; gap: 12px; }
+.c .prop .ph b { font-family: "Secular One", sans-serif; font-weight: 400; font-size: 16.5px; }
+.c .prop .ph span { color: var(--muted); font-size: 13.5px; display: block; }
+.c .stops { padding-inline-end: 22px; }
+.c .stops::before { content: ""; position: absolute; top: 10px; bottom: 10px; right: 6px; border-right: 3px solid var(--action); }
+.c .stops li::before { content: ""; position: absolute; right: -22px; top: 50%; margin-top: -7px; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--action); }
+.c .stops li.end::before { display: none; }
+.c .stops li.end { margin-inline-start: -30px; }
+.c .acts button { height: 42px; border-radius: 6px; padding: 0 16px; font-weight: 600; }
+.c .acts .p { flex: 1; background: var(--action); color: #fff; border: 0; font-family: "Secular One", sans-serif; font-weight: 400; font-size: 16px; }
+.c .acts .s { background: #fff; border: 1px solid #c3c9d2; color: var(--ink); }
+.c .drivers { display: grid; }
+.c .drv { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.c .drv .st { font-size: 13px; font-weight: 600; }
+.c .st.free { color: var(--ok); } .c .st.soon { color: var(--warn); } .c .st.busy { color: var(--muted); }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>שלושה כיוונים קלילים</h1>
+    <p>אותו קטע ממסך המשבץ, שלוש פעמים. בכל השלושה נשמרים כחול השלט לפעולה, צבעי ההמתנה (ירוק, ענבר, אדום), קו המסלול ולוחית האשכול. מה שמשתנה: פחות מסגרות, יותר אוויר, גופנים במשקל קל יותר, ופס עליון בהיר.</p>
+    <p>אפשר ללחוץ על הסינונים. השמות והכתובות הם דוגמה בלבד. בטלפון כל כיוון מסתדר בעמודה אחת.</p>
+  </div>
+
+  <section class="dir">
+    <div class="dir-head"><span class="n">כיוון א</span><h2>נייר לבן</h2>
+      <p>הכי שקט. דף לבן, קווים מפרידים דקים במקום קופסאות, וגופן אחד (IBM Plex Sans Hebrew) במשקלים קלים. זמן ההמתנה הוא נקודה צבעונית ומספר. ההצעה היא משטח כחול-תכלת עדין, בלי מסגרת.</p></div>
+    <div class="mock a" data-mock></div>
+    <div class="notes"><div><h3>מתאים אם</h3><ul><li>רוצים מסך שלא מעייף בכלל</li><li>מעדיפים מראה של כלי עבודה מודרני</li></ul></div><div><h3>לשים לב</h3><ul><li>הכי פחות "אופי" מבין השלושה</li><li>הלוחית רק במסגרת, לא מלאה</li></ul></div></div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head"><span class="n">כיוון ב</span><h2>כרטיסים רכים</h2>
+      <p>הכי ידידותי. רקע אפור-בהיר, כרטיסים לבנים עם צל רך ופינות מעוגלות, כפתורים וסינונים בצורת גלולה, וכותרות בגופן מעוגל (Varela Round). לנהגים יש עיגול עם האות הראשונה.</p></div>
+    <div class="mock b" data-mock></div>
+    <div class="notes"><div><h3>מתאים אם</h3><ul><li>חלק מהצוות מתנדבים לא טכנולוגיים</li><li>רוצים מראה חם ונעים</li></ul></div><div><h3>לשים לב</h3><ul><li>פחות צפוף: נכנסות פחות שורות במסך</li><li>הכי רחוק מהעיצוב הנוכחי</li></ul></div></div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head"><span class="n">כיוון ג</span><h2>שלט מינימלי</h2>
+      <p>הכי קרוב לעיצוב הנוכחי, אבל קליל. הפס העליון לבן עם פס כחול דק מעליו, ושם המערכת ולוחיות האשכול נשארים כשלט. Secular One רק לכותרות ולמספרים. זמן ההמתנה מסומן גם בפס צבע בצד השורה, כך שהדחוף בולט בלי קופסאות.</p></div>
+    <div class="mock c" data-mock></div>
+    <div class="notes"><div><h3>מתאים אם</h3><ul><li>אוהבים את הזהות הנוכחית ורוצים רק להקל</li><li>הכי מהיר לעבור אליו</li></ul></div><div><h3>לשים לב</h3><ul><li>עדיין הכי "רשמי" מבין השלושה</li></ul></div></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var WC = '<span class="ico" role="img" aria-label="כיסא גלגלים" title="כיסא גלגלים"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="3.6" r="1.9" fill="currentColor" stroke="none"/><path d="M11 7v6.5h5.5l2.5 5.5"/><path d="M11 10.5h4.5"/><path d="M8 10.8a5.6 5.6 0 1 0 7.8 6.7"/></svg></span>';
+  // Example data only (fictional names).
+  var Q = [
+    {w: 38, n: "יעקב פרידמן", k: "גבר", a: "רבי עקיבא 112", p: "1", when: "עכשיו", tags: []},
+    {w: 31, n: "משפחת כהן", k: "משפחה · 2", a: "חזון איש 41", p: "2", when: "עכשיו", tags: ["הליכון"]},
+    {w: 27, n: "מרים וייס", k: "אישה", a: "הרב כהנמן 88", p: "תפארת", when: "עד 12:30", dl: true, tags: []},
+    {w: 19, n: "חיים ברגר", k: "גבר", a: "רש\"י 19", p: "2", when: "עד 12:15", dl: true, tags: ["wc"]},
+    {w: 15, n: "משה רוזנברג", k: "גבר", a: "סוקולוב 60", p: "1", when: "עכשיו", tags: []},
+    {w: 9,  n: "נחמה פישר", k: "אישה", a: "חזון איש 9", p: "2", when: "עכשיו", tags: ["ממתין לאימות"]},
+    {w: 1,  n: "מאיר שוורץ", k: "גבר", a: "דסלר 30", p: "1", when: "עכשיו", tags: []}
+  ];
+  function wc(m) { return m >= 30 ? "r" : (m >= 15 ? "y" : "g"); }
+  function render() {
+    var rows = Q.map(function (r) {
+      var tags = r.tags.map(function (t) { return t === "wc" ? WC : '<span class="tag">' + t + '</span>'; }).join(" ");
+      return '<div class="row ' + wc(r.w) + '"><span class="wt ' + wc(r.w) + '">' + r.w + '</span>' +
+        '<span class="who"><b>' + r.n + '</b><span class="k">' + r.k + '</span> ' + tags + '</span>' +
+        '<span class="route"><span class="from">' + r.a + '</span><span class="line"></span><span class="arr"></span><span class="pl">' + r.p + '</span></span>' +
+        '<span class="when">' + (r.dl ? '<span class="dl">' + r.when + '</span>' : r.when) + '</span></div>';
+    }).join("");
+    return '<div class="m-top"><div class="brand"><span class="logo">מטה הסעות</span><span class="role">משבץ · עיר לדוגמה</span></div>' +
+      '<div class="search"><input type="search" placeholder="חיפוש פנייה: טלפון, ת&quot;ז או שם" aria-label="חיפוש פנייה"></div><div class="clock">11:42</div></div>' +
+      '<div class="m-body"><section class="q"><div class="h"><h3>תור פניות</h3><span class="cnt">14</span><div class="filters">' +
+        '<button type="button" class="on">הכול</button><button type="button">גברים</button><button type="button">נשים</button><button type="button">משפחות</button><button type="button">נגישות</button></div></div>' +
+        '<div class="rows">' + rows + '</div></section>' +
+      '<div class="side"><div class="prop"><div class="ph"><div><b>אברהם גולד</b> <span>מתפנה בעוד 5 · 4 מקומות</span></div></div>' +
+        '<ol class="stops"><li><span class="wt r">38</span><b>יעקב פרידמן</b><span>רבי עקיבא 112</span></li><li><span class="wt y">15</span><b>משה רוזנברג</b><span>סוקולוב 60</span></li><li><span class="wt g">1</span><b>מאיר שוורץ</b><span>דסלר 30</span></li>' +
+        '<li class="end"><span class="pl">1</span><b>תלמוד תורה אור החיים</b></li></ol>' +
+        '<div class="acts"><button type="button" class="p">אשר ושלח לנהג</button><button type="button" class="s">להצעה הבאה</button></div></div>' +
+        '<div class="drivers"><div class="h"><h3>נהגים</h3><span class="cnt">9</span></div>' +
+          '<div class="drv"><span class="av">י</span><span class="nm">ישראל שטיין</span><span class="st free">פנוי</span></div>' +
+          '<div class="drv"><span class="av">נ</span><span class="nm">נפתלי רוט ' + WC + '</span><span class="st free">פנוי</span></div>' +
+          '<div class="drv"><span class="av">א</span><span class="nm">אברהם גולד</span><span class="st soon">מתפנה בעוד 5</span></div>' +
+          '<div class="drv"><span class="av">ז</span><span class="nm">זאב הירש</span><span class="st busy">בנסיעה · 3</span></div>' +
+        '</div></div></div>';
+  }
+  document.querySelectorAll("[data-mock]").forEach(function (el) {
+    el.innerHTML = render();
+    el.addEventListener("click", function (e) {
+      var b = e.target.closest(".filters button"); if (!b) return;
+      el.querySelectorAll(".filters button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    });
+  });
+})();
+</script>

@@ -1,0 +1,31 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Node / Angular
+node_modules/
+web/dist/
+web/.angular/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local secrets and environment
+.env
+*.local.json
+appsettings.Local.json
+
+# Claude Code local files
+.claude/
+
+# Local only: old drafts and third-party inspiration images (Dribbble)
+docs/archive/
+docs/inspiration/
+docs/dispatcher-04.html

@@ -1,0 +1,1076 @@
+<title>מסך המוקדן</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* Operator intake prototype, v2. Design rules from DESIGN.md: graphite plates, sign-blue action, wait scale green/amber/red, Secular One for numbers and headings. Light-only. */
+:root {
+  --page: #e7e9ec; --page-muted: #555c66; --page-line: #cdd1d7;
+  --bg: #f1f2f4; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --plate2: #2a3039; --action: #0b4c9e; --action-soft: #e6eefa;
+  --ok: #1f7a3a; --ok-soft: #e3f1e7; --warn: #a15f00; --warn-soft: #fdefd2; --bad: #c92a2a; --bad-soft: #fbe5e5;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); direction: rtl; font-size: 16px; line-height: 1.5; }
+.page { max-width: 1340px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; }
+.intro { max-width: 84ch; display: grid; gap: 6px; margin-bottom: 18px; }
+.intro h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 4vw, 32px); margin: 0; }
+.intro p { margin: 0; color: var(--page-muted); }
+.tryit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; font-weight: 700; }
+.tryit button { font: inherit; font-size: 14px; font-weight: 700; background: var(--surface); border: 2px solid var(--page-line); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.tryit button:hover { border-color: var(--action); color: var(--action); }
+.frame { border: 1px solid var(--page-line); border-radius: 6px; background: var(--bg); }
+
+/* Fluid: the screen fills the page width and never scrolls sideways. */
+.screen { width: 100%; background: var(--bg); font-size: 15px; }
+.m-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: var(--plate); color: #fff; padding: 8px 16px; min-height: 56px; border-bottom: 4px solid #fff; box-shadow: 0 4px 0 var(--plate); }
+.brand { font-family: var(--display); font-size: 22px; white-space: nowrap; }
+.brand span { font-family: var(--body); font-size: 13px; opacity: .75; margin-inline-start: 8px; }
+.m-kpi { display: flex; align-items: baseline; gap: 6px; background: var(--plate2); padding: 3px 12px; border-radius: 6px; border: 2px solid rgba(255,255,255,.85); white-space: nowrap; }
+.m-kpi b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+.m-kpi span { font-size: 12.5px; }
+.m-clock { font-family: var(--display); font-size: 24px; }
+.btn-new { font-family: var(--display); font-size: 17px; background: #fff; color: var(--plate); border: 0; border-radius: 6px; padding: 6px 18px; cursor: pointer; box-shadow: 0 0 0 2px var(--plate), 0 0 0 4px #fff; }
+.btn-new:hover { background: #e9ebee; }
+.search { position: relative; width: 340px; max-width: 100%; margin-inline-start: auto; }
+.search input { height: 38px; font-size: 15px; border-color: rgba(255,255,255,.85); }
+.results { display: none; position: absolute; top: calc(100% + 8px); left: 0; width: min(540px, calc(100vw - 48px)); background: #fff; color: var(--ink); border: 2px solid var(--plate); border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,.25); z-index: 10; padding: 6px; max-height: 440px; overflow: auto; }
+.results.show { display: block; }
+.res { padding: 8px 10px; display: grid; gap: 3px; border-bottom: 1px solid var(--line); }
+.res:last-child { border-bottom: 0; }
+.res .r1 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 15px; }
+.res .no { font-family: var(--display); color: var(--muted); }
+.res .r2 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); }
+.res-empty { padding: 10px; color: var(--muted); }
+.st-x { background: #e6e8eb; color: var(--muted); }
+.person .edit { height: 38px; font-size: 14px; padding: 0 14px; }
+.nowrap { white-space: nowrap; unicode-bidi: isolate; display: inline-block; }
+.acc { display: none; margin-top: 12px; border: 2px solid var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 12px 14px; gap: 8px; }
+.acc.show { display: grid; }
+.acc .t { font-weight: 800; color: var(--warn); }
+.acc .q { font-weight: 700; }
+.acc label.opt { display: flex; align-items: center; gap: 8px; min-height: 40px; font-weight: 700; cursor: pointer; }
+.acc input[type=radio] { width: 18px; height: 18px; accent-color: var(--action); }
+.acc select { max-width: 360px; }
+/* Edit / cancel after sending */
+.editbar { display: none; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--action-soft); border-bottom: 2px solid var(--action); padding: 10px 18px; font-weight: 700; color: var(--action); border-radius: 6px 6px 0 0; }
+.editbar.show { display: flex; }
+.editbar .b2 { margin-inline-start: auto; height: 40px; }
+.res .r3 { display: flex; gap: 6px; margin-top: 4px; }
+.b3 { font: inherit; font-weight: 700; font-size: 13px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 12px; height: 38px; cursor: pointer; white-space: nowrap; color: var(--ink); }
+.b3:hover { border-color: var(--action); color: var(--action); }
+.b3.danger { color: var(--bad); }
+.b3.danger:hover { border-color: var(--bad); }
+.dlg-back { position: fixed; inset: 0; background: rgba(18,21,25,.45); display: none; align-items: center; justify-content: center; z-index: 40; padding: 16px; }
+.dlg-back.show { display: flex; }
+.dlg { width: min(480px, 100%); background: #fff; border: 3px solid var(--plate); border-radius: 8px; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+.dlg-h { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-family: var(--display); font-size: 18px; background: #e9ebee; border-bottom: 2px solid var(--line2); }
+.xbtn { margin-inline-start: auto; flex: none; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 26px; line-height: 1; background: #fff; border: 2px solid var(--line2); border-radius: 8px; cursor: pointer; color: var(--ink); }
+.xbtn:hover { border-color: var(--bad); color: var(--bad); }
+.ico { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; border: 2px solid var(--plate); border-radius: 4px; color: var(--plate); flex: none; }
+.ico svg { width: 16px; height: 16px; }
+.dlg-body { padding: 14px 16px; display: grid; gap: 10px; }
+.dlg-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 16px; }
+.b1.danger { background: var(--bad); }
+.comm { margin-top: 12px; max-width: 380px; }
+
+.body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 16px; padding: 20px 16px 16px; align-items: start; }
+@media (max-width: 1050px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .newp.show { grid-template-columns: 1fr 1fr; }
+  .phone-row { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .addr-row, .newp.show { grid-template-columns: minmax(0, 1fr); }
+  .person { grid-template-columns: 28px minmax(0, 1fr); }
+  .seg { flex-wrap: wrap; height: auto; }
+  .seg label { min-height: 40px; }
+}
+.panel { background: var(--surface); border: 2px solid var(--line2); border-radius: 8px; min-width: 0; }
+.sec { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.sec:last-child { border-bottom: 0; }
+.sec-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.sec-h .num { font-family: var(--display); width: 26px; height: 26px; border-radius: 5px; background: var(--plate); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; flex: none; }
+.sec-h h2 { font-family: var(--display); font-weight: 400; font-size: 19px; margin: 0; }
+.sec-h .hint { color: var(--muted); font-size: 13.5px; margin-inline-start: auto; }
+.sec.off { opacity: .45; pointer-events: none; }
+
+label.f, .f { display: grid; gap: 4px; font-weight: 700; font-size: 13.5px; color: var(--muted); align-content: start; }
+.req { color: var(--bad); font-weight: 800; margin-inline-start: 3px; }
+.ask { font-weight: 700; font-size: 13.5px; color: var(--muted); margin-bottom: 6px; }
+.sum { display: none; width: 100%; align-items: center; gap: 12px; flex-wrap: wrap; text-align: right; font: inherit; font-size: 15px; background: var(--action-soft); border: 2px solid var(--action); border-radius: 8px; padding: 10px 14px; cursor: pointer; color: var(--ink); }
+.sum:hover { background: #d9e5f8; }
+.sum .sum-edit { margin-inline-start: auto; color: var(--action); font-weight: 800; }
+#secPeople.collapsed .sum { display: flex; }
+#secPeople.collapsed #peopleBody { display: none; }
+input[type=text], input[type=tel], input[type=time], select {
+  font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; height: 42px; padding: 0 12px; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+input.err { border-color: var(--bad); background: var(--bad-soft); }
+input.good { border-color: var(--ok); }
+.msg { font-size: 13.5px; font-weight: 700; min-height: 20px; }
+.msg.err { color: var(--bad); } .msg.ok { color: var(--ok); } .msg.info { color: var(--muted); } .msg.warn { color: var(--warn); }
+.noid { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.noid input { width: 16px; height: 16px; accent-color: var(--action); }
+input:disabled { background: var(--bg); color: var(--muted); }
+
+.phone-row { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: end; }
+#phone { font-family: var(--display); font-size: 26px; height: 52px; letter-spacing: .04em; direction: ltr; text-align: right; }
+.b1 { font-family: var(--display); font-size: 16px; border: 0; border-radius: 6px; padding: 0 20px; height: 42px; cursor: pointer; background: var(--action); color: #fff; white-space: nowrap; }
+.b1:disabled { background: var(--line2); cursor: not-allowed; }
+.b2 { font: inherit; font-weight: 700; font-size: 15px; background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 14px; height: 42px; cursor: pointer; white-space: nowrap; }
+.b2:hover { border-color: var(--action); color: var(--action); }
+button:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* People */
+.people { display: grid; gap: 8px; }
+.person { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto auto auto auto; gap: 12px; align-items: center; border: 2px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.person:hover { border-color: var(--line2); }
+.person.on { border-color: var(--action); background: var(--action-soft); }
+.person input { width: 20px; height: 20px; accent-color: var(--action); }
+.person .pn { font-weight: 800; font-size: 16.5px; }
+.person .pm { color: var(--muted); font-size: 13.5px; }
+.dest { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.dest .cl { font-size: 13.5px; font-weight: 700; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.chip { display: inline-flex; align-items: center; font-weight: 800; font-size: 12.5px; border-radius: 4px; padding: 1px 8px; white-space: nowrap; }
+.chip.base { background: var(--ok-soft); color: var(--ok); }
+.chip.pend { background: var(--warn-soft); color: var(--warn); }
+.chip.sx { border: 2px solid var(--line2); }
+.chip.open { background: var(--bad); color: #fff; }
+.pl { display: inline-flex; justify-content: center; align-items: center; min-width: 36px; height: 26px; padding: 0 6px; font-family: var(--display); border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; flex: none; }
+.pl.cl-num { background: #fff; color: var(--plate); box-shadow: inset 0 0 0 2px var(--plate); }
+.dup { display: none; margin-top: 8px; border: 2px solid var(--bad); background: var(--bad-soft); border-radius: 8px; padding: 8px 12px; font-weight: 700; color: var(--bad); align-items: center; gap: 10px; }
+.dup.show { display: flex; }
+.dup button { margin-inline-start: auto; height: 40px; }
+.family { display: none; margin-top: 8px; font-weight: 700; color: var(--action); }
+.family.show { display: block; }
+
+.newp { display: none; margin-top: 10px; border: 2px dashed var(--line2); border-radius: 8px; padding: 12px; gap: 10px 12px; grid-template-columns: 1.1fr 160px auto 1.6fr; align-items: start; }
+.newp.show { display: grid; }
+.newp .b1 { margin-top: 23px; }
+.seg { display: inline-flex; border: 2px solid var(--line2); border-radius: 6px; overflow: hidden; height: 42px; }
+.seg label { display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-weight: 700; font-size: 15px; color: var(--ink); border-inline-start: 1px solid var(--line2); }
+.seg label:first-child { border-inline-start: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--action); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: -3px; }
+
+.needs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.needs label { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--line2); border-radius: 6px; padding: 4px 10px; font-weight: 700; cursor: pointer; }
+.needs input { width: 18px; height: 18px; accent-color: var(--action); }
+.needs label:has(input:checked) { border-color: var(--action); background: var(--action-soft); }
+
+/* Combobox (street, cluster): must pick from the list */
+.combo { position: relative; }
+.combo-list { display: none; position: absolute; top: 100%; right: 0; left: 0; z-index: 5; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 2px solid var(--action); border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.12); max-height: 260px; overflow: auto; min-width: 280px; }
+.combo-list.show { display: block; }
+.combo-list li { padding: 6px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 500; font-size: 15px; }
+.combo-list li.hl, .combo-list li:hover { background: var(--action-soft); }
+.combo-list li small { color: var(--muted); margin-inline-start: auto; white-space: nowrap; }
+.combo-list li mark { background: #fff1b8; color: inherit; border-radius: 2px; }
+.combo-list .empty { color: var(--muted); cursor: default; }
+.combo-list .empty:hover { background: none; }
+
+.addr-row { display: grid; grid-template-columns: 1fr 130px 130px; gap: 12px; align-items: start; }
+.notes { margin-top: 10px; }
+
+.time-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.time-extra { display: none; gap: 12px; align-items: end; }
+.time-extra.show { display: flex; }
+.time-extra label.f { width: 130px; }
+.time-extra .reason { width: 220px; }
+
+/* Side */
+.side { display: grid; gap: 16px; }
+.readback { border: 3px solid var(--action); border-radius: 8px; background: #fff; }
+.readback .ph { background: var(--action); color: #fff; font-family: var(--display); font-size: 16px; padding: 6px 14px; }
+.readback .txt { padding: 14px; font-size: 17px; line-height: 1.7; min-height: 120px; }
+.readback .txt.empty { color: var(--muted); font-size: 15px; }
+.readback .missing { padding: 0 14px 10px; font-size: 13.5px; font-weight: 700; color: var(--warn); }
+.readback .acts { padding: 0 14px 14px; display: flex; gap: 8px; align-items: center; }
+.readback .acts .b1 { flex: 1; height: 48px; font-size: 18px; }
+.kbd { font-size: 12px; color: var(--muted); }
+.minimap { position: relative; height: 200px; border-radius: 8px; overflow: hidden; background: #eef2ee; border: 2px solid var(--line2); }
+.minimap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.minimap .pin { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--action); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); transform: translate(50%, -50%); display: none; }
+.minimap .dst { position: absolute; transform: translate(50%, -50%); display: none; width: 22px; height: 22px; background: var(--plate); border-radius: 5px; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; }
+.minimap .cap { position: absolute; bottom: 6px; right: 8px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.85); padding: 0 6px; border-radius: 4px; }
+.recent .m-h { font-family: var(--display); font-size: 16px; padding: 8px 12px; background: #e9ebee; border-bottom: 2px solid var(--line2); border-radius: 6px 6px 0 0; }
+.recent table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.recent td { padding: 0 10px; height: 34px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.recent tr:last-child td { border-bottom: 0; }
+.st { font-weight: 800; font-size: 12.5px; padding: 1px 7px; border-radius: 4px; }
+.st-q { background: var(--warn-soft); color: var(--warn); } .st-a { background: var(--action-soft); color: var(--action); } .st-d { background: var(--ok-soft); color: var(--ok); }
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--plate); color: #fff; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--plate), 0 8px 20px rgba(0,0,0,.25); border-radius: 8px; padding: 10px 18px; font-weight: 700; display: none; z-index: 20; max-width: calc(100% - 32px); }
+.toast.show { display: block; }
+</style>
+<style id="green">
+/* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
+:root {
+  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
+  --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
+  --soft: #eef2ef; --soft2: #e3e9e5;
+  --shadow: 0 8px 30px rgba(15, 30, 20, .08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
+  --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+}
+body { background: var(--page); font-family: var(--body); }
+.intro h1 { font-weight: 600; }
+
+/* מסגרת ומסך */
+.frame { border: 0; border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px -36px rgba(15, 30, 20, .35); }
+.screen { background: var(--bg); border-radius: 24px; }
+
+/* פס עליון: לבן, לא גרפיט */
+.m-top, .a-top { background: #fff; color: var(--ink); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.m-top { min-height: 66px; padding: 10px 18px; border-radius: 24px 24px 0 0; }
+.brand { font-weight: 600; font-size: 20px; color: var(--ink); }
+.brand span { opacity: 1; color: var(--muted); font-weight: 400; }
+.m-clock { font-weight: 500; color: var(--ink); }
+.top-note { color: var(--muted); }
+.search input { border: 0; background: var(--soft); border-radius: 999px; height: 44px; padding: 0 18px; color: var(--ink); }
+.search input:focus { outline: none; box-shadow: 0 0 0 2px var(--action); background: #fff; }
+.m-kpi { background: var(--soft); border: 0; border-radius: 999px; color: var(--ink); padding: 4px 14px; }
+.m-kpi.hot { background: var(--bad-soft); color: var(--bad); }
+.btn-new { background: var(--action); color: #fff; box-shadow: none; border-radius: 999px; font-weight: 600; padding: 0 20px; height: 44px; }
+.results, .combo-list { border: 0; border-radius: 18px; box-shadow: var(--shadow-pop); padding: 6px; }
+.res { border-radius: 12px; border-bottom: 0; }
+.res:hover, .combo-list li.hl, .combo-list li:hover { background: var(--soft); }
+
+/* פאנלים: כרטיס לבן צף */
+.panel { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.m-h, .p-h, .dlg-h { background: transparent; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 600; padding: 12px 16px; border-radius: 0; }
+.p-h { border-radius: 20px 20px 0 0; }
+.m-h { font-size: 16px; }
+.p-h h2, .sec-h h2 { font-weight: 600; }
+.m-count { background: var(--soft); color: var(--muted); border-radius: 999px; font-weight: 500; font-family: var(--body); }
+.sec { border-bottom-color: var(--line); }
+.sec-h .num { border-radius: 50%; box-shadow: none; background: var(--action); font-weight: 600; font-size: 14px; }
+
+/* כפתורים */
+.b1 { border-radius: 14px; font-weight: 600; height: 48px; padding: 0 22px; background: var(--action); }
+.b1:hover { background: #12913f; }
+.b1:disabled { background: var(--soft2); color: var(--muted); }
+.b1.danger { background: var(--bad); }
+.b2, .b3, .bsm, .stops .rm, .brk button { border: 0; background: var(--soft); border-radius: 14px; font-weight: 500; color: var(--ink); }
+.b2 { height: 48px; }
+.b2:hover, .b3:hover, .bsm:hover, .stops .rm:hover { background: var(--soft2); color: var(--ink); border-color: transparent; }
+.bsm { border-radius: 10px; }
+.bdanger, .b3.danger { color: var(--bad); }
+.b3.danger:hover, .bdanger:hover, .stops .rm:hover { color: var(--bad); }
+.fbtn { border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; color: var(--muted); }
+.fbtn.on { background: var(--ink); color: #fff; }
+.xbtn { border: 0; background: var(--soft); border-radius: 50%; color: var(--ink); }
+.xbtn:hover { background: var(--bad-soft); color: var(--bad); }
+.icon-btn { border-radius: 12px; }
+button:focus-visible, a:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* טפסים */
+select, .inp, input[type=text], input[type=tel], input[type=time], input[type=email], input[type=number], input[type=date], input[type=password] { border: 1.5px solid var(--line2); border-radius: 12px; background: #fff; }
+select:focus, .inp:focus, input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.seg { border: 0; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; height: auto; min-height: 40px; }
+.seg label { border: 0 !important; border-radius: 10px; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg.err { box-shadow: 0 0 0 2px var(--bad); }
+.needs label, .checks label, .check1 { border-radius: 999px; }
+.filebtn { border-radius: 14px; }
+
+/* טבלאות */
+th { background: #fff; font-weight: 500; color: var(--muted); border-bottom-color: var(--line); }
+td { border-bottom-color: var(--line); }
+tbody tr.sel td, tr.drv.open td { background: #effaf3; }
+tbody tr.q:hover td, tr.drv:hover td { background: #f6f9f7; }
+tr.dx td { background: var(--bg); }
+
+/* תגיות, לוחיות, מצבים */
+.chip, .st, .dl { border-radius: 999px; }
+.chip.need, .chip.noapp { border-width: 1.5px; }
+.wt { border-radius: 10px; font-weight: 600; }
+.pl { border-radius: 8px; box-shadow: none; background: var(--ink); font-weight: 600; }
+.pl-name, .pl.cl-num { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ico { border-width: 1.5px; border-radius: 8px; }
+.warnline, .known, .dup, .family, .editbar, .legal, .script, .status, .cert, .acc { border-radius: 16px; }
+.known { border: 0; background: var(--action-soft); }
+.script { border: 0; background: var(--soft); }
+
+/* מפה */
+.map { background: #e9eeea; }
+.legend, .map-cap { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(15, 30, 20, .10); }
+.minimap { border-radius: 16px; overflow: hidden; }
+.mapdlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+
+/* הצעה לנהג */
+.prop { border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+.prop-tabs { background: var(--soft); padding: 4px; border-radius: 14px; margin: 10px 10px 0; gap: 4px; }
+.prop-tabs button { color: var(--muted); opacity: 1; border: 0; border-radius: 10px; font-weight: 500; padding: 8px 12px; font-size: 14px; }
+.prop-tabs button.on { background: var(--ink); color: #fff; }
+.prop-head b { font-weight: 600; }
+
+/* חלונות קופצים והודעות */
+.dlg-back, .mapback { background: rgba(18, 26, 20, .35); }
+.dlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+.dlg-h { background: #fff; }
+.toast { background: var(--ink); border: 0; border-radius: 999px; box-shadow: 0 10px 28px rgba(15, 30, 20, .3); }
+
+/* מנהל עיר ומנהל מערכת */
+.tabs a { border: 0; border-radius: 999px; background: transparent; }
+.tabs a:hover { background: var(--soft); }
+.tabs a.on { background: var(--ink); color: #fff; }
+.tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.tile .v { font-weight: 600; }
+.tile.alert { box-shadow: inset 0 0 0 2px var(--bad), var(--shadow); }
+.lm-list, .list, .alerts li, .op, .adm-list li { border-radius: 16px; }
+.op.on { box-shadow: inset 0 0 0 2px var(--action); }
+
+/* מוקדן */
+.panel .sum { border-radius: 14px; }
+.person { border-radius: 14px; border-width: 1.5px; }
+.newp { border-radius: 16px; border-width: 1.5px; }
+.readback { border-radius: 20px; overflow: hidden; }
+.readback .ph { background: var(--ink); font-weight: 600; }
+.minimap .dst { border-radius: 50%; box-shadow: 0 0 0 3px #fff; background: var(--action); }
+.tryit button { border-radius: 999px; }
+
+/* אפליקציית הנהג */
+.sim { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.a-brand { font-weight: 600; }
+.a-menu { color: var(--ink); border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; }
+.a-foot { border-top: 0; box-shadow: 0 -8px 24px rgba(15, 30, 20, .08); border-radius: 24px 24px 0 0; }
+.state { border-radius: 20px; }
+.state .big { font-weight: 600; }
+.state.trip { border: 0; background: var(--action-soft); color: var(--ink); }
+.state.done { border: 0; background: var(--soft); }
+.btn-main, .btn-free { border-radius: 18px; font-weight: 600; background: var(--action); }
+.btn-sec { border: 0; background: var(--soft); color: var(--ink); border-radius: 18px; font-weight: 500; }
+.btn-sec.on { background: var(--ink); color: #fff; }
+.btn-low { border: 0; background: var(--soft); border-radius: 16px; font-weight: 500; }
+.brk { border-radius: 16px; border-width: 1.5px; }
+.offer { border: 0; border-radius: 24px; box-shadow: var(--shadow); }
+.offer-h { background: var(--action); font-weight: 600; }
+.stop { border: 0; border-radius: 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.stop.end { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.go { border-radius: 14px; font-weight: 600; }
+.go.call { border: 0; background: var(--soft); color: var(--ink); }
+.dist { color: var(--action); }
+.phone .dlg { border-radius: 24px 24px 0 0; }
+.dlg-body label.opt { border-radius: 14px; }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>מסך המוקדן: אב-טיפוס לחיץ</h1>
+    <p>גרסה 6. כל הנתונים הם דוגמה. שדה חובה מסומן בכוכבית אדומה. נגישות: נסה 054-845-5120 (מרים וייס, ישיבת תפארת שאינה נגישה) וסמן כיסא גלגלים. בבדיקת הכתובת, מספר בניין מעל 200 מדמה כתובת שגוגל לא מוצא, והפנייה נשמרת עם מיקום משוער. בחיפוש למעלה אפשר לנסות: 0527, פרידמן, לנדאו, 3014. פנייה בתור או משובצת אפשר לערוך או לבטל מתוך החיפוש (נסה פרידמן או לנדאו).</p>
+    <div class="tryit">נסה:
+      <button type="button" data-try="0527123456">052-712-3456 · משפחה בבייס</button>
+      <button type="button" data-try="0548455120">054-845-5120 · אישה עם הליכון</button>
+      <button type="button" data-try="036181234">03-618-1234 · לא בבייס</button>
+      <button type="button" data-try="05271234">05271234 · מספר קצר</button>
+    </div>
+  </div>
+
+  <div class="frame"><div class="screen">
+    <div class="m-top">
+      <div class="brand">מטה הסעות<span>מוקדן · עיר לדוגמה</span></div>
+      <div class="m-kpi"><b id="kpiMine">14</b><span>פניות שלי היום</span></div>
+      <div class="m-kpi"><b>24</b><span>בתור עכשיו</span></div>
+      <div class="search"><input type="text" id="q" placeholder="חיפוש פנייה: טלפון, ת&quot;ז או שם" aria-label="חיפוש פנייה"><div class="results" id="results"></div></div>
+      <div class="m-clock">11:42</div>
+      <button class="btn-new" type="button" id="btnReset">פנייה חדשה</button>
+    </div>
+
+    <div class="body">
+      <form class="panel" id="form" autocomplete="off" novalidate>
+        <div class="editbar" id="editBar"><span id="editTxt"></span><button class="b2" type="button" id="editCancel">בטל עריכה</button></div>
+        <div class="sec">
+          <div class="sec-h"><span class="num">1</span><h2>טלפון</h2></div>
+          <div class="phone-row">
+            <label class="f"><span>מה מספר הטלפון שלך?<span class="req">*</span></span><input type="tel" id="phone" inputmode="numeric" placeholder="05X-XXX-XXXX"></label>
+            <div class="msg info" id="phoneMsg">נייד: 10 ספרות שמתחילות ב-05. נייח: 9 ספרות.</div>
+          </div>
+        </div>
+
+        <div class="sec off" id="secPeople">
+          <div class="sec-h"><span class="num">2</span><h2>נוסעים</h2></div>
+          <button type="button" class="sum" id="peopleSum"></button>
+          <div id="peopleBody">
+          <div class="ask">מי צריך הסעה?<span class="req">*</span></div>
+          <div class="people" id="people"></div>
+          <div class="dup" id="dup"><span id="dupTxt"></span><button class="b2" type="button" id="dupOpen">פתח את הפנייה הקיימת</button></div>
+          <div class="family" id="family">פנייה משפחתית: הנוסעים ייסעו לבד ברכב, בלי נוסעים נוספים.</div>
+          <div style="margin-top:10px"><button class="b2" type="button" id="btnAdd">+ נוסע שלא ברשימה</button></div>
+          <div class="newp" id="newp">
+            <div class="f"><label for="npName">מה השם המלא?<span class="req">*</span></label><input type="text" id="npName"><div class="msg" id="npNameMsg"></div></div>
+            <div class="f"><label for="npId">מה מספר תעודת הזהות?<span class="req">*</span></label><input type="text" id="npId" inputmode="numeric" maxlength="9" dir="ltr" style="text-align:right"><label class="noid"><input type="checkbox" id="npNoId">לא מסר ת"ז</label><div class="msg" id="npIdMsg"></div></div>
+            <div class="f"><span>גבר או אישה?<span class="req">*</span></span><div class="seg"><label><input type="radio" name="npSx" value="ג" checked>גבר</label><label><input type="radio" name="npSx" value="נ">אישה</label></div></div>
+            <div class="f combo"><label for="npCl">איפה מצביעים?<span class="req">*</span></label><input type="text" id="npCl" placeholder="הקלד חלק מהשם או מהכתובת"><ul class="combo-list" id="npClList"></ul><div class="msg" id="npClMsg"></div></div>
+          </div>
+          <div class="f combo comm"><label for="comm">לאיזו קהילה שייכים?</label><input type="text" id="comm" placeholder="הקלד חלק מהשם"><ul class="combo-list" id="commList"></ul><div class="msg" id="commMsg"></div></div>
+          <div class="ask" style="margin-top:12px">צריך כיסא גלגלים, הליכון או עזרה?</div>
+          <div class="needs" id="needs" style="margin-top:0">
+            <label><input type="checkbox" value="כיסא גלגלים"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="3.6" r="1.9" fill="currentColor" stroke="none"/><path d="M11 7v6.5h5.5l2.5 5.5"/><path d="M11 10.5h4.5"/><path d="M8 10.8a5.6 5.6 0 1 0 7.8 6.7"/></svg></span>כיסא גלגלים</label>
+            <label><input type="checkbox" value="הליכון">הליכון</label>
+            <label><input type="checkbox" value="צריך עזרה">צריך עזרה (הערה לנהג)</label>
+          </div>
+          <div class="acc" id="acc"></div>          </div>
+        </div>
+
+        <div class="sec off" id="secAddr">
+          <div class="sec-h"><span class="num">3</span><h2>כתובת איסוף</h2></div>
+          <div class="addr-row">
+            <div class="f combo"><label for="street">באיזה רחוב לאסוף?<span class="req">*</span></label><input type="text" id="street" placeholder="הקלד חלק משם הרחוב"><ul class="combo-list" id="streetList"></ul><div class="msg" id="streetMsg"></div></div>
+            <div class="f"><label for="house">מה מספר הבניין?<span class="req">*</span></label><input type="text" id="house" inputmode="numeric" maxlength="4" dir="ltr" style="text-align:right"><div class="msg" id="houseMsg"></div></div>
+            <div class="f"><label for="entr">איזו כניסה?</label><input type="text" id="entr" maxlength="3" placeholder="א / ב"></div>
+          </div>
+          <div class="msg" id="addrMsg"></div>
+          <label class="f notes">משהו שהנהג צריך לדעת?<input type="text" id="notes" placeholder="למשל: לצלצל באינטרקום, יורד לבד"></label>
+        </div>
+
+        <div class="sec off" id="secTime">
+          <div class="sec-h"><span class="num">4</span><h2>זמן וחזרה</h2></div>
+          <div class="ask">מתי נוח לך לצאת?</div>
+          <div class="time-row">
+            <div class="seg">
+              <label><input type="radio" name="when" value="now" checked>עכשיו</label>
+              <label><input type="radio" name="when" value="range">בין שעות</label>
+              <label><input type="radio" name="when" value="until">חייב לצאת עד</label>
+            </div>
+            <div class="time-extra" id="tRange"><label class="f">מאיזו שעה?<input type="time" id="tFrom" value="13:00"></label><label class="f">עד איזו שעה?<input type="time" id="tTo" value="15:00"></label></div>
+            <div class="time-extra" id="tUntil"><label class="f">עד איזו שעה?<input type="time" id="tDl" value="13:00"></label>
+              <label class="f reason"><span>למה דווקא עד אז?<span class="req">*</span></span><select id="reason"><option value="">בחר סיבה</option><option>יציאה מהעיר</option><option>טיפול רפואי</option><option>עבודה</option><option>אחר</option></select></label></div>
+          </div>
+          <div class="ask" style="margin-top:12px">צריך גם הסעה חזרה הביתה?</div>
+          <div class="time-row">
+            <div class="seg">
+              <label><input type="radio" name="ret" value="wait" checked>הלוך ושוב, הנהג ממתין</label>
+              <label><input type="radio" name="ret" value="sep">חזור בנפרד, יתקשרו</label>
+              <label><input type="radio" name="ret" value="none">הלוך בלבד</label>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="side">
+        <div class="readback">
+          <div class="ph">להקריא לפונה לפני השמירה</div>
+          <div class="txt empty" id="rb">הסיכום יופיע כאן, תוך כדי מילוי.</div>
+          <div class="missing" id="missing"></div>
+          <div class="acts"><button class="b1" type="button" id="btnSave" disabled>שמור והכנס לתור</button></div>
+        </div>
+        <div class="minimap" aria-label="מפה קטנה">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <g fill="#e3e9e2"><rect x="4" y="6" width="18" height="16"/><rect x="30" y="6" width="20" height="14"/><rect x="58" y="8" width="16" height="12"/><rect x="6" y="50" width="16" height="14"/><rect x="60" y="50" width="14" height="12"/><rect x="34" y="74" width="24" height="18"/></g>
+            <g stroke="#fff" stroke-width="3" fill="none"><path d="M0 30 L100 26"/><path d="M0 70 L100 66"/><path d="M27 0 L30 100"/><path d="M56 0 L52 100"/><path d="M80 0 L82 100"/></g>
+          </svg>
+          <div class="pin" id="mapPin"></div>
+          <div class="dst" id="mapDst"></div>
+          <div class="cap">מפה לדוגמה. במערכת: מפת גוגל</div>
+        </div>
+        <div class="panel recent">
+          <div class="m-h">הפניות האחרונות שלי</div>
+          <table><tbody id="recent">
+            <tr><td>11:38</td><td style="font-weight:800">דבורה לנדאו</td><td>ישיבת תפארת</td><td><span class="st st-q">בתור</span></td></tr>
+            <tr><td>11:31</td><td style="font-weight:800">משה רוזנברג</td><td>תלמוד תורה אור החיים</td><td><span class="st st-a">שובץ</span></td></tr>
+            <tr><td>11:20</td><td style="font-weight:800">רחל ושמואל כהן</td><td>בית ספר בית יעקב</td><td><span class="st st-q">בתור</span></td></tr>
+            <tr><td>11:05</td><td style="font-weight:800">אהרן גרינברג</td><td>תלמוד תורה אור החיים</td><td><span class="st st-d">נסגר</span></td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+<div class="dlg-back" id="cxBack">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="cxTitle">
+    <div class="dlg-h"><span id="cxTitle">ביטול פנייה</span><button class="xbtn" type="button" id="cxX" aria-label="סגור">×</button></div>
+    <div class="dlg-body">
+      <div id="cxInfo"></div>
+      <label class="f"><span>למה מבטלים?<span class="req">*</span></span><select id="cxReason"><option value="">בחר סיבה</option><option>הפונה ביטל</option><option>מצא הסעה אחרת</option><option>פנייה כפולה</option><option>אחר</option></select></label>
+      <label class="f" id="cxOtherWrap" style="display:none"><span>פרט בקצרה<span class="req">*</span></span><input type="text" id="cxOther" maxlength="80"></label>
+      <div class="msg" id="cxMsg"></div>
+    </div>
+    <div class="dlg-acts"><button class="b1 danger" type="button" id="cxDo">בטל את הפנייה</button><button class="b2" type="button" id="cxBack2">חזרה</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  // Example data only (fictional people and places).
+  // Cluster = a polling place (building) holding several ballot boxes. Number is optional (set by the city admin).
+  var CLUSTERS = [
+    {id:"c1", num:1,    name:"תלמוד תורה אור החיים", addr:"רבי עקיבא 80",     boxes:"31–35", pos:[70,38], access:true},
+    {id:"c2", num:2,    name:"בית ספר בית יעקב",      addr:"חזון איש 20",      boxes:"10–14", pos:[24,48], access:true},
+    {id:"c3", num:null, name:"ישיבת תפארת",           addr:"הרב כהנמן 70",     boxes:"19–23", pos:[46,74], access:false},
+    {id:"c4", num:4,    name:"מתנ\"ס השומר",          addr:"השומר 5",          boxes:"6–9",   pos:[84,22], access:true},
+    {id:"c5", num:null, name:"בית הכנסת הגדול",       addr:"ז'בוטינסקי 120",   boxes:"40–42", pos:[60,16], access:false}
+  ];
+  var BASE = {
+    "0527123456": [
+      {key:"p1", name:"יעקב פרידמן", id:"032144586", sx:"ג", box:34, cl:"c1", street:"רבי עקיבא", house:"112", open:null},
+      {key:"p2", name:"שרה פרידמן",  id:"032144594", sx:"נ", box:34, cl:"c1", street:"רבי עקיבא", house:"112", open:null},
+      {key:"p3", name:"חיים פרידמן", id:"301451209", sx:"ג", box:33, cl:"c1", street:"רבי עקיבא", house:"112", open:"פנייה 1179 מ-11:12, בתור"}
+    ],
+    "0548455120": [
+      {key:"p4", name:"מרים וייס", id:"051777316", sx:"נ", box:21, cl:"c3", street:"הרב כהנמן", house:"88", open:null, needs:["הליכון"]}
+    ]
+  };
+  var STREETS = ["רבי עקיבא","חזון איש","הרב כהנמן","ז'בוטינסקי","דסלר","רש\"י","השומר","סוקולוב","אהרונוביץ","ירושלים","הרב שך","עזרא","יהודה הלוי","הרצוג","בן זכאי","רבי מאיר","הרב קוק","שלמה המלך"];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var state;
+  function fresh() { return { phone:"", people:[], selected:{}, street:"", newCl:"", loc:null, locKey:"", lastNew:"", acc:{mode:"", cl:""} }; }
+
+  // Requests already in the system, for the status search (example data).
+  var REQS = [
+    {no:1179, names:"חיים פרידמן",       phone:"0527123456", id:"301451209", cl:"c1", st:"בתור",       t:"11:12", info:"ממתין 30 דקות",
+      snap:{phone:"0527123456", keys:["p3"], newPeople:[], street:"רבי עקיבא", house:"112", ent:"", notes:"", needs:[], comm:"ליטאים", when:"now", tFrom:"13:00", tTo:"15:00", tDl:"13:00", reason:"", ret:"wait"}},
+    {no:1183, names:"דבורה לנדאו",        phone:"0533318412", id:"025889120", cl:"c3", st:"בתור",       t:"11:38", info:"ממתין 4 דקות",
+      snap:{phone:"0533318412", keys:[], newPeople:[{name:"דבורה לנדאו", rawId:"025889120", sx:"נ", cl:"c3"}], street:"השומר", house:"3", ent:"", notes:"", needs:[], comm:"ויז'ניץ", when:"now", tFrom:"13:00", tTo:"15:00", tDl:"13:00", reason:"", ret:"wait"}},
+    {no:1176, names:"משה רוזנברג",        phone:"0504412290", id:"039775411", cl:"c1", st:"שובץ",       t:"11:31", info:"נהג: אברהם גולד, בדרך (כ-5 דקות)"},
+    {no:1162, names:"רחל ושמואל כהן",     phone:"039187744",  id:"058812334", cl:"c2", st:"נאסף",       t:"10:58", info:"נהג: ישראל שטיין"},
+    {no:1150, names:"אהרן גרינברג",       phone:"0548801123", id:"027154980", cl:"c1", st:"הורד בקלפי", t:"10:40", info:"נהג: זאב הירש, ממתין להחזיר"},
+    {no:1140, names:"בתיה קליין",         phone:"0527700451", id:"033098127", cl:"c4", st:"בוטל",       t:"10:22", info:"הפונה ביטלה"},
+    {no:1131, names:"יצחק ופנינה הלפרין", phone:"0527700990", id:"014422876", cl:"c4", st:"נסגר",       t:"10:05", info:"הוחזרו הביתה ב-10:51"}
+  ];
+  var COMMS = ["ליטאים","ספרדים","גור","ויז'ניץ","בעלזא","סאטמר","צאנז","חב\"ד","ברסלב","קרלין","אחר"];
+  function stCls(s) { return s === "בתור" ? "st-q" : (s === "נסגר" ? "st-d" : (s === "בוטל" ? "st-x" : "st-a")); }
+  function runSearch() {
+    var q = $("q").value.trim(), box = $("results");
+    if (q.length < 2) { box.classList.remove("show"); return; }
+    var compact = q.replace(/[\s-]/g, ""), isNum = /^\d+$/.test(compact);
+    var hits = REQS.filter(function (r) { return isNum ? (r.phone.indexOf(compact) >= 0 || r.id.indexOf(compact) >= 0) : r.names.indexOf(q) >= 0; }).slice(0, 6);
+    box.innerHTML = hits.length ? hits.map(function (r) {
+      return '<div class="res"><div class="r1"><span class="no">#' + r.no + '</span><b>' + r.names + '</b><span dir="ltr" class="nowrap">' + fmtPhone(r.phone) + '</span>' +
+        (r.id ? '<span class="nowrap">ת"ז ' + r.id + '</span>' : '') + '</div>' +
+        '<div class="r2"><span>אל: ' + clLabel(clById(r.cl)) + '</span></div>' +
+        '<div class="r2"><span class="st ' + stCls(r.st) + '">' + r.st + '</span><span>התקבלה ב-' + r.t + '</span>' + (r.info ? '<span>' + r.info + '</span>' : '') + '</div>' +
+        // Edit and cancel are open until the passenger is picked up.
+        (r.st === "בתור" || r.st === "שובץ" ? '<div class="r3">' + (r.snap ? '<button class="b3" type="button" data-edit-req="' + r.no + '">ערוך</button>' : '') + '<button class="b3 danger" type="button" data-cancel-req="' + r.no + '">בטל פנייה</button></div>' : '') +
+        '</div>';
+    }).join("") : '<div class="res-empty">לא נמצאו פניות.</div>';
+    box.classList.add("show");
+  }
+  function reqByNo(no) { return REQS.filter(function (r) { return r.no === no; })[0]; }
+  $("results").addEventListener("mousedown", function (e) { e.preventDefault(); });
+  $("results").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-edit-req]"), c = e.target.closest("[data-cancel-req]");
+    if (!b && !c) return;
+    $("results").classList.remove("show"); $("q").blur();
+    if (b) loadForEdit(reqByNo(Number(b.getAttribute("data-edit-req"))));
+    else openCancel(reqByNo(Number(c.getAttribute("data-cancel-req"))));
+  });
+
+  // ---------- Cancel a request (dialog: X, click outside, Esc) ----------
+  var cxRec = null;
+  function openCancel(r) {
+    cxRec = r;
+    $("cxInfo").innerHTML = '<b>פנייה מס\' ' + r.no + '</b> · ' + r.names + ' · <span dir="ltr" class="nowrap">' + fmtPhone(r.phone) + '</span>' + (r.st === "שובץ" ? '<div class="msg info">הפנייה כבר שובצה לנהג. המשבץ והנהג יקבלו עדכון.</div>' : '');
+    $("cxReason").value = ""; mark($("cxReason"), null); setMsg($("cxMsg"), "", "");
+    $("cxOther").value = ""; mark($("cxOther"), null); $("cxOtherWrap").style.display = "none";
+    $("cxBack").classList.add("show"); $("cxReason").focus();
+  }
+  function closeCancel() { $("cxBack").classList.remove("show"); cxRec = null; }
+  $("cxX").addEventListener("click", closeCancel);
+  $("cxBack2").addEventListener("click", closeCancel);
+  $("cxBack").addEventListener("click", function (e) { if (e.target === this) closeCancel(); });
+  $("cxReason").addEventListener("change", function () {
+    if (this.value) { mark(this, "good"); setMsg($("cxMsg"), "", ""); }
+    $("cxOtherWrap").style.display = this.value === "אחר" ? "grid" : "none";
+    if (this.value === "אחר") $("cxOther").focus();
+  });
+  $("cxOther").addEventListener("input", function () { if (this.value.trim()) { mark(this, "good"); setMsg($("cxMsg"), "", ""); } });
+  $("cxOther").addEventListener("blur", function () { if ($("cxReason").value === "אחר" && !this.value.trim()) { mark(this, "err"); setMsg($("cxMsg"), "err", "יש לכתוב הסבר קצר."); } });
+  $("cxDo").addEventListener("click", function () {
+    if (!$("cxReason").value) { mark($("cxReason"), "err"); setMsg($("cxMsg"), "err", "יש לבחור סיבה."); return; }
+    var other = $("cxOther").value.trim();
+    if ($("cxReason").value === "אחר" && !other) { mark($("cxOther"), "err"); setMsg($("cxMsg"), "err", "יש לכתוב הסבר קצר."); $("cxOther").focus(); return; }
+    var r = cxRec, wasAssigned = r.st === "שובץ";
+    r.st = "בוטל"; r.info = $("cxReason").value === "אחר" ? "אחר: " + other : $("cxReason").value;
+    toast("פנייה " + r.no + " בוטלה." + (wasAssigned ? " המשבץ והנהג יקבלו עדכון." : ""));
+    if (state.editNo === r.no) reset();
+    closeCancel();
+  });
+
+  // ---------- Edit a request after it was sent ----------
+  function setEditUI(no) {
+    $("editBar").classList.toggle("show", !!no);
+    $("editTxt").textContent = no ? "עורך את פנייה מס' " + no + ". השינויים יישמרו על אותה פנייה." : "";
+    $("btnSave").textContent = no ? "שמור שינויים" : "שמור והכנס לתור";
+  }
+  function loadForEdit(r) {
+    var s = r.snap; reset();
+    $("phone").value = s.phone; onPhoneInput();
+    state.people.forEach(function (p) { if (p.open && p.open.indexOf(String(r.no)) >= 0) p.open = null; });
+    s.keys.forEach(function (k) { state.selected[k] = true; });
+    s.newPeople.forEach(function (np, i) {
+      var key = "e" + r.no + "_" + i;
+      state.people.push({key: key, name: np.name, rawId: np.rawId, id: np.rawId, pending: !np.rawId, noId: !np.rawId, sx: np.sx, box: null, cl: np.cl, street: "", house: "", src: "new"});
+      state.selected[key] = true;
+    });
+    $("newp").classList.remove("show");
+    renderPeople();
+    $("street").value = s.street; state.street = s.street; mark($("street"), "good");
+    $("house").value = s.house; mark($("house"), "good");
+    $("entr").value = s.ent; $("notes").value = s.notes;
+    $("needs").querySelectorAll("input").forEach(function (i) { i.checked = s.needs.indexOf(i.value) >= 0; });
+    $("comm").value = s.comm; state.comm = s.comm; if (s.comm) mark($("comm"), "good");
+    document.querySelector('input[name="when"][value="' + s.when + '"]').checked = true;
+    $("tRange").classList.toggle("show", s.when === "range"); $("tUntil").classList.toggle("show", s.when === "until");
+    $("tFrom").value = s.tFrom; $("tTo").value = s.tTo; $("tDl").value = s.tDl; $("reason").value = s.reason;
+    document.querySelector('input[name="ret"][value="' + s.ret + '"]').checked = true;
+    state.editNo = r.no; setEditUI(r.no);
+    geocode(); update(); collapsePeople();
+  }
+  function snapshot() {
+    var sel = selectedPeople();
+    return {
+      phone: state.phone,
+      keys: sel.filter(function (p) { return p.src === "base"; }).map(function (p) { return p.key; }),
+      newPeople: sel.filter(function (p) { return p.src !== "base"; }).map(function (p) { return {name: p.name, rawId: p.rawId || "", sx: p.sx, cl: p.cl}; }),
+      street: state.street, house: $("house").value, ent: $("entr").value, notes: $("notes").value,
+      needs: Array.prototype.slice.call($("needs").querySelectorAll("input:checked")).map(function (i) { return i.value; }),
+      comm: state.comm || "",
+      when: document.querySelector('input[name="when"]:checked').value, tFrom: $("tFrom").value, tTo: $("tTo").value, tDl: $("tDl").value, reason: $("reason").value,
+      ret: document.querySelector('input[name="ret"]:checked').value
+    };
+  }
+  $("q").addEventListener("input", runSearch);
+  $("q").addEventListener("focus", runSearch);
+  $("q").addEventListener("blur", function () { setTimeout(function () { $("results").classList.remove("show"); }, 150); });
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); $("results").classList.remove("show"); } });
+
+  // Google check of street + building number (simulated). The location is kept in state until the request is saved.
+  var geoT;
+  function geocode() {
+    var s = state.street, h = $("house").value, key = s + "|" + h;
+    if (state.loc && state.locKey === key) { update(); return; }
+    clearTimeout(geoT); state.loc = null; state.locKey = "";
+    if (!s || !h) { if (!s || !h) setMsg($("addrMsg"), "", ""); update(); return; }
+    setMsg($("addrMsg"), "info", "בודק את הכתובת בגוגל...");
+    update();
+    geoT = setTimeout(function () {
+      if (Number(h) > 200) {
+        // Google did not find the building: keep an approximate location (street center) and flag it for the dispatcher. Saving is not blocked.
+        var k0 = hash(s);
+        state.loc = { lat: (32.0700 + (k0 % 40) / 1000).toFixed(5), lng: (34.8200 + ((k0 * 7) % 40) / 1000).toFixed(5), approx: true };
+        state.locKey = key;
+        setMsg($("addrMsg"), "warn", "גוגל לא מצא את מספר הבניין. הפנייה תישמר עם מיקום משוער של הרחוב, והמשבץ יראה סימון.");
+      } else {
+        var k = hash(key);
+        state.loc = { lat: (32.0700 + (k % 40) / 1000).toFixed(5), lng: (34.8200 + ((k * 7) % 40) / 1000).toFixed(5) };
+        state.locKey = key;
+        setMsg($("addrMsg"), "ok", "הכתובת נמצאה בגוגל.");
+      }
+      update();
+    }, 600);
+  }
+  state = fresh();
+
+  function digits(s) { return (s || "").replace(/\D/g, ""); }
+  function clById(id) { return CLUSTERS.filter(function (c) { return c.id === id; })[0]; }
+  function clLabel(c) { return (c.num ? "אשכול " + c.num + " · " : "") + c.name; }
+  function setMsg(el, cls, text) { el.className = "msg " + cls; el.textContent = text; }
+  function mark(input, cls) { input.classList.remove("err", "good"); if (cls) input.classList.add(cls); }
+
+  // ---------- Phone ----------
+  function phoneCheck(d) {
+    if (!d) return {ok:false, empty:true, msg:"נייד: 10 ספרות שמתחילות ב-05. נייח: 9 ספרות."};
+    var p2 = d.slice(0, 2);
+    var need = p2 === "05" || p2 === "07" ? 10 : (["02","03","04","08","09"].indexOf(p2) >= 0 ? 9 : 0);
+    if (d.length >= 2 && !need) return {ok:false, hard:true, msg:"קידומת לא מוכרת. בדוק את המספר."};
+    if (need && d.length < need) return {ok:false, msg:"חסרות " + (need - d.length) + " ספרות (צריך " + need + ")."};
+    if (need && d.length > need) return {ok:false, hard:true, msg:"יש " + (d.length - need) + " ספרות מיותרות (צריך " + need + ")."};
+    if (!need) return {ok:false, msg:"המשך להקליד."};
+    return {ok:true};
+  }
+  function fmtPhone(d) {
+    if (d.length === 10) return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
+    if (d.length === 9) return d.slice(0,2) + "-" + d.slice(2,5) + "-" + d.slice(5);
+    return d;
+  }
+  function showPhone(onBlur) {
+    var d = digits($("phone").value), c = phoneCheck(d);
+    if (c.ok) { mark($("phone"), "good"); return c; }
+    var red = c.hard || (onBlur && !c.empty);
+    mark($("phone"), red ? "err" : null);
+    setMsg($("phoneMsg"), red ? "err" : "info", c.msg);
+    return c;
+  }
+  function onPhoneInput() {
+    var d = digits($("phone").value), c = showPhone(false);
+    if (!c.ok) { if (state.phone) clearPeople(); return; }
+    if (state.phone === d) return;
+    state.phone = d;
+    var found = BASE[d] || [];
+    state.people = found.map(function (p) { return Object.assign({src:"base"}, p); });
+    state.selected = {};
+    setMsg($("phoneMsg"), "ok", found.length ? "נמצאו " + found.length + " אנשים על המספר הזה (מהבייס)." : "המספר לא נמצא. מוסיפים נוסע חדש.");
+    renderPeople(); setSec("secPeople", true);
+    if (!found.length) openNew();
+    update();
+  }
+  function clearPeople() { state.people = []; state.selected = {}; state.phone = ""; renderPeople(); setSec("secPeople", false); update(); }
+
+  // ---------- ID ----------
+  function idValid(id) {
+    if (id.length < 5 || id.length > 9) return false;
+    id = ("000000000" + id).slice(-9);
+    var sum = 0;
+    for (var i = 0; i < 9; i++) { var n = Number(id[i]) * ((i % 2) + 1); sum += n > 9 ? n - 9 : n; }
+    return sum % 10 === 0;
+  }
+  function checkId(onBlur) {
+    var v = digits($("npId").value); $("npId").value = v;
+    if (!v) { mark($("npId"), null); setMsg($("npIdMsg"), "", ""); return true; }
+    if (v.length < 9 && !onBlur) { mark($("npId"), null); setMsg($("npIdMsg"), "info", "חסרות " + (9 - v.length) + " ספרות."); return false; }
+    var ok = idValid(v);
+    mark($("npId"), ok ? "good" : "err");
+    setMsg($("npIdMsg"), ok ? "ok" : "err", ok ? "ת\"ז תקינה." : (v.length < 9 ? "חסרות " + (9 - v.length) + " ספרות, או שהת\"ז שגויה." : "ת\"ז לא תקינה (ספרת ביקורת)."));
+    return ok;
+  }
+
+  // ---------- Combobox: substring match anywhere in the text, must pick ----------
+  function combo(input, list, source, onPick) {
+    var idx = -1, items = [];
+    function hl(text, q) {
+      if (!q) return text;
+      var i = text.indexOf(q);
+      return i < 0 ? text : text.slice(0, i) + "<mark>" + text.slice(i, i + q.length) + "</mark>" + text.slice(i + q.length);
+    }
+    function render() {
+      var q = input.value.trim();
+      items = source(q);
+      idx = items.length ? 0 : -1;
+      list.innerHTML = items.length
+        ? items.map(function (it, i) { return '<li data-i="' + i + '"' + (i === 0 ? ' class="hl"' : '') + '><span>' + hl(it.label, q) + '</span>' + (it.sub ? '<small>' + it.sub + '</small>' : '') + '</li>'; }).join("")
+        : '<li class="empty">אין התאמה. נסה חלק אחר של השם.</li>';
+      list.classList.add("show");
+    }
+    function pick(i) { var it = items[i]; if (!it) return; input.value = it.label; list.classList.remove("show"); onPick(it); }
+    input.addEventListener("focus", render);
+    input.addEventListener("input", function () { onPick(null, true); render(); });
+    input.addEventListener("keydown", function (e) {
+      if (!list.classList.contains("show")) return;
+      var lis = list.querySelectorAll("li[data-i]");
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault(); if (!lis.length) return;
+        idx = (idx + (e.key === "ArrowDown" ? 1 : -1) + lis.length) % lis.length;
+        lis.forEach(function (li, i) { li.classList.toggle("hl", i === idx); });
+        lis[idx].scrollIntoView({block: "nearest"});
+      } else if (e.key === "Enter" || (e.key === "Tab" && idx >= 0 && input.value.trim())) {
+        if (idx >= 0) { if (e.key === "Enter") e.preventDefault(); pick(idx); }
+      } else if (e.key === "Escape") { e.stopPropagation(); list.classList.remove("show"); }
+    });
+    list.addEventListener("mousedown", function (e) { var li = e.target.closest("li[data-i]"); if (!li) return; e.preventDefault(); pick(Number(li.getAttribute("data-i"))); });
+    input.addEventListener("blur", function () { setTimeout(function () { list.classList.remove("show"); onPick(undefined, false, true); }, 120); });
+  }
+
+  // Street
+  combo($("street"), $("streetList"),
+    function (q) { return STREETS.filter(function (s) { return !q || s.indexOf(q) >= 0; }).slice(0, 8).map(function (s) { return {label:s, sub:"עיר לדוגמה"}; }); },
+    function (it, typing, blurred) {
+      if (it) { state.street = it.label; mark($("street"), "good"); setMsg($("streetMsg"), "", ""); if (!$("house").value) $("house").focus(); }
+      else if (typing) { state.street = ""; mark($("street"), null); setMsg($("streetMsg"), "", ""); }
+      else if (blurred && !state.street && $("street").value.trim()) { mark($("street"), "err"); setMsg($("streetMsg"), "err", "יש לבחור רחוב מהרשימה."); }
+      geocode();
+    });
+  // Cluster (new passenger)
+  combo($("npCl"), $("npClList"),
+    function (q) {
+      return CLUSTERS.filter(function (c) { return !q || (clLabel(c) + " " + c.addr).indexOf(q) >= 0; })
+        .map(function (c) { return {label: clLabel(c), sub: c.addr + " · קלפיות " + c.boxes, id: c.id}; });
+    },
+    function (it, typing, blurred) {
+      if (it) { state.newCl = it.id; mark($("npCl"), "good"); setMsg($("npClMsg"), "", ""); addNew(); }
+      else if (typing) { state.newCl = ""; mark($("npCl"), null); setMsg($("npClMsg"), "", ""); }
+      else if (blurred && !state.newCl && $("npCl").value.trim()) { mark($("npCl"), "err"); setMsg($("npClMsg"), "err", "יש לבחור אשכול מהרשימה."); }
+    });
+
+  // Community (optional): pick from the list, no free text
+  combo($("comm"), $("commList"),
+    function (q) { return COMMS.filter(function (s) { return !q || s.indexOf(q) >= 0; }).map(function (s) { return {label:s}; }); },
+    function (it, typing, blurred) {
+      if (it) { state.comm = it.label; mark($("comm"), "good"); setMsg($("commMsg"), "", ""); }
+      else if (typing) { state.comm = ""; mark($("comm"), null); setMsg($("commMsg"), "", ""); }
+      else if (blurred && !state.comm && $("comm").value.trim()) { mark($("comm"), "err"); setMsg($("commMsg"), "err", "יש לבחור קהילה מהרשימה, או להשאיר ריק."); }
+      update();
+    });
+
+  // House number: digits only, required
+  $("house").addEventListener("input", function () { var v = digits(this.value); if (v !== this.value) this.value = v; if (v) { mark(this, "good"); setMsg($("houseMsg"), "", ""); } else mark(this, null); geocode(); });
+  $("house").addEventListener("blur", function () { if (!this.value && state.street) { mark(this, "err"); setMsg($("houseMsg"), "err", "חובה להקליד מספר."); } });
+
+  // ---------- People ----------
+  function setSec(id, on) { $(id).classList.toggle("off", !on); }
+  function selectedPeople() { return state.people.filter(function (p) { return state.selected[p.key]; }); }
+  function renderPeople() {
+    $("people").innerHTML = state.people.map(function (p) {
+      var on = state.selected[p.key] ? " on" : "", c = clById(p.cl);
+      var dest = p.box
+        ? '<span class="dest"><span class="pl" title="' + c.name + ' · ' + c.addr + '">' + p.box + '</span><span class="cl">' + clLabel(c) + '</span></span>'
+        : '<span class="dest">' + (c.num ? '<span class="pl cl-num" title="' + c.name + ' · ' + c.addr + '">' + c.num + '</span>' : '') + '<span class="cl">' + c.name + '</span></span>';
+      var addr = p.street ? p.street + " " + p.house : "כתובת לא ידועה";
+      return '<label class="person' + on + '" data-key="' + p.key + '"><input type="checkbox"' + (on ? " checked" : "") + '>' +
+        '<div><div class="pn">' + p.name + '</div><div class="pm">' + (p.id ? 'ת"ז ' + p.id + ' · ' : 'בלי ת"ז · ') + addr + '</div></div>' +
+        '<span class="chip sx">' + (p.sx === "ג" ? "גבר" : "אישה") + '</span>' + dest +
+        (p.open ? '<span class="chip open">פנייה פתוחה</span>' : (p.src === "base" ? '<span class="chip base">בבייס</span>' : '<span class="chip pend">' + (p.pending ? 'ממתין לאימות' : 'לא נמצא בבייס') + '</span>')) +
+        (p.src === "new" ? '<button type="button" class="b2 edit" data-edit="' + p.key + '">ערוך</button>' : '') +
+      '</label>';
+    }).join("");
+  }
+  $("people").addEventListener("change", function (e) {
+    var row = e.target.closest(".person"); if (!row) return;
+    var key = row.getAttribute("data-key");
+    if (e.target.checked) state.selected[key] = true; else delete state.selected[key];
+    row.classList.toggle("on", e.target.checked);
+    var sel = selectedPeople();
+    if (sel.length && !state.street && sel[0].street) {
+      $("street").value = sel[0].street; state.street = sel[0].street; mark($("street"), "good");
+      $("house").value = sel[0].house; mark($("house"), "good");
+      geocode();
+    }
+    if (sel.some(function (p) { return p.needs && p.needs.indexOf("הליכון") >= 0; })) $("needs").querySelector('input[value="הליכון"]').checked = true;
+    update();
+  });
+
+  function openNew() { $("newp").classList.add("show"); $("npName").focus(); }
+  $("btnAdd").addEventListener("click", openNew);
+  $("npId").addEventListener("input", function () { checkId(false); });
+  $("npNoId").addEventListener("change", function () {
+    $("npId").disabled = this.checked;
+    if (this.checked) { $("npId").value = ""; mark($("npId"), null); setMsg($("npIdMsg"), "", ""); }
+    else $("npId").focus();
+  });
+  $("npId").addEventListener("blur", function () { checkId(true); });
+  $("npName").addEventListener("blur", function () { if (!this.value.trim() && $("newp").classList.contains("show") && document.activeElement !== $("btnAdd")) { /* only flag on add */ } });
+  // Step 2 completes itself: once the cluster is picked and the other fields are valid, the passenger is added and focus moves to step 3.
+  function addNew() {
+    var name = $("npName").value.trim(), id = digits($("npId").value), sx = document.querySelector('input[name="npSx"]:checked').value;
+    var ok = true;
+    if (!name) { mark($("npName"), "err"); setMsg($("npNameMsg"), "err", "חובה להקליד שם."); ok = false; } else { mark($("npName"), null); setMsg($("npNameMsg"), "", ""); }
+    if ($("npNoId").checked) { id = ""; }
+    else if (!id) { mark($("npId"), "err"); setMsg($("npIdMsg"), "err", "חובה להקליד מספר, או לסמן \"לא מסר ת\"ז\"."); ok = false; }
+    else if (!checkId(true)) ok = false;
+    if (!state.newCl) { mark($("npCl"), "err"); setMsg($("npClMsg"), "err", "יש לבחור אשכול מהרשימה."); ok = false; }
+    if (!ok) return;
+    var key = "n" + Date.now();
+    state.lastNew = key;
+    state.people.push({key:key, name:name, rawId:id, id: id, pending: !id, noId: !id, sx:sx, box:null, cl:state.newCl, street:"", house:"", src:"new"});
+    state.selected[key] = true;
+    renderPeople();
+    ["npName","npId","npCl"].forEach(function (i) { $(i).value = ""; mark($(i), null); });
+    $("npNoId").checked = false; $("npId").disabled = false;
+    ["npNameMsg","npIdMsg","npClMsg"].forEach(function (i) { setMsg($(i), "", ""); });
+    state.newCl = "";
+    $("newp").classList.remove("show");
+    update();
+    collapsePeople();
+    if (state.street) $("house").focus(); else $("street").focus();
+  }
+
+  // Once step 2 is done, it folds into one full-width line; clicking it opens it again for editing.
+  function collapsePeople() {
+    var sel = selectedPeople();
+    if (!sel.length || sel.some(function (p) { return p.open; }) || $("newp").classList.contains("show")) return;
+    var nd = Array.prototype.slice.call($("needs").querySelectorAll("input:checked")).map(function (i) { return i.value; });
+    $("peopleSum").innerHTML = '<b>' + names(sel) + '</b><span>אל ' + destText(sel) + '</span>' +
+      (nd.length ? '<span class="chip sx">' + nd.join(", ") + '</span>' : '') + '<span class="sum-edit">לחץ לעריכה</span>';
+    $("secPeople").classList.add("collapsed");
+  }
+  // Reopen a manually added passenger in the form, filled in, exactly as before it was completed.
+  function editNew(key) {
+    var p = state.people.filter(function (x) { return x.key === key; })[0]; if (!p) return;
+    state.people = state.people.filter(function (x) { return x.key !== key; });
+    delete state.selected[key];
+    $("npName").value = p.name; $("npId").value = p.rawId;
+    $("npNoId").checked = !!p.noId; $("npId").disabled = !!p.noId;
+    document.querySelector('input[name="npSx"][value="' + p.sx + '"]').checked = true;
+    $("npCl").value = clLabel(clById(p.cl)); state.newCl = p.cl;
+    mark($("npName"), "good"); mark($("npCl"), "good"); checkId(true);
+    $("secPeople").classList.remove("collapsed");
+    $("newp").classList.add("show");
+    renderPeople(); update();
+    $("npName").focus();
+  }
+  $("people").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-edit]"); if (!b) return;
+    e.preventDefault(); editNew(b.getAttribute("data-edit"));
+  });
+  $("peopleSum").addEventListener("click", function () {
+    var last = state.people.filter(function (x) { return x.key === state.lastNew; })[0];
+    if (last) { editNew(last.key); return; }
+    $("secPeople").classList.remove("collapsed");
+    var f = $("people").querySelector("input"); if (f) f.focus();
+  });
+  // While editing, leaving the form with all fields valid completes step 2 again.
+  $("newp").addEventListener("focusout", function () {
+    setTimeout(function () {
+      if (!$("newp").classList.contains("show") || $("newp").contains(document.activeElement)) return;
+      var id = digits($("npId").value);
+      if ($("npName").value.trim() && ($("npNoId").checked || (id && idValid(id))) && state.newCl) addNew();
+    }, 160);
+  });
+  ["secAddr", "secTime"].forEach(function (id) { $(id).addEventListener("focusin", collapsePeople); $(id).addEventListener("mousedown", collapsePeople); });
+
+  // ---------- Time / return ----------
+  document.querySelectorAll('input[name="when"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      $("tRange").classList.toggle("show", r.value === "range" && r.checked);
+      $("tUntil").classList.toggle("show", r.value === "until" && r.checked);
+      update();
+    });
+  });
+  ["tFrom","tTo","tDl","reason","entr","notes"].forEach(function (id) { $(id).addEventListener("input", update); $(id).addEventListener("change", update); });
+  document.querySelectorAll('input[name="ret"]').forEach(function (r) { r.addEventListener("change", update); });
+  $("needs").addEventListener("change", update);
+  function badClusters(sel) {
+    var out = [];
+    sel.forEach(function (p) { var c = clById(p.cl); if (!c.access && out.indexOf(c) < 0) out.push(c); });
+    return out;
+  }
+  function needsWc() { return $("needs").querySelector('input[value="כיסא גלגלים"]').checked; }
+  function renderAcc(sel) {
+    var box = $("acc"), bad = needsWc() ? badClusters(sel) : [];
+    if (!bad.length) { box.classList.remove("show"); box.innerHTML = ""; state.acc = {mode: "", cl: ""}; return false; }
+    var a = state.acc, opts = CLUSTERS.filter(function (c) { return c.access; }).map(function (c) {
+      return '<option value="' + c.id + '"' + (a.cl === c.id ? " selected" : "") + '>' + clLabel(c) + ' · ' + c.addr + '</option>';
+    }).join("");
+    box.innerHTML = '<div class="t">' + bad.map(function (c) { return c.name; }).join(", ") + ' לא נגיש לכיסא גלגלים.</div>' +
+      '<div class="q">לשאול את הפונה: להשאיר את המקום הזה, או לעבור למקום נגיש?<span class="req">*</span></div>' +
+      '<label class="opt"><input type="radio" name="accMode" value="stay"' + (a.mode === "stay" ? " checked" : "") + '>נשאר במקום הזה (יש מי שיעזור לו)</label>' +
+      '<label class="opt"><input type="radio" name="accMode" value="move"' + (a.mode === "move" ? " checked" : "") + '>עובר למקום נגיש</label>' +
+      (a.mode === "move" ? '<select id="accCl" aria-label="איזה מקום נגיש?"><option value="">בחר מקום נגיש</option>' + opts + '</select>' : '');
+    box.classList.add("show");
+    return !(a.mode === "stay" || (a.mode === "move" && a.cl));
+  }
+  $("acc").addEventListener("change", function (e) {
+    if (e.target.name === "accMode") { state.acc = {mode: e.target.value, cl: ""}; update(); if (e.target.value === "move" && $("accCl")) $("accCl").focus(); }
+    else if (e.target.id === "accCl") { state.acc.cl = e.target.value; update(); }
+  });
+
+  function names(list) {
+    if (list.length === 1) return list[0].name;
+    return list.slice(0, -1).map(function (p) { return p.name; }).join(", ") + " ו" + list[list.length - 1].name;
+  }
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 997; return h; }
+  function moveTo() { return state.acc && state.acc.mode === "move" && state.acc.cl ? clById(state.acc.cl) : null; }
+  function destText(sel) {
+    var mv = moveTo();
+    if (mv) return mv.name + " (אשכול נגיש)";
+    var parts = [];
+    sel.forEach(function (p) {
+      var c = clById(p.cl), t = p.box ? "קלפי " + p.box + " (" + c.name + ")" : c.name;
+      if (parts.indexOf(t) < 0) parts.push(t);
+    });
+    return parts.join(" ו");
+  }
+
+  function update() {
+    var sel = selectedPeople();
+    var dup = sel.filter(function (p) { return p.open; })[0];
+    $("dup").classList.toggle("show", !!dup);
+    if (dup) $("dupTxt").textContent = dup.name + " כבר בפנייה פתוחה: " + dup.open + ".";
+    var sexes = {}; sel.forEach(function (p) { sexes[p.sx] = 1; });
+    $("family").classList.toggle("show", sel.length > 1 && Object.keys(sexes).length > 1);
+    setSec("secAddr", sel.length > 0); setSec("secTime", sel.length > 0);
+
+    var addrOk = !!state.loc;
+    var pin = $("mapPin");
+    if (addrOk) { var h = hash(state.locKey); pin.style.display = "block"; pin.style.right = (12 + h % 76) + "%"; pin.style.top = (14 + (h * 7) % 70) + "%"; }
+    else pin.style.display = "none";
+    var dst = $("mapDst");
+    if (sel.length) { var c = moveTo() || clById(sel[0].cl); dst.style.display = "block"; dst.style.right = c.pos[0] + "%"; dst.style.top = c.pos[1] + "%"; dst.title = c.name; }
+    else dst.style.display = "none";
+
+    var when = document.querySelector('input[name="when"]:checked').value;
+    var ret = document.querySelector('input[name="ret"]:checked').value;
+    var missing = [];
+    if (!state.phone) missing.push("טלפון");
+    if (!sel.length) missing.push("נוסע");
+    if (dup) missing.push("להוריד את מי שכבר בפנייה פתוחה");
+    if (!state.street) missing.push("רחוב מהרשימה");
+    if ($("comm").value.trim() && !state.comm) missing.push("קהילה מהרשימה (או להשאיר ריק)");
+    if (!$("house").value) missing.push("מספר בניין");
+    else if (state.street && !state.loc) missing.push("כתובת שגוגל מצא");
+    if (when === "until" && !$("reason").value) missing.push("סיבה לשעת היציאה");
+    if (renderAcc(sel)) missing.push("תשובה על מקום לא נגיש");
+
+    var rb = $("rb");
+    if (!sel.length) { rb.className = "txt empty"; rb.textContent = "הסיכום יופיע כאן, תוך כדי מילוי."; }
+    else {
+      var t = "רשמתי: <b>" + names(sel) + "</b>";
+      if (addrOk) t += ", מ<b>" + state.street + " " + $("house").value + ($("entr").value ? " כניסה " + $("entr").value : "") + "</b>";
+      t += ", אל <b>" + destText(sel) + "</b>.";
+      t += when === "now" ? " נשלח נהג <b>בהקדם</b>." : (when === "range" ? " איסוף <b>בין " + $("tFrom").value + " ל-" + $("tTo").value + "</b>." : " איסוף <b>לפני " + $("tDl").value + "</b>.");
+      t += ret === "wait" ? "" : (ret === "sep" ? " לחזרה <b>תתקשרו אלינו</b> כשתסיימו." : " <b>הלוך בלבד</b>.");
+      var nd = Array.prototype.slice.call($("needs").querySelectorAll("input:checked")).map(function (i) { return i.value; });
+      if (nd.length) t += " רשמתי לנהג: <b>" + nd.join(", ") + "</b>.";
+      t += " מספר לחזרה: <b dir=\"ltr\" class=\"nowrap\">" + fmtPhone(state.phone) + "</b>.";
+      rb.className = "txt"; rb.innerHTML = t;
+    }
+    $("missing").textContent = missing.length && sel.length ? "חסר: " + missing.join(", ") : "";
+    $("btnSave").disabled = missing.length > 0;
+  }
+
+  var reqNo = 1187;
+  function save() {
+    if ($("btnSave").disabled) return;
+    var sel = selectedPeople(), c = moveTo() || clById(sel[0].cl);
+    if (state.editNo) {
+      var rec = reqByNo(state.editNo);
+      rec.names = names(sel); rec.cl = c.id; rec.snap = snapshot();
+      toast("השינויים נשמרו בפנייה " + rec.no + "." + (rec.st === "שובץ" ? " המשבץ והנהג יקבלו עדכון." : ""));
+      reset(); return;
+    }
+    var row = document.createElement("tr");
+    row.innerHTML = '<td>11:42</td><td style="font-weight:800">' + names(sel) + '</td><td>' + c.name + '</td><td><span class="st st-q">בתור</span></td>';
+    $("recent").insertBefore(row, $("recent").firstChild);
+    $("kpiMine").textContent = Number($("kpiMine").textContent) + 1;
+    REQS.unshift({no:reqNo, names:names(sel), phone:state.phone, id:(sel[0].rawId || sel[0].id || ""), cl:c.id, st:"בתור", t:"11:42", info:"מקום 6 בתור", snap:snapshot()});
+    toast("נשמר. פנייה " + (reqNo++) + " נכנסה לתור, במקום 6.");
+    reset();
+  }
+  function reset() {
+    $("form").reset();
+    $("npId").disabled = false;
+    clearTimeout(geoT);
+    $("secPeople").classList.remove("collapsed");
+    state = fresh();
+    setEditUI(null);
+    ["phone","street","house","npName","npId","npCl","comm"].forEach(function (id) { mark($(id), null); });
+    setMsg($("commMsg"), "", "");
+    setMsg($("phoneMsg"), "info", "נייד: 10 ספרות שמתחילות ב-05. נייח: 9 ספרות.");
+    ["streetMsg","houseMsg","addrMsg","npNameMsg","npIdMsg","npClMsg"].forEach(function (id) { setMsg($(id), "", ""); });
+    $("newp").classList.remove("show");
+    $("tRange").classList.remove("show"); $("tUntil").classList.remove("show");
+    renderPeople(); setSec("secPeople", false); update();
+    $("phone").focus();
+  }
+  var tt;
+  function toast(s) { var t = $("toast"); t.textContent = s; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove("show"); }, 3200); }
+
+  $("phone").addEventListener("input", onPhoneInput);
+  $("phone").addEventListener("blur", function () { showPhone(true); });
+  $("btnSave").addEventListener("click", save);
+  $("btnReset").addEventListener("click", reset);
+  $("dupOpen").addEventListener("click", function () { toast("במערכת: נפתחת הפנייה הקיימת, ואפשר לערוך אותה או להוסיף לה נוסעים."); });
+  $("editCancel").addEventListener("click", reset);
+  document.addEventListener("keydown", function (e) {
+    if ($("cxBack").classList.contains("show")) { if (e.key === "Escape") closeCancel(); return; }
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+    if (e.key === "Escape" && !document.querySelector(".combo-list.show") && !$("results").classList.contains("show")) reset();
+  });
+  $("form").addEventListener("submit", function (e) { e.preventDefault(); });
+  document.querySelectorAll("[data-try]").forEach(function (b) {
+    b.addEventListener("click", function () { reset(); $("phone").value = b.getAttribute("data-try"); onPhoneInput(); $("phone").focus(); });
+  });
+  update();
+})();
+</script>

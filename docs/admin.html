@@ -1,0 +1,842 @@
+<title>מנהל עיר</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Secular+One&family=Noto+Sans+Hebrew:wght@400;500;700;800&display=swap">
+<style>
+/* City admin prototype, v2. DESIGN.md: graphite sign plates, sign-blue action only, wait scale green/amber/red, Secular One for numbers/headings, big targets, no sideways scroll, light-only. Works on a phone: tabs become an icon grid, tables become cards. */
+:root {
+  --page: #e7e9ec; --page-muted: #555c66; --page-line: #cdd1d7;
+  --bg: #f1f2f4; --surface: #ffffff; --ink: #121519; --muted: #5b626c; --line: #dadde2; --line2: #b8bdc5;
+  --plate: #1a1e24; --plate2: #2a3039; --action: #0b4c9e; --action-soft: #e6eefa;
+  --ok: #1f7a3a; --ok-soft: #e3f1e7; --warn: #a15f00; --warn-soft: #fdefd2; --bad: #c92a2a; --bad-soft: #fbe5e5;
+  --display: "Secular One", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Noto Sans Hebrew", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); direction: rtl; font-size: 15.5px; line-height: 1.5; }
+.page { max-width: 1400px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; }
+@media (max-width: 600px) { .page { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); padding-block: 12px 40px; } }
+.intro { max-width: 90ch; display: grid; gap: 6px; margin-bottom: 18px; }
+.intro h1 { font-family: var(--display); font-weight: 400; font-size: clamp(24px, 4vw, 32px); margin: 0; }
+.intro p { margin: 0; color: var(--page-muted); }
+.frame { border: 1px solid var(--page-line); border-radius: 6px; background: var(--bg); overflow: clip; }
+
+svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.m-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; background: var(--plate); color: #fff; padding: 8px 16px; min-height: 56px; border-bottom: 4px solid #fff; box-shadow: 0 4px 0 var(--plate); }
+.brand { font-family: var(--display); font-size: 22px; white-space: nowrap; }
+.brand span { font-family: var(--body); font-size: 13px; opacity: .75; margin-inline-start: 8px; }
+.top-note { margin-inline-start: auto; font-size: 13.5px; opacity: .9; display: flex; align-items: center; gap: 6px; }
+
+.shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; padding: 16px 12px 14px; align-items: start; }
+.tabs { display: grid; gap: 6px; position: sticky; top: 12px; }
+.tabs a { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 14px; border-radius: 8px; border: 2px solid var(--line2); background: #fff; color: var(--ink); text-decoration: none; font-weight: 700; }
+.tabs a:hover { border-color: var(--action); color: var(--action); }
+.tabs a.on { background: var(--plate); color: #fff; border-color: var(--plate); }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); padding: 10px 8px; }
+  .tabs { position: static; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .tabs a { flex-direction: column; justify-content: center; gap: 2px; min-height: 60px; padding: 6px 4px; font-size: 13px; text-align: center; }
+}
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, label.filebtn:focus-within { outline: 3px solid var(--action); outline-offset: 2px; }
+
+.panel { background: var(--surface); border: 2px solid var(--line2); border-radius: 8px; min-width: 0; }
+.p-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; background: #e9ebee; border-bottom: 2px solid var(--line2); border-radius: 6px 6px 0 0; }
+.p-h h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.p-h .tools { margin-inline-start: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 600px) { .p-h .tools { margin-inline-start: 0; width: 100%; } .p-h { padding: 10px 12px; } }
+.p-b { padding: 14px 16px; display: grid; gap: 16px; }
+@media (max-width: 600px) { .p-b { padding: 12px; } }
+.muted { color: var(--muted); }
+.lead { margin: 0; color: var(--muted); }
+.section-t { font-family: var(--display); font-weight: 400; font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px; }
+
+.b1, .b2, .b3 { display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; border-radius: 6px; }
+.b1 { font-family: var(--display); font-size: 15.5px; border: 0; padding: 0 18px; height: 42px; background: var(--action); color: #fff; }
+.b1.danger { background: var(--bad); }
+.b2 { font: inherit; font-weight: 700; font-size: 14.5px; background: #fff; border: 2px solid var(--line2); padding: 0 14px; height: 42px; color: var(--ink); }
+.b2:hover { border-color: var(--action); color: var(--action); }
+.b3 { font: inherit; font-weight: 700; font-size: 13.5px; background: #fff; border: 2px solid var(--line2); padding: 0 12px; height: 38px; color: var(--ink); }
+.b3:hover { border-color: var(--action); color: var(--action); }
+.b3.danger { color: var(--bad); }
+.b3.danger:hover { border-color: var(--bad); }
+.b1 svg.i, .b2 svg.i, .b3 svg.i { width: 18px; height: 18px; }
+.fbtn { font: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; padding: 0 12px; height: 38px; cursor: pointer; }
+.fbtn.on { background: var(--plate); color: #fff; border-color: var(--plate); }
+
+input[type=text], input[type=tel], input[type=email], input[type=date], input[type=time], input[type=search], select {
+  font: inherit; font-size: 16px; color: var(--ink); background: #fff; border: 2px solid var(--line2); border-radius: 6px; height: 44px; padding: 0 12px; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+input.err, select.err { border-color: var(--bad); background: var(--bad-soft); }
+input.good, select.good { border-color: var(--ok); }
+.f { display: grid; gap: 4px; font-weight: 700; font-size: 13.5px; color: var(--muted); align-content: start; min-width: 0; }
+.req { color: var(--bad); font-weight: 800; margin-inline-start: 3px; }
+.msg { font-size: 13px; font-weight: 700; min-height: 18px; color: var(--bad); }
+.hint { font-weight: 500; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.seg { display: inline-flex; border: 2px solid var(--line2); border-radius: 6px; overflow: hidden; height: 44px; width: max-content; max-width: 100%; }
+.seg label { display: flex; align-items: center; padding: 0 16px; cursor: pointer; font-weight: 700; font-size: 15px; color: var(--ink); border-inline-start: 1px solid var(--line2); }
+.seg label:first-child { border-inline-start: 0; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--action); color: #fff; }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: -3px; }
+.seg.err { border-color: var(--bad); }
+.with-ico { position: relative; }
+.with-ico svg.i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.with-ico input { padding-right: 40px; }
+
+/* Tables: cards on a phone */
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th, td { text-align: right; padding: 0 10px; }
+th { font-weight: 800; font-size: 12.5px; color: var(--muted); height: 34px; border-bottom: 1px solid var(--line2); }
+td { height: 46px; border-bottom: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.wrap { white-space: normal; padding-block: 6px; }
+@media (max-width: 760px) {
+  table.rt, table.rt tbody, table.rt tr, table.rt td { display: block; width: 100%; }
+  table.rt colgroup, table.rt thead { display: none; }
+  table.rt tr { border: 2px solid var(--line2); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; display: grid; gap: 4px; }
+  table.rt td { height: auto; border: 0; padding: 2px 0; white-space: normal; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  table.rt td[data-l]::before { content: attr(data-l); font-size: 12.5px; font-weight: 800; color: var(--muted); min-width: 92px; }
+  table.rt td.act { justify-content: flex-start; }
+}
+.nm { font-weight: 800; }
+.pl { display: inline-flex; justify-content: center; align-items: center; min-width: 34px; height: 24px; padding: 0 7px; font-family: var(--display); font-size: 14px; border-radius: 5px; background: var(--plate); color: #fff; box-shadow: inset 0 0 0 2px var(--plate), inset 0 0 0 3.5px #fff; white-space: nowrap; }
+.pl-name { background: #fff; color: var(--plate); box-shadow: inset 0 0 0 2px var(--plate); font-family: var(--body); font-weight: 800; font-size: 12.5px; }
+.ico { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; border: 2px solid var(--plate); border-radius: 4px; color: var(--plate); flex: none; vertical-align: middle; }
+.ico svg.i { width: 16px; height: 16px; stroke-width: 2.2; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-size: 12.5px; border-radius: 5px; padding: 1px 8px; white-space: nowrap; }
+.chip.no { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.role { background: var(--action-soft); color: var(--action); }
+.nowrap { white-space: nowrap; unicode-bidi: isolate; display: inline-block; }
+
+/* Dashboard */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tile { border: 2px solid var(--line2); border-radius: 8px; padding: 10px 14px; display: grid; gap: 2px; background: #fff; min-width: 0; }
+.tile .k { font-size: 14px; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.tile .k svg.i { width: 18px; height: 18px; }
+.tile .v { font-family: var(--display); font-size: 32px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tile .v small { font-family: var(--body); font-size: 14px; color: var(--muted); font-weight: 700; margin-inline-start: 4px; }
+.tile.alert { border-color: var(--bad); }
+.chart-wrap { position: relative; }
+.chart { width: 100%; height: auto; display: block; }
+.tip { position: absolute; pointer-events: none; background: var(--plate); color: #fff; border-radius: 6px; padding: 6px 10px; font-size: 13.5px; font-weight: 700; white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 2; }
+.tip b { font-family: var(--display); font-weight: 400; font-size: 16px; }
+details.tbl-view summary { cursor: pointer; font-weight: 700; min-height: 42px; display: flex; align-items: center; gap: 6px; color: var(--action); }
+details.tbl-view table td, details.tbl-view table th { height: 34px; }
+.tbl-cols { columns: 3 160px; column-gap: 24px; }
+.tbl-cols div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 4px 0; break-inside: avoid; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.list li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.list b { font-family: var(--display); font-weight: 400; font-size: 17px; font-variant-numeric: tabular-nums; }
+
+/* List manager (communities, streets): search, add new, the list below */
+.lm-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; align-items: start; }
+@media (max-width: 700px) { .lm-bar { grid-template-columns: minmax(0, 1fr); } }
+.lm-add { display: flex; gap: 8px; align-items: start; }
+.lm-add .f { flex: 1; }
+.lm-add .b1 { margin-top: 23px; height: 44px; }
+.lm-count { font-size: 14px; color: var(--muted); font-weight: 700; }
+/* Record list: one row per record, a header row, running number, source, edit and remove */
+.lm-list { list-style: none; margin: 0; padding: 0; border: 2px solid var(--line2); border-radius: 8px; overflow: hidden; background: #fff; }
+.lm-list li { display: grid; grid-template-columns: 48px minmax(0, 1fr) 130px auto; align-items: center; gap: 10px; min-height: 52px; padding: 4px 10px; border-bottom: 1px solid var(--line); }
+.lm-list li:last-child { border-bottom: 0; }
+.lm-list li:nth-child(even):not(.lm-head) { background: #fafbfc; }
+.lm-list li.lm-head { min-height: 36px; background: #e9ebee; border-bottom: 2px solid var(--line2); font-size: 12.5px; font-weight: 800; color: var(--muted); }
+.lm-list li.editing { background: var(--action-soft); }
+.lm-list .no { font-family: var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lm-list .t { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lm-list .t mark { background: #fff1b8; color: inherit; border-radius: 2px; }
+.lm-list .src { font-size: 13px; color: var(--muted); font-weight: 700; }
+.lm-list .src.manual { color: var(--action); }
+.lm-list .acts { display: flex; gap: 6px; justify-content: flex-end; }
+.lm-list .acts .b3 { height: 38px; }
+.lm-list .edit-in { display: grid; gap: 2px; }
+.lm-list .edit-in input { height: 40px; }
+@media (max-width: 600px) {
+  .lm-list li { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .lm-list li .src { grid-column: 2; grid-row: 2; }
+  .lm-list li .acts { grid-row: 1 / span 2; grid-column: 3; }
+  .lm-list li.lm-head .src { display: none; }
+  .lm-list .acts .b3 span { display: none; }
+}
+.icon-btn { flex: none; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--line2); border-radius: 8px; background: #fff; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { color: var(--bad); border-color: var(--bad); }
+.lm-empty { padding: 14px; border: 2px dashed var(--line2); border-radius: 8px; color: var(--muted); text-align: center; }
+
+/* Combobox */
+.combo { position: relative; }
+.combo-list { display: none; position: absolute; top: 100%; right: 0; left: 0; z-index: 15; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 2px solid var(--action); border-radius: 6px; box-shadow: 0 6px 16px rgba(0,0,0,.12); max-height: 220px; overflow: auto; }
+.combo-list.show { display: block; }
+.combo-list li { padding: 9px 10px; border-radius: 4px; cursor: pointer; color: var(--ink); font-weight: 500; }
+.combo-list li.hl, .combo-list li:hover { background: var(--action-soft); }
+.combo-list li mark { background: #fff1b8; color: inherit; }
+.combo-list .empty { color: var(--muted); cursor: default; }
+
+/* Base */
+.status { display: flex; gap: 12px; align-items: center; border: 2px solid var(--line2); border-radius: 8px; padding: 12px 14px; }
+.status .s-t { display: grid; gap: 2px; min-width: 0; }
+.status svg.i { width: 28px; height: 28px; }
+.status.loaded { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.status.loaded .s-t span { color: var(--ink); }
+.filebox { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.filebtn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border: 2px solid var(--plate); border-radius: 6px; background: #fff; color: var(--plate); font-weight: 800; cursor: pointer; }
+.filebtn:hover { background: var(--bg); }
+.filebtn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filename { font-weight: 700; color: var(--muted); overflow-wrap: anywhere; }
+.filename.has { color: var(--ink); }
+.map-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px 14px; }
+.legal { display: flex; gap: 10px; align-items: flex-start; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 14px; font-weight: 700; }
+.cert { border: 2px solid var(--plate); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; background: #fff; }
+.cert h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; }
+.cert dl { margin: 0; display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 4px 10px; }
+.cert dt { color: var(--muted); font-weight: 700; }
+.cert dd { margin: 0; }
+
+/* Dialogs: X, click outside, Esc */
+.dlg-back { position: fixed; inset: 0; background: rgba(18,21,25,.45); display: none; align-items: center; justify-content: center; z-index: 40; padding: 16px; }
+.dlg-back.show { display: flex; }
+@media (max-width: 600px) { .dlg-back { padding: 0; align-items: flex-end; } .dlg { border-radius: 12px 12px 0 0 !important; max-height: 92vh !important; } }
+.dlg { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: #fff; border: 3px solid var(--plate); border-radius: 8px; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+.dlg-h { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-family: var(--display); font-size: 19px; background: #e9ebee; border-bottom: 2px solid var(--line2); position: sticky; top: 0; z-index: 2; }
+.xbtn { margin-inline-start: auto; flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 26px; line-height: 1; background: #fff; border: 2px solid var(--line2); border-radius: 8px; cursor: pointer; color: var(--ink); }
+.xbtn:hover { border-color: var(--bad); color: var(--bad); }
+.dlg-body { padding: 14px 16px; display: grid; gap: 12px; }
+.dlg-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--plate); color: #fff; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--plate), 0 8px 20px rgba(0,0,0,.25); border-radius: 8px; padding: 10px 18px; font-weight: 700; display: none; z-index: 50; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { display: block; }
+</style>
+<style id="green">
+/* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
+:root {
+  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
+  --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
+  --soft: #eef2ef; --soft2: #e3e9e5;
+  --shadow: 0 8px 30px rgba(15, 30, 20, .08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
+  --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+  --body: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;
+}
+body { background: var(--page); font-family: var(--body); }
+.intro h1 { font-weight: 600; }
+
+/* מסגרת ומסך */
+.frame { border: 0; border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px -36px rgba(15, 30, 20, .35); }
+.screen { background: var(--bg); border-radius: 24px; }
+
+/* פס עליון: לבן, לא גרפיט */
+.m-top, .a-top { background: #fff; color: var(--ink); border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
+.m-top { min-height: 66px; padding: 10px 18px; border-radius: 24px 24px 0 0; }
+.brand { font-weight: 600; font-size: 20px; color: var(--ink); }
+.brand span { opacity: 1; color: var(--muted); font-weight: 400; }
+.m-clock { font-weight: 500; color: var(--ink); }
+.top-note { color: var(--muted); }
+.search input { border: 0; background: var(--soft); border-radius: 999px; height: 44px; padding: 0 18px; color: var(--ink); }
+.search input:focus { outline: none; box-shadow: 0 0 0 2px var(--action); background: #fff; }
+.m-kpi { background: var(--soft); border: 0; border-radius: 999px; color: var(--ink); padding: 4px 14px; }
+.m-kpi.hot { background: var(--bad-soft); color: var(--bad); }
+.btn-new { background: var(--action); color: #fff; box-shadow: none; border-radius: 999px; font-weight: 600; padding: 0 20px; height: 44px; }
+.results, .combo-list { border: 0; border-radius: 18px; box-shadow: var(--shadow-pop); padding: 6px; }
+.res { border-radius: 12px; border-bottom: 0; }
+.res:hover, .combo-list li.hl, .combo-list li:hover { background: var(--soft); }
+
+/* פאנלים: כרטיס לבן צף */
+.panel { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.m-h, .p-h, .dlg-h { background: transparent; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 600; padding: 12px 16px; border-radius: 0; }
+.p-h { border-radius: 20px 20px 0 0; }
+.m-h { font-size: 16px; }
+.p-h h2, .sec-h h2 { font-weight: 600; }
+.m-count { background: var(--soft); color: var(--muted); border-radius: 999px; font-weight: 500; font-family: var(--body); }
+.sec { border-bottom-color: var(--line); }
+.sec-h .num { border-radius: 50%; box-shadow: none; background: var(--action); font-weight: 600; font-size: 14px; }
+
+/* כפתורים */
+.b1 { border-radius: 14px; font-weight: 600; height: 48px; padding: 0 22px; background: var(--action); }
+.b1:hover { background: #12913f; }
+.b1:disabled { background: var(--soft2); color: var(--muted); }
+.b1.danger { background: var(--bad); }
+.b2, .b3, .bsm, .stops .rm, .brk button { border: 0; background: var(--soft); border-radius: 14px; font-weight: 500; color: var(--ink); }
+.b2 { height: 48px; }
+.b2:hover, .b3:hover, .bsm:hover, .stops .rm:hover { background: var(--soft2); color: var(--ink); border-color: transparent; }
+.bsm { border-radius: 10px; }
+.bdanger, .b3.danger { color: var(--bad); }
+.b3.danger:hover, .bdanger:hover, .stops .rm:hover { color: var(--bad); }
+.fbtn { border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; color: var(--muted); }
+.fbtn.on { background: var(--ink); color: #fff; }
+.xbtn { border: 0; background: var(--soft); border-radius: 50%; color: var(--ink); }
+.xbtn:hover { background: var(--bad-soft); color: var(--bad); }
+.icon-btn { border-radius: 12px; }
+button:focus-visible, a:focus-visible, tr:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+
+/* טפסים */
+select, .inp, input[type=text], input[type=tel], input[type=time], input[type=email], input[type=number], input[type=date], input[type=password] { border: 1.5px solid var(--line2); border-radius: 12px; background: #fff; }
+select:focus, .inp:focus, input:focus { outline: none; border-color: var(--action); box-shadow: 0 0 0 3px var(--action-soft); }
+.seg { border: 0; background: var(--soft); border-radius: 12px; padding: 3px; gap: 2px; height: auto; min-height: 40px; }
+.seg label { border: 0 !important; border-radius: 10px; }
+.seg label:has(input:checked) { background: var(--ink); color: #fff; }
+.seg.err { box-shadow: 0 0 0 2px var(--bad); }
+.needs label, .checks label, .check1 { border-radius: 999px; }
+.filebtn { border-radius: 14px; }
+
+/* טבלאות */
+th { background: #fff; font-weight: 500; color: var(--muted); border-bottom-color: var(--line); }
+td { border-bottom-color: var(--line); }
+tbody tr.sel td, tr.drv.open td { background: #effaf3; }
+tbody tr.q:hover td, tr.drv:hover td { background: #f6f9f7; }
+tr.dx td { background: var(--bg); }
+
+/* תגיות, לוחיות, מצבים */
+.chip, .st, .dl { border-radius: 999px; }
+.chip.need, .chip.noapp { border-width: 1.5px; }
+.wt { border-radius: 10px; font-weight: 600; }
+.pl { border-radius: 8px; box-shadow: none; background: var(--ink); font-weight: 600; }
+.pl-name, .pl.cl-num { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ico { border-width: 1.5px; border-radius: 8px; }
+.warnline, .known, .dup, .family, .editbar, .legal, .script, .status, .cert, .acc { border-radius: 16px; }
+.known { border: 0; background: var(--action-soft); }
+.script { border: 0; background: var(--soft); }
+
+/* מפה */
+.map { background: #e9eeea; }
+.legend, .map-cap { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(15, 30, 20, .10); }
+.minimap { border-radius: 16px; overflow: hidden; }
+.mapdlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+
+/* הצעה לנהג */
+.prop { border: 0; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--line); }
+.prop-tabs { background: var(--soft); padding: 4px; border-radius: 14px; margin: 10px 10px 0; gap: 4px; }
+.prop-tabs button { color: var(--muted); opacity: 1; border: 0; border-radius: 10px; font-weight: 500; padding: 8px 12px; font-size: 14px; }
+.prop-tabs button.on { background: var(--ink); color: #fff; }
+.prop-head b { font-weight: 600; }
+
+/* חלונות קופצים והודעות */
+.dlg-back, .mapback { background: rgba(18, 26, 20, .35); }
+.dlg { border: 0; border-radius: 24px; box-shadow: var(--shadow-pop); }
+.dlg-h { background: #fff; }
+.toast { background: var(--ink); border: 0; border-radius: 999px; box-shadow: 0 10px 28px rgba(15, 30, 20, .3); }
+
+/* מנהל עיר ומנהל מערכת */
+.tabs a { border: 0; border-radius: 999px; background: transparent; }
+.tabs a:hover { background: var(--soft); }
+.tabs a.on { background: var(--ink); color: #fff; }
+.tile { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.tile .v { font-weight: 600; }
+.tile.alert { box-shadow: inset 0 0 0 2px var(--bad), var(--shadow); }
+.lm-list, .list, .alerts li, .op, .adm-list li { border-radius: 16px; }
+.op.on { box-shadow: inset 0 0 0 2px var(--action); }
+
+/* מוקדן */
+.panel .sum { border-radius: 14px; }
+.person { border-radius: 14px; border-width: 1.5px; }
+.newp { border-radius: 16px; border-width: 1.5px; }
+.readback { border-radius: 20px; overflow: hidden; }
+.readback .ph { background: var(--ink); font-weight: 600; }
+.minimap .dst { border-radius: 50%; box-shadow: 0 0 0 3px #fff; background: var(--action); }
+.tryit button { border-radius: 999px; }
+
+/* אפליקציית הנהג */
+.sim { border: 0; border-radius: 20px; box-shadow: var(--shadow); }
+.a-brand { font-weight: 600; }
+.a-menu { color: var(--ink); border: 0; background: var(--soft); border-radius: 999px; font-weight: 500; }
+.a-foot { border-top: 0; box-shadow: 0 -8px 24px rgba(15, 30, 20, .08); border-radius: 24px 24px 0 0; }
+.state { border-radius: 20px; }
+.state .big { font-weight: 600; }
+.state.trip { border: 0; background: var(--action-soft); color: var(--ink); }
+.state.done { border: 0; background: var(--soft); }
+.btn-main, .btn-free { border-radius: 18px; font-weight: 600; background: var(--action); }
+.btn-sec { border: 0; background: var(--soft); color: var(--ink); border-radius: 18px; font-weight: 500; }
+.btn-sec.on { background: var(--ink); color: #fff; }
+.btn-low { border: 0; background: var(--soft); border-radius: 16px; font-weight: 500; }
+.brk { border-radius: 16px; border-width: 1.5px; }
+.offer { border: 0; border-radius: 24px; box-shadow: var(--shadow); }
+.offer-h { background: var(--action); font-weight: 600; }
+.stop { border: 0; border-radius: 16px; box-shadow: inset 0 0 0 1.5px var(--line); }
+.stop.end { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.go { border-radius: 14px; font-weight: 600; }
+.go.call { border: 0; background: var(--soft); color: var(--ink); }
+.dist { color: var(--action); }
+.phone .dlg { border-radius: 24px 24px 0 0; }
+.dlg-body label.opt { border-radius: 14px; }
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>מסך מנהל העיר: אב-טיפוס לחיץ</h1>
+    <p>גרסה 2. כל מה שמנהל העיר מגדיר לפני הבחירות ורואה בזמן הבחירות. מתאים גם לטלפון: התפריט הופך לאריחים, והטבלאות לכרטיסים. כל הנתונים הם דוגמה.</p>
+  </div>
+
+  <div class="frame">
+    <div class="m-top">
+      <div class="brand">מטה הסעות<span>מנהל עיר · עיר לדוגמה</span></div>
+      <div class="top-note" id="topNote"></div>
+    </div>
+    <div class="shell">
+      <nav class="tabs" id="tabs" aria-label="תפריט מנהל העיר"></nav>
+      <main id="view" class="panel" aria-live="polite"></main>
+    </div>
+  </div>
+</div>
+
+<div class="dlg-back" id="dlgBack">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <div class="dlg-h"><span id="dlgTitle"></span><button class="xbtn" type="button" id="dlgX" aria-label="סגור">×</button></div>
+    <div class="dlg-body" id="dlgBody"></div>
+    <div class="dlg-acts" id="dlgActs"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  // ---------- Icons (inline SVG, stroke = current text color) ----------
+  var P = {
+    dash: '<path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8M21 17v-3"/>',
+    clusters: '<rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M8 10V4h8v6"/><path d="M10 7h4"/>',
+    comms: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.3c2.9.4 5 2.8 5 5.7"/>',
+    streets: '<path d="M8 3 4 21M16 3l4 18M12 4v3M12 11v3M12 18v3"/>',
+    base: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    users: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
+    city: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    check: '<path d="m5 12 5 5 9-10"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    warn: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
+    refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+    car: '<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="16.5" cy="19" r="1.5"/>',
+    wc: '<circle cx="11" cy="3.6" r="1.9" fill="currentColor" stroke="none"/><path d="M11 7v6.5h5.5l2.5 5.5"/><path d="M11 10.5h4.5"/><path d="M8 10.8a5.6 5.6 0 1 0 7.8 6.7"/>'
+  };
+  function I(n) { return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>'; }
+  var WC = '<span class="ico" role="img" aria-label="נגיש לכיסא גלגלים" title="נגיש לכיסא גלגלים">' + I("wc") + '</span>';
+
+  // ---------- Example data (fictional) ----------
+  var STREETS = ["רבי עקיבא","חזון איש","הרב כהנמן","ז'בוטינסקי","דסלר","רש\"י","השומר","סוקולוב","אהרונוביץ","ירושלים","הרב שך","עזרא","יהודה הלוי","הרצוג","בן זכאי","רבי מאיר","הרב קוק","שלמה המלך"];
+  var MANUAL_STREETS = {};
+  var CITY = { name: "עיר לדוגמה", hqPhone: "035550100", date: "2026-12-01", from: "07:00", to: "22:00", type: "knesset", privacyEmail: "privacy@party.example" };
+  var CL = [
+    {id: 1, num: 1,    short: "אור החיים", name: "תלמוד תורה אור החיים", street: "רבי עקיבא", house: "80",  boxes: "31–35", access: true,  drop: "שער צדדי ברחוב דסלר, בלי מדרגות"},
+    {id: 2, num: 2,    short: "בית יעקב",  name: "בית ספר בית יעקב",      street: "חזון איש",  house: "20",  boxes: "10–14", access: true,  drop: ""},
+    {id: 3, num: null, short: "תפארת",     name: "ישיבת תפארת",           street: "הרב כהנמן", house: "70",  boxes: "19–23", access: false, drop: "קומה ב, אין מעלית"},
+    {id: 4, num: 4,    short: "השומר",     name: "מתנ\"ס השומר",          street: "השומר",     house: "5",   boxes: "6–9",   access: true,  drop: ""},
+    {id: 5, num: null, short: "הגדול",     name: "בית הכנסת הגדול",       street: "ז'בוטינסקי", house: "120", boxes: "40–42", access: false, drop: "שלוש מדרגות בכניסה"}
+  ];
+  var COMMS = ["ליטאים","ספרדים","גור","ויז'ניץ","בעלזא","סאטמר","צאנז","חב\"ד","ברסלב","קרלין","אחר"];
+  var USERS = [
+    {name: "שרה כהן", email: "sara@example.org",   role: "מנהל עיר", last: "היום 09:12"},
+    {name: "מוקדן 1", email: "moked1@example.org", role: "מוקדן",    last: "היום 11:40"},
+    {name: "מוקדן 2", email: "moked2@example.org", role: "מוקדן",    last: "היום 11:41"},
+    {name: "מוקדן 3", email: "moked3@example.org", role: "מוקדן",    last: "היום 11:38"},
+    {name: "משבץ 1",  email: "mesh1@example.org",  role: "משבץ",     last: "היום 11:42"}
+  ];
+  var BASE = { loaded: true, file: "voters_city.csv", rows: 48212, at: "15.10.2026" };
+  var CERTS = [];
+  // Requests per half hour, 07:00–22:00 (30 slots)
+  var SLOTS = [5,7,15,23,25,30,31,33,30,28,25,22,21,19,18,18,20,22,24,27,21,18,14,12,8,6,3,3,1,1];
+  function slotLabel(i) { var m = 7 * 60 + i * 30, e = m + 30; return t(m) + "–" + t(e); }
+  function t(m) { return Math.floor(m / 60) + ":" + ("0" + (m % 60)).slice(-2); }
+
+  // ---------- Helpers ----------
+  function digits(s) { return (s || "").replace(/\D/g, ""); }
+  function fmtPhone(d) { return d.length === 10 ? d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6) : (d.length === 9 ? d.slice(0,2) + "-" + d.slice(2,5) + "-" + d.slice(5) : d); }
+  function phoneErr(d) {
+    if (!d) return "חובה להקליד מספר.";
+    var p2 = d.slice(0, 2), need = p2 === "05" || p2 === "07" ? 10 : (["02","03","04","08","09"].indexOf(p2) >= 0 ? 9 : 0);
+    if (!need) return "קידומת לא מוכרת. בדוק את המספר.";
+    if (d.length < need) return "חסרות " + (need - d.length) + " ספרות (צריך " + need + ").";
+    if (d.length > need) return "יש " + (d.length - need) + " ספרות מיותרות (צריך " + need + ").";
+    return "";
+  }
+  function hebDate(iso) { var p = iso.split("-"), m = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"]; return Number(p[2]) + " ב" + m[Number(p[1]) - 1] + " " + p[0]; }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function hl(text, q) { var e = esc(text); if (!q) return e; var i = text.indexOf(q); return i < 0 ? e : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length)); }
+  function plate(c) { var tip = esc(c.name + " · " + c.street + " " + c.house); return c.num ? '<span class="pl" title="' + tip + '">' + c.num + '</span>' : '<span class="pl pl-name" title="' + tip + '">' + esc(c.short) + '</span>'; }
+  function mark(el, cls) { el.classList.remove("err", "good"); if (cls) el.classList.add(cls); }
+  function setErr(el, msgEl, text) { mark(el, text ? "err" : "good"); msgEl.textContent = text || ""; return !text; }
+  var tt;
+  function toast(s) { var x = $("toast"); x.textContent = s; x.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { x.classList.remove("show"); }, 3200); }
+
+  // ---------- Dialog (X, click outside, Esc) ----------
+  var lastFocus = null;
+  function openDlg(title, body, acts) {
+    lastFocus = document.activeElement;
+    $("dlgTitle").textContent = title; $("dlgBody").innerHTML = body; $("dlgActs").innerHTML = acts;
+    $("dlgBack").classList.add("show");
+    var first = $("dlgBody").querySelector("input, select"); (first || $("dlgX")).focus();
+  }
+  function closeDlg() { $("dlgBack").classList.remove("show"); if (lastFocus && lastFocus.isConnected) lastFocus.focus(); }
+  $("dlgX").addEventListener("click", closeDlg);
+  $("dlgBack").addEventListener("click", function (e) { if (e.target === this) closeDlg(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("dlgBack").classList.contains("show") && !document.querySelector(".combo-list.show")) closeDlg(); });
+
+  // ---------- Street combobox (pick from list only) ----------
+  function combo(input, list, onPick) {
+    var idx = -1, items = [];
+    function render() {
+      var q = input.value.trim();
+      items = STREETS.filter(function (s) { return !q || s.indexOf(q) >= 0; }).slice(0, 8);
+      idx = items.length ? 0 : -1;
+      list.innerHTML = items.length ? items.map(function (s, i) { return '<li data-i="' + i + '"' + (i === 0 ? ' class="hl"' : '') + '>' + hl(s, q) + '</li>'; }).join("") : '<li class="empty">אין התאמה. נסה חלק אחר של השם.</li>';
+      list.classList.add("show");
+    }
+    function pick(i) { input.value = items[i]; list.classList.remove("show"); onPick(items[i]); }
+    input.addEventListener("focus", render);
+    input.addEventListener("input", function () { onPick(null); render(); });
+    input.addEventListener("keydown", function (e) {
+      if (!list.classList.contains("show")) return;
+      var lis = list.querySelectorAll("li[data-i]");
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && lis.length) { e.preventDefault(); idx = (idx + (e.key === "ArrowDown" ? 1 : -1) + lis.length) % lis.length; lis.forEach(function (li, i) { li.classList.toggle("hl", i === idx); }); }
+      else if (e.key === "Enter" && idx >= 0) { e.preventDefault(); pick(idx); }
+      else if (e.key === "Escape") { e.stopPropagation(); list.classList.remove("show"); }
+    });
+    list.addEventListener("mousedown", function (e) { var li = e.target.closest("li[data-i]"); if (!li) return; e.preventDefault(); pick(Number(li.getAttribute("data-i"))); });
+    input.addEventListener("blur", function () { setTimeout(function () { list.classList.remove("show"); }, 120); });
+  }
+
+  // ---------- Tabs ----------
+  var TABS = [["dash", "דשבורד"], ["clusters", "אשכולות"], ["comms", "קהילות"], ["streets", "רחובות"], ["base", "בייס מצביעים"], ["users", "משתמשים"], ["city", "הגדרות העיר"]];
+  $("tabs").innerHTML = TABS.map(function (x) { return '<a href="#' + x[0] + '" data-tab="' + x[0] + '">' + I(x[0]) + '<span>' + x[1] + '</span></a>'; }).join("");
+
+  var V = {};
+
+  // ---------- Dashboard ----------
+  V.dash = function () {
+    var total = SLOTS.reduce(function (a, b) { return a + b; }, 0);
+    return '<div class="p-h"><h2>' + I("dash") + 'דשבורד</h2><span class="muted">מתעדכן בזמן אמת · נכון ל-11:42</span></div><div class="p-b">' +
+      '<div class="tiles">' +
+        '<div class="tile"><span class="k">' + I("phone") + 'פניות היום</span><span class="v">' + total + '</span></div>' +
+        '<div class="tile"><span class="k">' + I("clock") + 'ממתינים בתור</span><span class="v">14</span></div>' +
+        '<div class="tile"><span class="k">' + I("clock") + 'המתנה ממוצעת</span><span class="v">12<small>דקות</small></span></div>' +
+        '<div class="tile alert"><span class="k">' + I("warn") + 'המתנה הארוכה</span><span class="v">38<small>דקות</small></span><span class="chip bad">מעל 30 דקות</span></div>' +
+        '<div class="tile"><span class="k">' + I("check") + 'הגיעו לקלפי</span><span class="v">301</span></div>' +
+        '<div class="tile"><span class="k">' + I("x") + 'בוטלו</span><span class="v">18</span></div>' +
+      '</div>' +
+      '<h3 class="section-t">' + I("dash") + 'פניות לפי חצי שעה</h3>' +
+      '<div class="chart-wrap" id="chartWrap">' + barChart() + '<div class="tip" id="tip"></div></div>' +
+      '<details class="tbl-view"><summary>' + I("doc") + 'הצג את הנתונים כטבלה</summary><div class="tbl-cols">' +
+        SLOTS.map(function (v, i) { return '<div><span class="nowrap" dir="ltr">' + slotLabel(i) + '</span><b>' + v + '</b></div>'; }).join("") + '</div></details>' +
+      '<div class="split">' +
+        '<div><h3 class="section-t">' + I("car") + 'נהגים עכשיו</h3><ul class="list"><li><span>פעילים</span><b>9</b></li><li><span>פנויים</span><b>2</b></li><li><span>מתפנים</span><b>2</b></li><li><span>בנסיעה</span><b>4</b></li><li><span>בהפסקה</span><b>1</b></li></ul></div>' +
+        '<div><h3 class="section-t">' + I("x") + 'סיבות ביטול</h3><ul class="list"><li><span>הפונה ביטל</span><b>9</b></li><li><span>לא ענה לטלפון</span><b>4</b></li><li><span>מצא הסעה אחרת</span><b>3</b></li><li><span>אחר</span><b>2</b></li></ul></div>' +
+        '<div><h3 class="section-t">' + I("phone") + 'פניות לכל מוקדן</h3><ul class="list"><li><span>מוקדן 1</span><b>14</b></li><li><span>מוקדן 2</span><b>11</b></li><li><span>מוקדן 3</span><b>16</b></li></ul></div>' +
+      '</div></div>';
+  };
+  // One series, one hue. Time runs left to right. Thin bars, rounded data-ends, gaps between bars, recessive grid, hover tooltip on every bar.
+  function barChart() {
+    var W = 760, H = 250, L = 34, R = 10, T = 14, B = 30, max = 40;
+    var n = SLOTS.length, band = (W - L - R) / n, bw = Math.max(5, band - 4);
+    var y = function (v) { return T + (H - T - B) * (1 - v / max); };
+    var s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" direction="ltr" role="img" aria-label="פניות לפי חצי שעה מ-7:00 עד 22:00. השיא ב-10:30 עם 33 פניות.">';
+    [0, 10, 20, 30, 40].forEach(function (g) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="#e3e6ea" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end" font-size="12" fill="#5b626c">' + g + '</text>'; });
+    SLOTS.forEach(function (v, i) {
+      var x = L + i * band + (band - bw) / 2, top = y(v), h = (H - B) - top, r = Math.min(3, h / 2);
+      var d = "M" + x + "," + (H - B) + " V" + (top + r) + " Q" + x + "," + top + " " + (x + r) + "," + top + " H" + (x + bw - r) + " Q" + (x + bw) + "," + top + " " + (x + bw) + "," + (top + r) + " V" + (H - B) + " Z";
+      s += '<path d="' + d + '" fill="#0b4c9e"/>';
+      s += '<rect class="hit" x="' + (L + i * band) + '" y="' + T + '" width="' + band + '" height="' + (H - T - B) + '" fill="transparent" data-i="' + i + '"/>';
+      if (i % 4 === 0) s += '<text x="' + (L + i * band) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="12" fill="#5b626c">' + t(7 * 60 + i * 30) + '</text>';
+    });
+    s += '<text x="' + (W - R) + '" y="' + (H - 10) + '" text-anchor="end" font-size="12" fill="#5b626c">22:00</text>';
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + (H - B) + '" y2="' + (H - B) + '" stroke="#b8bdc5" stroke-width="1"/></svg>';
+    return s;
+  }
+  function wireChart() {
+    var wrap = $("chartWrap"); if (!wrap) return;
+    var tip = $("tip");
+    wrap.querySelectorAll(".hit").forEach(function (r) {
+      function on() {
+        var i = Number(r.getAttribute("data-i")), b = r.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+        tip.innerHTML = '<span dir="ltr">' + slotLabel(i) + '</span> · <b>' + SLOTS[i] + '</b> פניות';
+        var x = Math.min(Math.max(b.left + b.width / 2 - w.left, 80), w.width - 80);
+        tip.style.left = x + "px"; tip.style.top = (b.top - w.top + 34) + "px"; tip.style.display = "block";
+      }
+      r.addEventListener("mouseenter", on); r.addEventListener("click", on);
+      r.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+    });
+  }
+
+  // ---------- Clusters ----------
+  V.clusters = function () {
+    var f = V.clusters.filter || "all";
+    var list = CL.filter(function (c) { return f === "all" || (f === "yes" && c.access) || (f === "no" && !c.access); });
+    var rows = list.map(function (c) {
+      return '<tr><td data-l="לוחית">' + plate(c) + '</td><td class="nm" data-l="שם" title="' + esc(c.name) + '">' + esc(c.name) + '</td><td data-l="כתובת">' + esc(c.street + " " + c.house) + '</td><td data-l="קלפיות">' + esc(c.boxes) + '</td>' +
+        '<td data-l="נגישות">' + (c.access ? WC + ' <span class="muted">נגיש</span>' : '<span class="chip no">' + I("warn") + 'לא נגיש</span>') + '</td>' +
+        '<td class="wrap" data-l="הורדה והערות">' + (c.drop ? esc(c.drop) : '<span class="muted">אין</span>') + '</td>' +
+        '<td class="act"><button class="b3" type="button" data-edit-cl="' + c.id + '">' + I("edit") + 'ערוך</button></td></tr>';
+    }).join("");
+    var no = CL.filter(function (c) { return !c.access; }).length;
+    return '<div class="p-h"><h2>' + I("clusters") + 'אשכולות</h2><span class="muted">' + CL.length + ' אשכולות · ' + no + ' לא נגישים</span>' +
+      '<div class="tools"><button class="fbtn' + (f === "all" ? " on" : "") + '" type="button" data-clf="all">הכול</button><button class="fbtn' + (f === "yes" ? " on" : "") + '" type="button" data-clf="yes">נגישים</button><button class="fbtn' + (f === "no" ? " on" : "") + '" type="button" data-clf="no">לא נגישים</button><button class="b1" type="button" id="addCl">' + I("plus") + 'אשכול חדש</button></div></div>' +
+      '<div class="p-b"><p class="lead">הנגישות כאן מפעילה את ההתראה במסך המוקדן, כשנוסע בכיסא גלגלים משובץ לאשכול לא נגיש. ריחוף על לוחית מציג את השם המלא והכתובת.</p>' +
+      '<table class="rt"><colgroup><col style="width:92px"><col><col style="width:18%"><col style="width:80px"><col style="width:120px"><col style="width:22%"><col style="width:96px"></colgroup>' +
+      '<thead><tr><th>לוחית</th><th>שם</th><th>כתובת</th><th>קלפיות</th><th>נגישות</th><th>הורדה והערות</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="7" class="muted">אין אשכולות שמתאימים לסינון.</td></tr>') + '</tbody></table></div>';
+  };
+  function clusterDlg(c) {
+    var isNew = !c; c = c || {num: null, short: "", name: "", street: "", house: "", boxes: "", access: null, drop: ""};
+    var body =
+      '<div class="grid2">' +
+        '<div class="f"><label for="cName">שם המקום<span class="req">*</span></label><input type="text" id="cName" value="' + esc(c.name) + '"><div class="msg" id="cNameMsg"></div></div>' +
+        '<div class="f"><label for="cShort">שם קצר ללוחית<span class="req">*</span></label><input type="text" id="cShort" maxlength="10" value="' + esc(c.short) + '"><div class="msg" id="cShortMsg"></div></div>' +
+        '<div class="f"><label for="cNum">מספר אשכול</label><input type="text" id="cNum" inputmode="numeric" maxlength="3" value="' + (c.num || "") + '"><div class="msg" id="cNumMsg"></div></div>' +
+        '<div class="f"><label for="cBoxes">קלפיות<span class="req">*</span></label><input type="text" id="cBoxes" dir="ltr" style="text-align:right" placeholder="31-35" value="' + esc(c.boxes) + '"><div class="msg" id="cBoxesMsg"></div></div>' +
+        '<div class="f combo"><label for="cStreet">רחוב<span class="req">*</span></label><input type="text" id="cStreet" placeholder="הקלד חלק משם הרחוב" value="' + esc(c.street) + '"><ul class="combo-list" id="cStreetList"></ul><div class="msg" id="cStreetMsg"></div></div>' +
+        '<div class="f"><label for="cHouse">מספר בניין<span class="req">*</span></label><input type="text" id="cHouse" inputmode="numeric" maxlength="4" value="' + esc(c.house) + '"><div class="msg" id="cHouseMsg"></div></div>' +
+      '</div>' +
+      '<div class="f"><span>נגיש לכיסא גלגלים?<span class="req">*</span></span><div class="seg" id="cAccSeg"><label><input type="radio" name="cAcc" value="1"' + (c.access === true ? " checked" : "") + '>כן</label><label><input type="radio" name="cAcc" value="0"' + (c.access === false ? " checked" : "") + '>לא</label></div><div class="msg" id="cAccMsg"></div></div>' +
+      '<div class="f"><label for="cDrop">נקודת הורדה והערות לנהג</label><input type="text" id="cDrop" maxlength="120" placeholder="למשל: שער צדדי, בלי מדרגות" value="' + esc(c.drop) + '"></div>';
+    openDlg(isNew ? "אשכול חדש" : "עריכת אשכול", body, '<button class="b1" type="button" id="cSave">' + I("check") + (isNew ? "הוסף אשכול" : "שמור שינויים") + '</button><button class="b2" type="button" id="cCancel">ביטול</button>');
+    var street = c.street;
+    combo($("cStreet"), $("cStreetList"), function (s) { street = s || ""; if (s) setErr($("cStreet"), $("cStreetMsg"), ""); });
+    function vName() { return setErr($("cName"), $("cNameMsg"), $("cName").value.trim() ? "" : "חובה להקליד שם."); }
+    function vShort() { return setErr($("cShort"), $("cShortMsg"), $("cShort").value.trim() ? "" : "חובה להקליד שם קצר."); }
+    function vNum() { var v = $("cNum").value.trim(); if (!v) { mark($("cNum"), null); $("cNumMsg").textContent = ""; return true; } return setErr($("cNum"), $("cNumMsg"), /^\d+$/.test(v) ? "" : "ספרות בלבד."); }
+    function vBoxes() { var v = $("cBoxes").value.trim(); return setErr($("cBoxes"), $("cBoxesMsg"), !v ? "חובה להקליד קלפיות." : (/^\d+(\s*[-–]\s*\d+)?$/.test(v) ? "" : "מספר אחד, או טווח כמו 31-35.")); }
+    function vStreet() { return setErr($("cStreet"), $("cStreetMsg"), street && $("cStreet").value === street ? "" : "יש לבחור רחוב מהרשימה."); }
+    function vHouse() { var v = $("cHouse").value; return setErr($("cHouse"), $("cHouseMsg"), !v ? "חובה להקליד מספר." : (/^\d+$/.test(v) ? "" : "ספרות בלבד.")); }
+    function vAcc() { var on = document.querySelector('input[name="cAcc"]:checked'); $("cAccSeg").classList.toggle("err", !on); $("cAccMsg").textContent = on ? "" : "יש לבחור כן או לא."; return !!on; }
+    $("cName").addEventListener("blur", vName); $("cShort").addEventListener("blur", vShort); $("cNum").addEventListener("blur", vNum);
+    $("cBoxes").addEventListener("blur", vBoxes); $("cHouse").addEventListener("input", function () { this.value = digits(this.value); }); $("cHouse").addEventListener("blur", vHouse);
+    $("cStreet").addEventListener("blur", function () { setTimeout(vStreet, 150); });
+    document.querySelectorAll('input[name="cAcc"]').forEach(function (r) { r.addEventListener("change", vAcc); });
+    $("cCancel").addEventListener("click", closeDlg);
+    $("cSave").addEventListener("click", function () {
+      if (![vName(), vShort(), vNum(), vBoxes(), vStreet(), vHouse(), vAcc()].every(Boolean)) return;
+      var rec = isNew ? {id: Date.now()} : c;
+      rec.name = $("cName").value.trim(); rec.short = $("cShort").value.trim(); rec.num = $("cNum").value.trim() ? Number($("cNum").value) : null;
+      rec.boxes = $("cBoxes").value.trim().replace("-", "–"); rec.street = street; rec.house = $("cHouse").value;
+      rec.access = document.querySelector('input[name="cAcc"]:checked').value === "1"; rec.drop = $("cDrop").value.trim();
+      if (isNew) CL.push(rec);
+      closeDlg(); toast(isNew ? "האשכול נוסף." : "השינויים נשמרו."); show("clusters");
+    });
+  }
+
+  // ---------- List manager: communities and streets share one design ----------
+  var LM = {
+    comms: {title: "קהילות", icon: "comms", lead: 'הרשימה שהמוקדן בוחר ממנה בשאלה "לאיזו קהילה שייכים?".', items: COMMS, one: "קהילה", newLbl: "קהילה חדשה", searchLbl: "חיפוש קהילה", q: ""},
+    streets: {title: "רחובות", icon: "streets", lead: "המוקדן בוחר רחוב רק מהרשימה הזאת. הרשימה מיובאת ממאגר רשמי, ואפשר להוסיף רחוב חסר.", items: STREETS, one: "רחוב", newLbl: "רחוב חדש", searchLbl: "חיפוש רחוב", q: "", extra: true}
+  };
+  function lmView(key) {
+    var m = LM[key];
+    return '<div class="p-h"><h2>' + I(m.icon) + m.title + '</h2><span class="muted">' + m.items.length + ' ברשימה' + (m.extra ? ' · יובאו מ-data.gov.il ב-10.10.2026' : '') + '</span>' +
+      (m.extra ? '<div class="tools"><button class="b2" type="button" id="reStreets">' + I("refresh") + 'ייבא מחדש</button></div>' : '') + '</div>' +
+      '<div class="p-b"><p class="lead">' + m.lead + '</p>' +
+      '<div class="lm-bar">' +
+        '<div class="f"><label for="lmQ">' + m.searchLbl + '</label><div class="with-ico">' + I("search") + '<input type="search" id="lmQ" value="' + esc(m.q) + '" placeholder="הקלד חלק מהשם"></div></div>' +
+        '<div class="lm-add"><div class="f"><label for="lmNew">' + m.newLbl + '<span class="req">*</span></label><input type="text" id="lmNew" maxlength="40"><div class="msg" id="lmNewMsg"></div></div><button class="b1" type="button" id="lmAdd">' + I("plus") + 'הוסף</button></div>' +
+      '</div>' +
+      '<div class="lm-count" id="lmCount"></div><ul class="lm-list" id="lmList"></ul></div>';
+  }
+  function lmRender(key) {
+    var m = LM[key], q = m.q.trim();
+    var list = m.items.filter(function (s) { return !q || s.indexOf(q) >= 0; });
+    $("lmCount").textContent = q ? "מוצגים " + list.length + " מתוך " + m.items.length + ' לפי "' + q + '"' : "מוצגים כל ה-" + m.items.length;
+    var src = function (s) { return key === "streets" ? (MANUAL_STREETS[s] ? '<span class="src manual">נוסף ידנית</span>' : '<span class="src">מאגר רשמי</span>') : '<span class="src">' + (COMM_NEW[s] ? "נוספה היום" : "") + '</span>'; };
+    var head = '<li class="lm-head"><span>#</span><span>שם</span><span class="src">' + (key === "streets" ? "מקור" : "") + '</span><span></span></li>';
+    $("lmList").innerHTML = list.length ? head + list.map(function (s) {
+      var n = m.items.indexOf(s) + 1;
+      if (m.editing === s) {
+        return '<li class="editing"><span class="no">' + n + '</span><div class="edit-in"><input type="text" id="lmEditIn" maxlength="40" value="' + esc(s) + '" aria-label="שם חדש ל' + esc(s) + '"><div class="msg" id="lmEditMsg"></div></div>' + src(s) +
+          '<span class="acts"><button class="b3" type="button" data-lm-save="' + esc(s) + '">' + I("check") + '<span>שמור</span></button><button class="b3" type="button" data-lm-cancel>' + '<span>ביטול</span></button></span></li>';
+      }
+      return '<li><span class="no">' + n + '</span><span class="t" title="' + esc(s) + '">' + hl(s, q) + '</span>' + src(s) +
+        '<span class="acts"><button class="b3" type="button" data-lm-edit="' + esc(s) + '" aria-label="ערוך את ' + esc(s) + '">' + I("edit") + '<span>ערוך</span></button>' +
+        '<button class="b3 danger" type="button" data-lm-del="' + esc(s) + '" aria-label="הסר את ' + esc(s) + '">' + I("trash") + '<span>הסר</span></button></span></li>';
+    }).join("") : '<li class="lm-empty" style="display:block;border:0">לא נמצא ' + m.one + ' בשם הזה. אפשר להוסיף אותו בשדה "' + m.newLbl + '".</li>';
+    if (m.editing && $("lmEditIn")) { var inp = $("lmEditIn"); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  }
+  var COMM_NEW = {};
+  function lmSave(old) {
+    var m = LM[current], v = $("lmEditIn").value.trim();
+    if (!v) { setErr($("lmEditIn"), $("lmEditMsg"), "חובה להקליד שם."); return; }
+    if (v !== old && m.items.indexOf(v) >= 0) { setErr($("lmEditIn"), $("lmEditMsg"), "כבר ברשימה."); return; }
+    m.items[m.items.indexOf(old)] = v;
+    if (MANUAL_STREETS[old]) { delete MANUAL_STREETS[old]; MANUAL_STREETS[v] = true; }
+    if (COMM_NEW[old]) { delete COMM_NEW[old]; COMM_NEW[v] = true; }
+    m.editing = null; lmRender(current); toast(v === old ? "לא היה שינוי." : '"' + old + '" שונה ל"' + v + '".');
+  }
+  V.comms = function () { return lmView("comms"); };
+  V.streets = function () { return lmView("streets"); };
+
+  // ---------- Voter base ----------
+  V.base = function () {
+    return '<div class="p-h"><h2>' + I("base") + 'בייס מצביעים</h2></div><div class="p-b">' +
+      (BASE.loaded
+        ? '<div class="status loaded">' + I("check") + '<div class="s-t"><b>הבייס טעון</b><span>' + esc(BASE.file) + ' · ' + BASE.rows.toLocaleString("he-IL") + ' מצביעים · נטען ב-' + BASE.at + '</span></div></div>'
+        : '<div class="status">' + I("base") + '<div class="s-t"><b>אין בייס טעון</b><span>כל פנייה עוברת אימות ידני. אפשר לעבוד גם כך.</span></div></div>') +
+      '<div class="legal">' + I("warn") + '<span>הבייס יימחק אוטומטית בסוף תקופת הבחירות, כולל הגיבויים. המערכת מפיקה אישור מחיקה, שומרת אותו כאן, ושולחת אותו במייל לממונה הפרטיות של המפלגה (' + esc(CITY.privacyEmail) + ') ולמנהל העיר.</span></div>' +
+      '<h3 class="section-t">' + I("upload") + 'ייבוא קובץ חדש</h3>' +
+      '<div class="f"><span>קובץ Excel או CSV<span class="req">*</span></span><div class="filebox"><label class="filebtn">' + I("upload") + 'בחר קובץ<input type="file" id="baseFile" accept=".csv,.xlsx,.xls"></label><span class="filename" id="fileName">לא נבחר קובץ</span></div><div class="msg" id="baseFileMsg"></div></div>' +
+      '<div id="mapping" style="display:grid;gap:12px"></div>' +
+      (BASE.loaded ? '<div><button class="b2" type="button" id="delBase" style="color:var(--bad)">' + I("trash") + 'מחק את הבייס עכשיו</button></div>' : '') +
+      '<h3 class="section-t">' + I("doc") + 'אישורי מחיקה</h3>' +
+      (CERTS.length ? '<table class="rt"><colgroup><col style="width:150px"><col><col style="width:120px"><col style="width:110px"></colgroup><thead><tr><th>תאריך</th><th>קובץ</th><th>מצביעים</th><th></th></tr></thead><tbody>' +
+        CERTS.map(function (c, i) { return '<tr><td data-l="תאריך">' + c.at + '</td><td data-l="קובץ">' + esc(c.file) + '</td><td data-l="מצביעים">' + c.rows.toLocaleString("he-IL") + '</td><td class="act"><button class="b3" type="button" data-cert="' + i + '">' + I("doc") + 'הצג</button></td></tr>'; }).join("") + '</tbody></table>'
+        : '<div class="lm-empty">עוד לא נמחק בייס. אחרי מחיקה, האישור יופיע כאן.</div>') +
+      '</div>';
+  };
+  function mappingHtml(name) {
+    var cols = ["עמודה A", "עמודה B", "עמודה C", "עמודה D", "עמודה E", "עמודה F", "עמודה G"];
+    var fields = [["mId", 'ת"ז', true], ["mFirst", "שם פרטי", true], ["mLast", "שם משפחה", true], ["mStreet", "רחוב", true], ["mHouse", "מספר בניין", true], ["mBox", "קלפי", true], ["mPhone", "טלפון", false]];
+    return '<p class="lead">איזו עמודה בקובץ היא כל שדה? נטענים רק השדות האלה.</p><div class="map-cols">' +
+      fields.map(function (f, i) {
+        return '<div class="f"><label for="' + f[0] + '">' + f[1] + (f[2] ? '<span class="req">*</span>' : '') + '</label><select id="' + f[0] + '" data-req="' + (f[2] ? 1 : 0) + '"><option value="">בחר עמודה</option>' +
+          cols.map(function (c, j) { return '<option' + (j === i ? " selected" : "") + '>' + c + '</option>'; }).join("") + '</select><div class="msg" id="' + f[0] + 'Msg"></div></div>';
+      }).join("") + '</div><div><button class="b1" type="button" id="loadBase">' + I("upload") + 'טען את הבייס</button></div>';
+  }
+  function certHtml(c) {
+    return '<div class="cert"><h3>אישור מחיקת בייס מצביעים</h3><dl>' +
+      '<dt>עיר</dt><dd>' + esc(CITY.name) + '</dd><dt>בחירות</dt><dd>' + (CITY.type === "knesset" ? "כנסת" : "רשויות מקומיות") + ', ' + hebDate(CITY.date) + '</dd>' +
+      '<dt>קובץ</dt><dd>' + esc(c.file) + '</dd><dt>מצביעים</dt><dd>' + c.rows.toLocaleString("he-IL") + '</dd>' +
+      '<dt>נמחק</dt><dd>' + c.at + '</dd><dt>על ידי</dt><dd>' + esc(c.by) + '</dd>' +
+      '<dt>מה נמחק</dt><dd>כל רשומות הבייס, מהמסד ומכל הגיבויים. פניות שנקלטו בשיחה לא נמחקו.</dd>' +
+      '<dt>נשלח אל</dt><dd>' + esc(CITY.privacyEmail) + ', ומנהל העיר</dd></dl></div>';
+  }
+
+  // ---------- Users ----------
+  V.users = function () {
+    return '<div class="p-h"><h2>' + I("users") + 'משתמשים</h2><span class="muted">כניסה באימייל, סיסמה וקוד שנשלח למייל</span><div class="tools"><button class="b1" type="button" id="addUser">' + I("plus") + 'משתמש חדש</button></div></div><div class="p-b">' +
+      '<table class="rt"><colgroup><col><col style="width:32%"><col style="width:120px"><col style="width:130px"><col style="width:96px"></colgroup><thead><tr><th>שם</th><th>אימייל</th><th>תפקיד</th><th>כניסה אחרונה</th><th></th></tr></thead><tbody>' +
+      USERS.map(function (u, i) { return '<tr><td class="nm" data-l="שם">' + esc(u.name) + '</td><td data-l="אימייל"><span dir="ltr">' + esc(u.email) + '</span></td><td data-l="תפקיד"><span class="chip role">' + u.role + '</span></td><td class="muted" data-l="כניסה אחרונה">' + u.last + '</td><td class="act"><button class="b3 danger" type="button" data-del-user="' + i + '">' + I("trash") + 'הסר</button></td></tr>'; }).join("") +
+      '</tbody></table></div>';
+  };
+  function userDlg() {
+    openDlg("משתמש חדש",
+      '<div class="f"><label for="uEmail">אימייל<span class="req">*</span></label><input type="email" id="uEmail" dir="ltr" style="text-align:right"><div class="msg" id="uEmailMsg"></div></div>' +
+      '<div class="f"><label for="uName">שם<span class="req">*</span></label><input type="text" id="uName"><div class="msg" id="uNameMsg"></div></div>' +
+      '<div class="f"><label for="uRole">תפקיד<span class="req">*</span></label><select id="uRole"><option value="">בחר תפקיד</option><option>מוקדן</option><option>משבץ</option><option>מנהל עיר</option></select><div class="msg" id="uRoleMsg"></div></div>' +
+      '<p class="lead">המשתמש יקבל מייל עם קישור לקביעת סיסמה.</p>',
+      '<button class="b1" type="button" id="uSave">' + I("check") + 'הוסף ושלח הזמנה</button><button class="b2" type="button" id="uCancel">ביטול</button>');
+    function vE() { var v = $("uEmail").value.trim(); return setErr($("uEmail"), $("uEmailMsg"), !v ? "חובה להקליד אימייל." : (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? (USERS.some(function (u) { return u.email === v; }) ? "המשתמש כבר קיים." : "") : "כתובת אימייל לא תקינה.")); }
+    function vN() { return setErr($("uName"), $("uNameMsg"), $("uName").value.trim() ? "" : "חובה להקליד שם."); }
+    function vR() { return setErr($("uRole"), $("uRoleMsg"), $("uRole").value ? "" : "יש לבחור תפקיד."); }
+    $("uEmail").addEventListener("blur", vE); $("uName").addEventListener("blur", vN); $("uRole").addEventListener("change", vR);
+    $("uCancel").addEventListener("click", closeDlg);
+    $("uSave").addEventListener("click", function () {
+      if (![vE(), vN(), vR()].every(Boolean)) return;
+      USERS.push({name: $("uName").value.trim(), email: $("uEmail").value.trim(), role: $("uRole").value, last: "עוד לא נכנס"});
+      closeDlg(); toast("נשלחה הזמנה במייל."); show("users");
+    });
+  }
+
+  // ---------- City settings ----------
+  V.city = function () {
+    return '<div class="p-h"><h2>' + I("city") + 'הגדרות העיר</h2></div><div class="p-b">' +
+      '<div class="grid2">' +
+        '<div class="f"><label for="hq">טלפון המטה<span class="req">*</span></label><div class="with-ico">' + I("phone") + '<input type="tel" id="hq" inputmode="numeric" dir="ltr" style="text-align:right" value="' + fmtPhone(CITY.hqPhone) + '"></div><div class="msg" id="hqMsg"></div><span class="hint">מוצג לנהגים באפליקציה, בכפתור "התקשר למטה".</span></div>' +
+        '<div class="f"><label for="eDate">יום הבחירות<span class="req">*</span></label><input type="date" id="eDate" value="' + CITY.date + '"><div class="msg" id="eDateMsg"></div></div>' +
+        '<div class="f"><label for="hFrom">המטה פעיל משעה<span class="req">*</span></label><input type="time" id="hFrom" value="' + CITY.from + '"><div class="msg" id="hFromMsg"></div></div>' +
+        '<div class="f"><label for="hTo">עד שעה<span class="req">*</span></label><input type="time" id="hTo" value="' + CITY.to + '"><div class="msg" id="hToMsg"></div></div>' +
+      '</div>' +
+      '<div class="f"><span>סוג הבחירות<span class="req">*</span></span><div class="seg"><label><input type="radio" name="eType" value="knesset"' + (CITY.type === "knesset" ? " checked" : "") + '>כנסת</label><label><input type="radio" name="eType" value="local"' + (CITY.type === "local" ? " checked" : "") + '>רשויות מקומיות</label></div></div>' +
+      '<div><button class="b1" type="button" id="saveCity">' + I("check") + 'שמור הגדרות</button></div></div>';
+  };
+
+  // ---------- Routing (hash) ----------
+  var current = "dash";
+  function show(tab) {
+    if (!V[tab]) tab = "dash";
+    current = tab;
+    document.querySelectorAll("#tabs a").forEach(function (a) { var on = a.getAttribute("data-tab") === tab; a.classList.toggle("on", on); if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    $("view").innerHTML = V[tab]();
+    $("topNote").innerHTML = I("calendar") + (CITY.type === "knesset" ? "בחירות לכנסת" : "בחירות לרשויות") + " · " + hebDate(CITY.date);
+    if (tab === "dash") wireChart();
+    if (tab === "comms" || tab === "streets") lmRender(tab);
+  }
+  function route() { show((location.hash || "#dash").slice(1)); }
+  window.addEventListener("hashchange", route);
+
+  // ---------- Actions (delegated) ----------
+  function lmAdd() {
+    var m = LM[current], v = $("lmNew").value.trim();
+    if (!v) { setErr($("lmNew"), $("lmNewMsg"), "חובה להקליד שם."); return; }
+    if (m.items.indexOf(v) >= 0) { setErr($("lmNew"), $("lmNewMsg"), "כבר ברשימה."); return; }
+    m.items.push(v); if (current === "streets") MANUAL_STREETS[v] = true; else COMM_NEW[v] = true;
+    $("lmNew").value = ""; mark($("lmNew"), null); $("lmNewMsg").textContent = "";
+    m.q = ""; $("lmQ").value = ""; lmRender(current); toast('"' + v + '" נוסף לרשימה.'); $("lmNew").focus();
+  }
+  $("view").addEventListener("click", function (e) {
+    var x;
+    if ((x = e.target.closest("[data-clf]"))) { V.clusters.filter = x.getAttribute("data-clf"); show("clusters"); return; }
+    if ((x = e.target.closest("#addCl"))) { clusterDlg(null); return; }
+    if ((x = e.target.closest("[data-edit-cl]"))) { var id = Number(x.getAttribute("data-edit-cl")); clusterDlg(CL.filter(function (c) { return c.id === id; })[0]); return; }
+    if ((x = e.target.closest("#lmAdd"))) { lmAdd(); return; }
+    if ((x = e.target.closest("[data-lm-edit]"))) { LM[current].editing = x.getAttribute("data-lm-edit"); lmRender(current); return; }
+    if ((x = e.target.closest("[data-lm-save]"))) { lmSave(x.getAttribute("data-lm-save")); return; }
+    if ((x = e.target.closest("[data-lm-cancel]"))) { LM[current].editing = null; lmRender(current); return; }
+    if ((x = e.target.closest("[data-lm-del]"))) { var m = LM[current], s = x.getAttribute("data-lm-del"); m.items.splice(m.items.indexOf(s), 1); delete MANUAL_STREETS[s]; lmRender(current); $("view").querySelector(".p-h .muted").textContent = m.items.length + " ברשימה"; toast('"' + s + '" הוסר מהרשימה.'); return; }
+    if ((x = e.target.closest("#reStreets"))) { toast("במערכת: הרשימה נטענת מחדש מ-data.gov.il, ורחובות שנוספו ידנית נשמרים."); return; }
+    if ((x = e.target.closest("#loadBase"))) {
+      var ok = true;
+      document.querySelectorAll("#mapping select").forEach(function (sel) { if (sel.getAttribute("data-req") === "1") ok = setErr(sel, $(sel.id + "Msg"), sel.value ? "" : "יש לבחור עמודה.") && ok; });
+      if (!ok) return;
+      BASE = {loaded: true, file: $("baseFile").files[0] ? $("baseFile").files[0].name : "voters.csv", rows: 48390, at: "22.11.2026"};
+      show("base"); toast("הבייס נטען: 48,390 מצביעים."); return;
+    }
+    if ((x = e.target.closest("#delBase"))) {
+      openDlg("למחוק את בייס המצביעים?", '<p class="lead" style="color:var(--ink)">כל נתוני הבייס יימחקו, כולל הגיבויים. אי אפשר לשחזר. פניות שכבר נקלטו לא יימחקו. אחרי המחיקה יופק אישור מחיקה.</p>',
+        '<button class="b1 danger" type="button" id="delYes">' + I("trash") + 'מחק את הבייס</button><button class="b2" type="button" id="delNo">ביטול</button>');
+      $("delNo").addEventListener("click", closeDlg);
+      $("delYes").addEventListener("click", function () {
+        CERTS.unshift({at: "22.11.2026, 11:42", file: BASE.file, rows: BASE.rows, by: "שרה כהן (מנהלת העיר)"});
+        BASE = {loaded: false}; closeDlg(); show("base"); toast("הבייס נמחק. אישור המחיקה נשמר ונשלח במייל.");
+      });
+      return;
+    }
+    if ((x = e.target.closest("[data-cert]"))) { openDlg("אישור מחיקה", certHtml(CERTS[Number(x.getAttribute("data-cert"))]), '<button class="b2" type="button" id="certClose">סגור</button>'); $("certClose").addEventListener("click", closeDlg); return; }
+    if ((x = e.target.closest("#addUser"))) { userDlg(); return; }
+    if ((x = e.target.closest("[data-del-user]"))) {
+      var ui = Number(x.getAttribute("data-del-user")), u = USERS[ui];
+      openDlg("להסיר את " + u.name + "?", '<p class="lead" style="color:var(--ink)">המשתמש לא יוכל להיכנס יותר למערכת.</p>', '<button class="b1 danger" type="button" id="uDelYes">' + I("trash") + 'הסר</button><button class="b2" type="button" id="uDelNo">ביטול</button>');
+      $("uDelNo").addEventListener("click", closeDlg);
+      $("uDelYes").addEventListener("click", function () { USERS.splice(ui, 1); closeDlg(); show("users"); toast("המשתמש הוסר."); });
+      return;
+    }
+    if ((x = e.target.closest("#saveCity"))) {
+      var d = digits($("hq").value);
+      var okc = [setErr($("hq"), $("hqMsg"), phoneErr(d)), setErr($("eDate"), $("eDateMsg"), $("eDate").value ? "" : "יש לבחור תאריך."),
+        setErr($("hFrom"), $("hFromMsg"), $("hFrom").value ? "" : "חובה."), setErr($("hTo"), $("hToMsg"), !$("hTo").value ? "חובה." : ($("hTo").value <= $("hFrom").value ? "צריך להיות אחרי שעת הפתיחה." : ""))].every(Boolean);
+      if (!okc) return;
+      CITY.hqPhone = d; CITY.date = $("eDate").value; CITY.from = $("hFrom").value; CITY.to = $("hTo").value; CITY.type = document.querySelector('input[name="eType"]:checked').value;
+      show("city"); toast("ההגדרות נשמרו. טלפון המטה מתעדכן אצל הנהגים."); return;
+    }
+  });
+  $("view").addEventListener("input", function (e) {
+    if (e.target.id === "lmQ") { LM[current].q = e.target.value; lmRender(current); }
+    if (e.target.id === "lmNew" && e.target.value.trim()) { mark(e.target, null); $("lmNewMsg").textContent = ""; }
+    if (e.target.id === "hq" && !phoneErr(digits(e.target.value))) setErr(e.target, $("hqMsg"), "");
+  });
+  $("view").addEventListener("focusout", function (e) { if (e.target.id === "hq") setErr(e.target, $("hqMsg"), phoneErr(digits(e.target.value))); });
+  $("view").addEventListener("change", function (e) {
+    if (e.target.id === "baseFile") {
+      var f = e.target.files[0];
+      $("fileName").textContent = f ? f.name : "לא נבחר קובץ"; $("fileName").classList.toggle("has", !!f);
+      $("mapping").innerHTML = f ? mappingHtml(f.name) : ""; $("baseFileMsg").textContent = "";
+    }
+    if (e.target.closest && e.target.closest("#mapping") && e.target.value) setErr(e.target, $(e.target.id + "Msg"), "");
+  });
+  $("view").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && e.target.id === "lmNew") lmAdd();
+    if (e.target.id === "lmEditIn") {
+      if (e.key === "Enter") { e.preventDefault(); lmSave(LM[current].editing); }
+      if (e.key === "Escape") { e.stopPropagation(); LM[current].editing = null; lmRender(current); }
+    }
+  });
+
+  route();
+})();
+</script>

@@ -1,0 +1,475 @@
+<title>חמישה כיווני עיצוב</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500&family=Rubik:wght@400;500;600&family=Assistant:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+html{direction:rtl}
+/* מעטפת: לשוניות לכל כיוון, מתחת לכל לשונית מסך משבץ מלא באותם נתונים. מערכת בהירה בלבד (החלטה קיימת), לכן בלי מצב כהה. */
+:root{
+  --shell-bg:#f3f4f6; --shell-fg:#1d2330; --shell-mute:#5d6676; --shell-line:#dfe3ea; --shell-acc:#0b4c9e;
+  --ok:#1f7a3a; --warn:#a15f00; --bad:#c92a2a;
+  --ui:"Heebo",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--shell-bg);color:var(--shell-fg);font-family:var(--ui);font-size:14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:22px;margin:0}
+.lead{color:var(--shell-mute);margin:4px 0 0;max-width:70ch;line-height:1.55}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--shell-bg);padding-block:8px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--shell-bg)}
+.tabs a{display:flex;gap:8px;align-items:center;min-height:40px;padding:0 14px;border:1px solid var(--shell-line);border-radius:10px;background:#fff;color:var(--shell-fg);text-decoration:none;font-weight:500}
+.tabs a b{font-weight:700;color:var(--shell-mute)}
+.tabs a.on{border-color:var(--shell-acc);box-shadow:inset 0 0 0 1px var(--shell-acc)}
+.tabs a:focus-visible{outline:2px solid var(--shell-acc);outline-offset:2px}
+.about{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;background:#fff;border:1px solid var(--shell-line);border-radius:12px;padding:16px}
+.about h2{margin:0 0 6px;font-size:18px}
+.about p{margin:0;color:var(--shell-mute);line-height:1.55}
+.about ul{margin:0;padding-inline-start:18px;line-height:1.7}
+.about .src{font-size:13px;color:var(--shell-mute);margin-top:8px}
+.refs{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;border-top:1px solid var(--shell-line);padding-top:14px}
+.refs figure{margin:0;display:grid;gap:6px}
+.refs img{width:100%;max-width:100%;border-radius:10px;border:1px solid var(--shell-line);display:block}
+.refs figcaption{font-size:13px;color:var(--shell-mute)}
+.refs figcaption b{color:var(--shell-fg)}
+@media (max-width:760px){.about{grid-template-columns:1fr}}
+
+/* ---- רכיבים משותפים ---- */
+.scr{border-radius:14px;overflow:hidden;min-width:0}
+.nw{white-space:nowrap}
+.wc{width:16px;height:16px;vertical-align:-3px;flex:none}
+.map{display:block;width:100%;height:100%}
+.flags{display:flex;gap:4px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+
+/* ============ A · לוח בהיר (השראה 04) ============ */
+.A{--bg:#edf0f5;--card:#fff;--fg:#1b2333;--mute:#6a7385;--line:#e4e8ef;--acc:#1f5fd6;--acc-soft:#e8f0ff;
+  font-family:"Heebo",system-ui,sans-serif;background:var(--bg);color:var(--fg);padding:14px;display:flex;flex-direction:column;gap:14px}
+.A .top{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:10px 14px;flex-wrap:wrap}
+.A .brand{font-weight:700;font-size:16px}
+.A .brand span{color:var(--mute);font-weight:400}
+.A .search{flex:1;min-width:180px;height:40px;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;padding:0 12px;color:var(--mute)}
+.A .me{display:flex;gap:8px;align-items:center;color:var(--mute)}
+.A .av{width:32px;height:32px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-weight:700}
+.A .grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr) minmax(0,300px);gap:14px}
+.A .panel{background:var(--card);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.A .ph{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px}
+.A .ph small{color:var(--mute);font-weight:400;font-size:13px}
+.A .pills{display:flex;gap:6px;flex-wrap:wrap}
+.A .pill{height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--fg);font-size:13px}
+.A .pill.on{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.A .q{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px;cursor:pointer}
+.A .q.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:#fbfdff}
+.A .q .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.A .q .nm{font-weight:700}
+.A .chip{font-size:12px;padding:2px 8px;border-radius:999px;background:#f1f3f7;color:var(--mute)}
+.A .wt{font-weight:700;font-size:13px;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.A .wt.ok{background:#e7f5ec;color:var(--ok)} .A .wt.warn{background:#fff3df;color:var(--warn)} .A .wt.bad{background:#fde8e8;color:var(--bad)}
+.A .route{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:13px;min-width:0}
+.A .route .to{color:var(--fg);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.A .plate{background:var(--fg);color:#fff;border-radius:5px;padding:0 6px;font-weight:700;font-size:12px}
+.A .mapbox{position:relative;background:var(--card);border-radius:14px;overflow:hidden;min-height:470px}
+.A .mapbox .map{position:absolute;inset:0}
+.A .detail{position:absolute;inset:auto 12px 12px 12px;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(20,30,60,.14);padding:12px 14px;display:grid;gap:8px}
+.A .detail .r1{display:flex;justify-content:space-between;align-items:center}
+.A .kv{display:flex;gap:18px;flex-wrap:wrap;font-size:13px}
+.A .kv div{display:grid}
+.A .kv small{color:var(--mute)}
+.A .btn{height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--fg);font-weight:500}
+.A .btn.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.A .drv{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:4px}
+.A .drv .r1{display:flex;justify-content:space-between;align-items:center}
+.A .st{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.A .st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.A .st.free{color:var(--ok)} .A .st.busy{color:var(--acc)} .A .st.brk{color:var(--mute)}
+.A .prog{height:6px;border-radius:3px;background:#eef1f6;position:relative;overflow:hidden}
+.A .prog i{position:absolute;inset:0 auto 0 0;background:var(--acc);border-radius:3px}
+.A .stops{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.A .stops li{display:grid;grid-template-columns:18px 1fr;gap:8px;font-size:13px;padding-bottom:8px;position:relative}
+.A .stops li::before{content:"";width:10px;height:10px;border-radius:50%;border:2px solid var(--acc);background:#fff;margin-top:3px}
+.A .stops li:not(:last-child)::after{content:"";position:absolute;right:5px;top:15px;bottom:0;width:2px;background:#cdd9f2}
+.A .stops li.drop::before{background:var(--fg);border-color:var(--fg);border-radius:3px}
+.A .m-bg{fill:#eef1f4}.A .m-blk{fill:#e3e7ec}.A .m-st{stroke:#fff}.A .m-park{fill:#dbeedd}.A .m-route{stroke:var(--acc)}.A .m-pick{fill:#fff;stroke:var(--acc)}.A .m-other{fill:#aab3c2}.A .m-clu{fill:var(--fg)}.A .m-clu-t{fill:#fff}.A .m-drv{fill:var(--acc)}.A .m-lbl{fill:#6a7385}
+
+/* ============ B · טבלה שקטה (השראה 24) ============ */
+.B{--bg:#f6f6f7;--card:#fff;--fg:#151618;--mute:#6b6e76;--line:#e7e7ea;--acc:#151618;
+  font-family:"IBM Plex Sans Hebrew",system-ui,sans-serif;background:var(--bg);color:var(--fg);display:grid;grid-template-columns:190px minmax(0,1fr)}
+.B .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.B aside{background:var(--card);border-inline-end:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+.B aside .brand{font-weight:600;font-size:15px;padding:0 8px 12px}
+.B aside .brand small{display:block;color:var(--mute);font-weight:400;font-size:12px}
+.B aside a{display:flex;align-items:center;height:38px;padding:0 10px;border-radius:8px;color:var(--mute);text-decoration:none}
+.B aside a.on{background:#f0f0f2;color:var(--fg);font-weight:600;box-shadow:inset -3px 0 0 var(--fg)}
+.B main{padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.B .hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.B .hd h3{margin:0;font-size:20px;font-weight:600}
+.B .hd p{margin:2px 0 0;color:var(--mute);font-size:13px}
+.B .btn{height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--fg);font-weight:500}
+.B .btn.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+.B .box{background:var(--card);border:1px solid var(--line);border-radius:10px;min-width:0}
+.B .seg{display:flex;gap:2px;background:#f0f0f2;border-radius:8px;padding:3px;flex-wrap:wrap;width:max-content;max-width:100%}
+.B .seg span{height:30px;display:flex;align-items:center;padding:0 10px;border-radius:6px;font-size:13px;color:var(--mute)}
+.B .seg span.on{background:#fff;color:var(--fg);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.B .tbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;flex-wrap:wrap}
+.B .tbar b{font-size:15px}
+.B .tw{overflow-x:auto}
+.B table{width:100%;border-collapse:collapse;font-size:13px}
+.B th{text-align:start;font-weight:500;color:var(--mute);padding:10px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fafafb;white-space:nowrap}
+.B td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+.B tr.sel td{background:#f5f6f8}
+.B tr.sel td:first-child{box-shadow:inset -3px 0 0 var(--fg)}
+.B .wbar{display:flex;align-items:center;gap:8px}
+.B .wbar .n{width:26px;font-weight:500}
+.B .wbar .tr{width:70px;height:5px;border-radius:3px;background:#eceef1;position:relative}
+.B .wbar .tr i{position:absolute;inset:0 0 0 auto;border-radius:3px}
+.B .ok i{background:var(--ok)} .B .warn i{background:var(--warn)} .B .bad i{background:var(--bad)}
+.B .ok .n{color:var(--ok)} .B .warn .n{color:var(--warn)} .B .bad .n{color:var(--bad)}
+.B .tag{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border:1px solid var(--line);border-radius:6px;font-size:12px;white-space:nowrap}
+.B .tag.dl{border-color:#f2c4c4;color:var(--bad);background:#fff7f7}
+.B .tag.vf{border-color:#efd9b0;color:var(--warn);background:#fffaf0}
+.B .plate{border:1.5px solid var(--fg);border-radius:4px;padding:0 5px;font-weight:600;font-size:12px}
+.B .low{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.9fr);gap:14px}
+.B .box h4{margin:0;padding:12px 14px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.B .box h4 small{color:var(--mute);font-weight:400}
+.B .stops{list-style:none;margin:0;padding:12px 14px;display:grid;gap:10px}
+.B .stops li{display:grid;grid-template-columns:52px 1fr;gap:10px;font-size:13px}
+.B .stops li .num{color:var(--mute)}
+.B .stops li b{font-weight:600}
+.B .acts{display:flex;gap:8px;padding:0 14px 14px;flex-wrap:wrap}
+.B .mapb{height:260px}
+.B .dl2{display:grid}
+.B .dl2 div{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;gap:8px}
+.B .dl2 div:last-child{border-bottom:0}
+.B .dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--mute)}
+.B .dot::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.B .dot.free{color:var(--ok)} .B .dot.busy{color:#2b5bd7}
+.B .m-bg{fill:#f4f4f5}.B .m-blk{fill:#ebebed}.B .m-st{stroke:#fff}.B .m-park{fill:#e4ece4}.B .m-route{stroke:#151618}.B .m-pick{fill:#fff;stroke:#151618}.B .m-other{fill:#b9bcc3}.B .m-clu{fill:#151618}.B .m-clu-t{fill:#fff}.B .m-drv{fill:#2b5bd7}.B .m-lbl{fill:#6b6e76}
+
+/* ============ C · מפה וגיליון (השראה Wavespace) ============ */
+.C{--fg:#121a14;--mute:#5f6b63;--line:#e3e8e4;--acc:#16a34a;--acc-d:#0f7a36;
+  font-family:"Rubik",system-ui,sans-serif;color:var(--fg);position:relative;min-height:640px;background:#e9eeea}
+.C > .map{position:absolute;inset:0}
+.C .float{position:absolute;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(15,30,20,.16)}
+.C .sbar{top:14px;right:14px;left:14px;height:48px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px}
+.C .sbar .ic{width:34px;height:34px;border-radius:50%;background:#f1f5f2;display:grid;place-items:center;flex:none}
+.C .sbar .t{flex:1;color:var(--mute)}
+.C .sbar .city{font-weight:500}
+.C .queue{top:74px;right:14px;width:320px;bottom:14px;padding:14px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.C .queue h4{margin:0 0 4px;font-size:16px;font-weight:600;display:flex;justify-content:space-between}
+.C .queue h4 small{color:var(--mute);font-weight:400}
+.C .q{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;padding:8px;border-radius:14px}
+.C .q.sel{background:#effaf3;box-shadow:inset 0 0 0 1.5px var(--acc)}
+.C .w{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;text-align:center;line-height:1;font-weight:600;font-size:17px}
+.C .w small{display:block;font-size:10px;font-weight:400;margin-top:2px}
+.C .w.ok{background:#e8f6ed;color:var(--ok)} .C .w.warn{background:#fff2dc;color:var(--warn)} .C .w.bad{background:#fde6e6;color:var(--bad)}
+.C .q .nm{font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.C .q .sub{color:var(--mute);font-size:12.5px}
+.C .chip{font-size:11px;padding:2px 7px;border-radius:999px;background:#f1f5f2;color:var(--mute);font-weight:400}
+.C .chip.dl{background:#fde6e6;color:var(--bad)}
+.C .drvs{top:74px;left:14px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 370px);background:transparent;box-shadow:none}
+.C .dchip{background:#fff;border-radius:999px;height:36px;padding:0 12px 0 6px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(15,30,20,.12);font-size:13px}
+.C .dchip i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:600;color:#fff}
+.C .dchip.free i{background:var(--acc)} .C .dchip.busy i{background:#2b6cd7} .C .dchip.brk i{background:#9aa39d}
+.C .sheet{left:14px;bottom:14px;width:380px;padding:10px 16px 16px;display:grid;gap:12px}
+.C .grab{width:40px;height:4px;border-radius:2px;background:#d9dfdb;margin:0 auto}
+.C .sheet .hd{display:flex;justify-content:space-between;align-items:center}
+.C .sheet .hd b{font-size:16px}
+.C .sheet .hd small{color:var(--mute)}
+.C .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.C .stats div{background:#f5f7f6;border-radius:12px;padding:8px;text-align:center}
+.C .stats b{display:block;font-size:16px}
+.C .stats small{color:var(--mute);font-size:12px}
+.C .stops{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13px}
+.C .stops li{display:flex;gap:10px;align-items:center}
+.C .stops .n{width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:12px;flex:none}
+.C .stops li.drop .n{background:var(--fg);border-radius:6px}
+.C .acts{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.C .btn{height:48px;border-radius:14px;border:0;background:#eef1ef;color:var(--fg);font-weight:500}
+.C .btn.pri{background:var(--acc);color:#fff}
+.C .tabs2{display:flex;gap:6px;font-size:12px}
+.C .tabs2 span{padding:4px 10px;border-radius:999px;background:#f1f5f2;color:var(--mute)}
+.C .tabs2 span.on{background:var(--fg);color:#fff}
+.C .m-bg{fill:#e9eeea}.C .m-blk{fill:#dfe6e1}.C .m-st{stroke:#fff}.C .m-park{fill:#cfe8d6}.C .m-route{stroke:var(--acc)}.C .m-pick{fill:#fff;stroke:var(--acc)}.C .m-other{fill:#a4ada7}.C .m-clu{fill:var(--fg)}.C .m-clu-t{fill:#fff}.C .m-drv{fill:var(--acc)}.C .m-lbl{fill:#6d786f}
+
+/* ============ D · ציר עצירות (השראה Nova Post + Sundas) ============ */
+.D{--fg:#16181d;--mute:#7a7f8a;--line:#ececef;--acc:#0b4c9e;
+  font-family:"Assistant",system-ui,sans-serif;background:#fff;color:var(--fg);border:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,.9fr)}
+.D .num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.D .col{padding:22px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.D .col + .col{border-inline-start:1px solid var(--line)}
+.D .lbl{font-size:12px;letter-spacing:.04em;color:var(--mute);font-weight:600}
+.D h3{margin:0;font-size:26px;font-weight:700;line-height:1.15}
+.D .q{display:grid;grid-template-columns:58px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+.D .q:last-child{border-bottom:0}
+.D .q .w{font-size:26px;line-height:1;font-weight:500}
+.D .q .w small{display:block;font-family:"Assistant",sans-serif;font-size:11px;color:var(--mute);margin-top:4px}
+.D .ok{color:var(--ok)} .D .warn{color:var(--warn)} .D .bad{color:var(--bad)}
+.D .q .nm{font-weight:700;font-size:15px}
+.D .q .sub{color:var(--mute);font-size:13px}
+.D .q.sel .nm{color:var(--acc)}
+.D .q.sel{position:relative}
+.D .q.sel::before{content:"";position:absolute;inset:8px -22px 8px auto;width:3px;background:var(--acc)}
+.D .tagline{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.D .t{font-size:12px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.D .t.dl{color:var(--bad);border-color:#f1c6c6}
+.D .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;font-size:14px}
+.D .meta small{display:block;color:var(--mute);font-size:12px}
+.D .tl{list-style:none;margin:0;padding:0}
+.D .tl li{display:grid;grid-template-columns:52px 22px 1fr;gap:10px;min-height:56px}
+.D .tl .tm{color:var(--mute);font-size:13px;padding-top:1px}
+.D .tl .rail{position:relative;display:flex;justify-content:center}
+.D .tl .rail::after{content:"";position:absolute;top:18px;bottom:-2px;width:2px;background:var(--line)}
+.D .tl li:last-child .rail::after{display:none}
+.D .tl .dt{width:14px;height:14px;border-radius:50%;border:2px solid var(--fg);background:#fff;margin-top:2px;z-index:1}
+.D .tl li.now .dt{background:var(--acc);border-color:var(--acc);box-shadow:0 0 0 5px #e3ecf8}
+.D .tl li.drop .dt{border-radius:3px;background:var(--fg)}
+.D .tl b{font-weight:700}
+.D .tl .sub{color:var(--mute);font-size:13px}
+.D .btn{height:44px;padding:0 18px;border-radius:6px;border:1px solid var(--fg);background:#fff;color:var(--fg);font-weight:600}
+.D .btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.D .acts{display:flex;gap:8px;flex-wrap:wrap}
+.D .mapd{height:220px;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.D .drv{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;gap:8px}
+.D .drv:last-child{border-bottom:0}
+.D .drv small{color:var(--mute)}
+.D .plate{font-weight:700;border-bottom:2px solid var(--fg)}
+.D .m-bg{fill:#fafafa}.D .m-blk{fill:#f1f1f3}.D .m-st{stroke:#fff}.D .m-park{fill:#eef3ee}.D .m-route{stroke:var(--acc)}.D .m-pick{fill:#fff;stroke:var(--fg)}.D .m-other{fill:#c4c7cd}.D .m-clu{fill:var(--fg)}.D .m-clu-t{fill:#fff}.D .m-drv{fill:var(--acc)}.D .m-lbl{fill:#8a8f99}
+
+/* ============ E · כרטיסים צפים (השראה fenderr 05) ============ */
+.E{--fg:#14213d;--mute:#5f6c85;--line:#d9e4f6;--acc:#2563eb;--acc-soft:#eaf1ff;
+  font-family:"Open Sans",system-ui,sans-serif;color:var(--fg);position:relative;min-height:660px;background:#dfeafb}
+.E > .map{position:absolute;inset:0;opacity:.9}
+.E .float{position:absolute;background:rgba(255,255,255,.96);border-radius:18px;box-shadow:0 10px 34px rgba(30,60,130,.16);border:1px solid #fff}
+.E .panel{top:16px;right:16px;bottom:16px;width:380px;padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.E .panel h4{margin:0;font-size:17px;font-weight:700}
+.E .steps{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:12.5px}
+.E .steps span{padding:8px 4px;text-align:center;color:var(--mute);border-inline-start:1px solid var(--line)}
+.E .steps span:first-child{border-inline-start:0}
+.E .steps span.on{color:var(--acc);font-weight:700;background:var(--acc-soft)}
+.E .card{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:8px;background:#fff}
+.E .card.sel{border-color:var(--acc);box-shadow:0 0 0 3px #d6e4ff}
+.E .r1{display:flex;align-items:center;gap:10px}
+.E .av{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:700;flex:none;background:var(--acc-soft);color:var(--acc)}
+.E .nm{font-weight:700}
+.E .sub{color:var(--mute);font-size:12.5px}
+.E .grow{flex:1;min-width:0}
+.E .ib{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:var(--acc);flex:none}
+.E .w{font-weight:700;font-size:13px;padding:4px 10px;border-radius:8px;white-space:nowrap}
+.E .w.ok{background:#e6f5ec;color:var(--ok)} .E .w.warn{background:#fff1da;color:var(--warn)} .E .w.bad{background:#fde5e5;color:var(--bad)}
+.E .line2{display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:8px}
+.E .plate{background:var(--fg);color:#fff;border-radius:5px;padding:0 6px;font-weight:700;font-size:12px}
+.E .btn{height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--fg);font-weight:600}
+.E .btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.E .drvp{left:16px;top:16px;width:300px;padding:14px;display:grid;gap:10px}
+.E .drvp h4{margin:0;font-size:15px}
+.E .prop{left:16px;bottom:16px;width:340px;padding:14px;display:grid;gap:10px}
+.E .stops{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13px}
+.E .stops li{display:flex;gap:8px;align-items:center}
+.E .stops li::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--acc);flex:none}
+.E .stops li.drop::before{background:var(--fg);border-radius:2px}
+.E .pop{position:absolute;background:#fff;border-radius:12px;padding:6px 10px 6px 6px;display:flex;gap:8px;align-items:center;box-shadow:0 6px 20px rgba(30,60,130,.18);font-size:12.5px}
+.E .pop .av{width:28px;height:28px;border-radius:8px;font-size:12px}
+.E .m-bg{fill:#dfeafb}.E .m-blk{fill:#d2e0f6}.E .m-st{stroke:#f4f8ff}.E .m-park{fill:#cfe9de}.E .m-route{stroke:var(--acc)}.E .m-pick{fill:#fff;stroke:var(--acc)}.E .m-other{fill:#9fb1d0}.E .m-clu{fill:var(--fg)}.E .m-clu-t{fill:#fff}.E .m-drv{fill:var(--acc)}.E .m-lbl{fill:#5f6c85}
+
+/* ---- מסך צר ---- */
+@media (max-width:1100px){
+  .A .grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .A .mapbox{grid-column:1/-1;order:-1}
+  .B .low{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .D{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .D .col:last-child{grid-column:1/-1;border-inline-start:0;border-top:1px solid var(--line)}
+}
+@media (max-width:820px){
+  .A .grid,.B .low{grid-template-columns:1fr}
+  .B{grid-template-columns:1fr} .B aside{flex-direction:row;flex-wrap:wrap;border-inline-end:0;border-bottom:1px solid var(--line)} .B aside .brand{width:100%}
+  .D{grid-template-columns:1fr} .D .col + .col{border-inline-start:0;border-top:1px solid var(--line)}
+  .C,.E{display:flex;flex-direction:column;gap:12px;padding:12px;min-height:0}
+  .C > .map,.E > .map{position:static;height:300px;border-radius:14px;order:-1}
+  .C .float,.E .float{position:static;width:auto;max-width:none}
+  .C .drvs{order:-1} .E .pop{display:none}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>חמישה כיווני עיצוב למסך המשבץ</h1>
+    <p class="lead">אותו מסך ואותם נתונים בחמישה סגנונות. בכל כיוון: תור פניות, מפה עם מסלול ההצעה, נהגים והצעה לנהג. צבעי ההמתנה (ירוק, כתום, אדום) נשארו זהים בכולם. בחר כיוון אחד, או שילוב של חלקים מכמה.</p>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <section class="about" id="about"></section>
+  <div id="stage"></div>
+</div>
+
+<script>
+document.documentElement.lang="he";document.documentElement.dir="rtl";
+const WC='<svg class="wc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="כיסא גלגלים"><circle cx="11" cy="4" r="1.6"/><path d="M11 7v6h5l2.5 5"/><path d="M11 9.5h4"/><path d="M8 11.2a5 5 0 1 0 7.2 6.3"/></svg>';
+const PHONE='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>';
+const SEARCH='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+
+const REQS=[
+ {id:218,name:'שרה וינברג',kind:'אישה',n:1,from:'הרב קוק 8',clu:'בית יעקב',cn:'12',wait:12,dl:'12:30',when:'עכשיו'},
+ {id:203,name:'משפחת כהן',kind:'משפחה',n:3,from:'רבי עקיבא 12',clu:'ת"ת חכמי לובלין',cn:'7',wait:41,wc:true,when:'עכשיו'},
+ {id:205,name:'יעקב גולדברג',kind:'גבר',n:1,from:'חזון איש 40',clu:'ת"ת חכמי לובלין',cn:'7',wait:34,when:'עכשיו',sel:true},
+ {id:209,name:'רחל ופנינה לוי',kind:'נשים',n:2,from:'השומר 15',clu:'בית יעקב',cn:'12',wait:22,vf:true,when:'עכשיו'},
+ {id:214,name:'אהרן שפירא',kind:'גבר',n:1,from:"ז'בוטינסקי 101",clu:'ישיבת קול תורה',cn:'',wait:9,when:'עכשיו'},
+ {id:216,name:'חיים ומרים קרליבך',kind:'משפחה',n:2,from:'דסלר 4',clu:'ישיבת קול תורה',cn:'',wait:6,when:'13:00'},
+];
+const DRV=[
+ {name:'יוסי לוי',ini:'יל',st:'free',stt:'פנוי',info:'4 מקומות · 0.8 ק"מ ממך'},
+ {name:'אברהם פרידמן',ini:'אפ',st:'free',stt:'פנוי',info:'7 מקומות · רכב נגיש · 1.4 ק"מ'},
+ {name:'משה ברגר',ini:'מב',st:'busy',stt:'בנסיעה',info:'לוקח עכשיו: דוד רוזן · מתפנה בעוד 6 דק\'',prog:60},
+ {name:'דוד שטרן',ini:'דש',st:'brk',stt:'בהפסקה',info:'חוזר ב-12:40'},
+];
+const PROP={drv:'יוסי לוי',km:'4.2',min:'14',pax:2,stops:[
+ {t:'12:14',kind:'pick',a:'חזון איש 40',w:'יעקב גולדברג'},
+ {t:'12:18',kind:'pick',a:"ז'בוטינסקי 101",w:'אהרן שפירא'},
+ {t:'12:23',kind:'drop',a:'ת"ת חכמי לובלין',w:'אשכול 7 · יעקב יורד'},
+ {t:'12:28',kind:'drop',a:'ישיבת קול תורה',w:'אהרן יורד'},
+]};
+const sorted=[...REQS].sort((a,b)=>(!!b.dl)-(!!a.dl)||b.wait-a.wait);
+const wcls=r=>r.dl?'bad':r.wait>=30?'bad':r.wait>=15?'warn':'ok';
+const plate=r=>r.cn?`<span class="plate">${r.cn}</span> `:'';
+const tags=(r,c='chip')=>[r.dl?`<span class="${c} dl">יוצא ב-${r.dl}</span>`:'',r.vf?`<span class="${c} vf">ממתין לאימות</span>`:'',r.wc?`<span class="${c}">${WC} נגיש</span>`:''].join('');
+
+function mapSVG(){
+  return `<svg class="map" viewBox="0 0 600 420" preserveAspectRatio="xMidYMid slice" aria-label="מפה עם מסלול ההצעה">
+  <rect class="m-bg" width="600" height="420"/>
+  ${[[20,20,150,70],[180,20,130,70],[330,20,170,70],[20,105,150,75],[330,105,100,75],[460,105,130,75],[20,195,90,80],[240,195,190,80],[460,195,130,80],[20,290,170,110],[240,290,130,110],[400,290,190,110]].map(b=>`<rect class="m-blk" x="${b[0]}" y="${b[1]}" width="${b[2]}" height="${b[3]}" rx="4"/>`).join('')}
+  <rect class="m-park" x="120" y="195" width="110" height="80" rx="6"/>
+  <g class="m-st" stroke-width="12" fill="none">
+    <path d="M0 97H600M0 187H600M0 283H600M175 0V420M320 0V420M450 0V420M233 187V420M395 283V420"/>
+  </g>
+  <path class="m-route" d="M120 340 L233 340 L233 283 L320 283 L320 187 L395 187 L450 187 L450 97 L520 97" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle class="m-other" cx="90" cy="150" r="6"/><circle class="m-other" cx="540" cy="250" r="6"/><circle class="m-other" cx="270" cy="60" r="6"/><circle class="m-other" cx="470" cy="360" r="6"/>
+  <circle class="m-drv" cx="120" cy="340" r="9"/><circle cx="120" cy="340" r="16" class="m-drv" opacity=".18"/>
+  <circle class="m-pick" cx="233" cy="283" r="8" stroke-width="3"/>
+  <circle class="m-pick" cx="320" cy="187" r="8" stroke-width="3"/>
+  <rect class="m-clu" x="430" y="172" width="40" height="28" rx="6"/><text class="m-clu-t" x="450" y="191" text-anchor="middle" font-size="14" font-weight="700">7</text>
+  <rect class="m-clu" x="500" y="82" width="40" height="28" rx="6"/><text class="m-clu-t" x="520" y="101" text-anchor="middle" font-size="12" font-weight="700">ק"ת</text>
+  <text class="m-lbl" x="250" y="306" font-size="12">חזון איש</text>
+  <text class="m-lbl" x="335" y="176" font-size="12">ז'בוטינסקי</text>
+  <text class="m-lbl" x="128" y="372" font-size="12">יוסי לוי</text>
+  </svg>`;
+}
+
+/* ---------- A ---------- */
+function A(){
+  const q=sorted.map(r=>`<div class="q ${r.sel?'sel':''}">
+    <div class="r1"><span><span class="nm">${r.name}</span> <span class="chip">${r.kind} · ${r.n}</span></span><span class="wt ${wcls(r)}">${r.wait} דק' המתנה</span></div>
+    <div class="route"><span>${r.from}</span><span>←</span>${plate(r)}<span class="to">${r.clu}</span></div>
+    ${(r.dl||r.vf||r.wc)?`<div class="flags">${tags(r)}</div>`:''}
+  </div>`).join('');
+  const d=DRV.map(x=>`<div class="drv"><div class="r1"><b>${x.name}</b><span class="st ${x.st}">${x.stt}</span></div><span style="color:var(--mute);font-size:13px">${x.info}</span>${x.prog?`<div class="prog"><i style="width:${x.prog}%"></i></div>`:''}</div>`).join('');
+  return `<div class="scr A">
+   <div class="top"><span class="brand">מטה הסעות <span>· בני ברק</span></span><div class="search">${SEARCH}&nbsp; חיפוש לפי טלפון, ת"ז או שם</div><span class="me"><span class="av">ר</span> רבקה · משבצת</span></div>
+   <div class="grid">
+    <div class="panel"><div class="ph">תור פניות <small>${REQS.length} ממתינות</small></div>
+      <div class="pills"><button class="pill on">הכול</button><button class="pill">גברים</button><button class="pill">נשים</button><button class="pill">משפחות</button><button class="pill">נגישות</button><button class="pill">ממתין לאימות</button></div>${q}</div>
+    <div class="mapbox">${mapSVG()}
+      <div class="detail"><div class="r1"><b>יעקב גולדברג · פנייה מס' 205</b><span class="wt bad">34 דק' המתנה</span></div>
+        <div class="kv"><div><small>טלפון</small><span class="nw">052-7614390</span></div><div><small>מאיפה</small>חזון איש 40</div><div><small>לאן</small>אשכול 7 · ת"ת חכמי לובלין</div><div><small>חזור</small>כן, אחרי 20 דק'</div></div></div>
+    </div>
+    <div class="panel"><div class="ph">הצעה ליוסי לוי <small>${PROP.km} ק"מ · ${PROP.min} דק'</small></div>
+      <ul class="stops">${PROP.stops.map(s=>`<li class="${s.kind}"><span></span><span><b>${s.a}</b><br><span style="color:var(--mute)">${s.w}</span></span></li>`).join('')}</ul>
+      <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1">שלח לנהג</button><button class="btn">נהג אחר</button></div>
+      <div class="ph" style="margin-top:6px">נהגים <small>2 פנויים</small></div>${d}</div>
+   </div></div>`;
+}
+/* ---------- B ---------- */
+function B(){
+  const rows=sorted.map(r=>`<tr class="${r.sel?'sel':''}">
+    <td><div class="wbar ${wcls(r)}"><span class="n num">${r.wait}</span><span class="tr"><i style="width:${Math.min(100,r.wait/45*100)}%"></i></span></div></td>
+    <td><b>${r.name}</b><br><span style="color:var(--mute);font-size:12px">${r.kind} · ${r.n} נוסעים</span></td>
+    <td>${r.from} ← ${r.cn?`<span class="plate">${r.cn}</span> `:''}${r.clu}</td>
+    <td class="num">${r.when}</td>
+    <td><div class="flags">${tags(r,'tag')}</div></td></tr>`).join('');
+  return `<div class="scr B">
+   <aside><div class="brand">מטה הסעות<small>בני ברק · יום בחירות</small></div><a class="on" href="#b">תור ושיבוץ</a><a href="#b">נהגים</a><a href="#b">מפה</a><a href="#b">כל הפניות</a></aside>
+   <main>
+    <div class="hd"><div><h3>תור ושיבוץ</h3><p>הכי דחוף למעלה: מי שיוצא בעוד פחות מ-30 דקות, ואז הכי ותיק בתור</p></div><button class="btn pri">+ נהג חדש</button></div>
+    <div class="box"><div class="tbar"><b>ממתינות <span class="num">(${REQS.length})</span></b><div class="seg"><span class="on">הכול</span><span>גברים</span><span>נשים</span><span>משפחות</span><span>נגישות</span><span>ממתין לאימות</span></div></div>
+     <div class="tw"><table><thead><tr><th>דקות המתנה</th><th>מי</th><th>מאיפה ← לאן</th><th>מתי</th><th>סימונים</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="low">
+     <div class="box"><h4>הצעה ליוסי לוי <small class="num">${PROP.km} ק"מ · ${PROP.min} דק'</small></h4>
+       <ul class="stops">${PROP.stops.map(s=>`<li><span class="num">${s.t}</span><span><b>${s.kind==='pick'?'איסוף':'הורדה'}: ${s.a}</b><br><span style="color:var(--mute)">${s.w}</span></span></li>`).join('')}</ul>
+       <div class="acts"><button class="btn pri">שלח לנהג</button><button class="btn">נהג אחר</button></div></div>
+     <div class="box mapb">${mapSVG()}</div>
+     <div class="box"><h4>נהגים <small>2 פנויים</small></h4><div class="dl2">${DRV.map(x=>`<div><span><b>${x.name}</b><br><span style="color:var(--mute);font-size:12px">${x.info}</span></span><span class="dot ${x.st}">${x.stt}</span></div>`).join('')}</div></div>
+    </div>
+   </main></div>`;
+}
+/* ---------- C ---------- */
+function C(){
+  const q=sorted.map(r=>`<div class="q ${r.sel?'sel':''}"><div class="w ${wcls(r)}">${r.wait}<small>דק'</small></div>
+    <div><div class="nm">${r.name} <span class="chip">${r.kind} · ${r.n}</span>${r.wc?WC:''}${r.dl?`<span class="chip dl">יוצא ${r.dl}</span>`:''}</div><div class="sub">${r.from} ← ${r.cn?'אשכול '+r.cn+' · ':''}${r.clu}</div></div></div>`).join('');
+  return `<div class="scr C">${mapSVG()}
+   <div class="float sbar"><span class="ic">${SEARCH}</span><span class="t">חיפוש לפי טלפון, ת"ז או שם</span><span class="city">בני ברק</span></div>
+   <div class="float drvs">${DRV.map(x=>`<span class="dchip ${x.st}"><i>${x.ini}</i>${x.name} · ${x.stt}</span>`).join('')}</div>
+   <div class="float queue"><h4>תור <small>${REQS.length} ממתינות</small></h4><div class="tabs2"><span class="on">הכול</span><span>גברים</span><span>נשים</span><span>משפחות</span><span>נגישות</span></div>${q}</div>
+   <div class="float sheet"><div class="grab"></div>
+     <div class="hd"><b>הצעה ליוסי לוי</b><small>פנוי · 4 מקומות</small></div>
+     <div class="stats"><div><b>${PROP.min}</b><small>דקות</small></div><div><b>${PROP.km}</b><small>ק"מ</small></div><div><b>${PROP.pax}</b><small>נוסעים</small></div></div>
+     <ul class="stops">${PROP.stops.map((s,i)=>`<li class="${s.kind}"><span class="n">${i+1}</span><span><b>${s.a}</b> · <span style="color:var(--mute)">${s.w}</span></span></li>`).join('')}</ul>
+     <div class="acts"><button class="btn">נהג אחר</button><button class="btn pri">שלח לנהג</button></div></div>
+  </div>`;
+}
+/* ---------- D ---------- */
+function D(){
+  const q=sorted.map(r=>`<div class="q ${r.sel?'sel':''}"><div class="w num ${wcls(r)}">${r.wait}<small>דק' המתנה</small></div>
+    <div><div class="nm">${r.name}</div><div class="sub">${r.kind} · ${r.n} · ${r.from} ← ${r.cn?'אשכול '+r.cn:r.clu}</div>${(r.dl||r.vf||r.wc)?`<div class="tagline">${tags(r,'t')}</div>`:''}</div></div>`).join('');
+  return `<div class="scr D">
+   <div class="col"><span class="lbl">תור · ${REQS.length} ממתינות</span>${q}</div>
+   <div class="col"><span class="lbl">פנייה מס' 205</span><h3>יעקב גולדברג</h3>
+     <div class="meta"><div><small>טלפון</small><span class="nw num">052-7614390</span></div><div><small>ממתין</small><span class="num bad">34 דק'</span></div><div><small>מאיפה</small>חזון איש 40</div><div><small>לאן</small><span class="plate">7</span> ת"ת חכמי לובלין</div></div>
+     <span class="lbl" style="margin-top:8px">הצעה ליוסי לוי · ${PROP.km} ק"מ · ${PROP.min} דק'</span>
+     <ol class="tl">${PROP.stops.map((s,i)=>`<li class="${s.kind} ${i===0?'now':''}"><span class="tm num">${s.t}</span><span class="rail"><span class="dt"></span></span><span><b>${s.kind==='pick'?'איסוף':'הורדה'} · ${s.a}</b><div class="sub">${s.w}</div></span></li>`).join('')}</ol>
+     <div class="acts"><button class="btn pri">שלח לנהג</button><button class="btn">נהג אחר</button></div></div>
+   <div class="col"><span class="lbl">מפה</span><div class="mapd">${mapSVG()}</div>
+     <span class="lbl">נהגים</span><div>${DRV.map(x=>`<div class="drv"><span><b>${x.name}</b><br><small>${x.info}</small></span><span class="${x.st==='free'?'ok':''}" style="${x.st!=='free'?'color:var(--mute)':''}">${x.stt}</span></div>`).join('')}</div></div>
+  </div>`;
+}
+/* ---------- E ---------- */
+function E(){
+  const q=sorted.slice(0,5).map(r=>`<div class="card ${r.sel?'sel':''}"><div class="r1"><span class="av">${r.name.split(' ').map(w=>w[0]).slice(0,2).join('')}</span><span class="grow"><span class="nm">${r.name}</span><div class="sub">${r.kind} · ${r.n} נוסעים ${r.wc?WC:''}</div></span><span class="w ${wcls(r)}">${r.wait} דק'</span></div>
+    <div class="line2"><span>${r.from} ← ${plate(r)}${r.clu}</span>${r.dl?`<span class="w bad">יוצא ${r.dl}</span>`:''}</div></div>`).join('');
+  return `<div class="scr E">${mapSVG()}
+   <div class="pop" style="left:18%;top:73%"><span class="av">יל</span><span><b>יוסי לוי</b><br>פנוי · 0.8 ק"מ</span></div>
+   <div class="float panel"><h4>שיבוץ פניות</h4><div class="steps"><span class="on">בתור ${REQS.length}</span><span>הוצעו 2</span><span>בדרך 5</span><span>הגיעו 31</span></div>${q}</div>
+   <div class="float drvp"><h4>נהגים פנויים</h4>${DRV.filter(x=>x.st==='free').map(x=>`<div class="r1"><span class="av">${x.ini}</span><span class="grow"><span class="nm">${x.name}</span><div class="sub">${x.info}</div></span><button class="ib" aria-label="התקשר">${PHONE}</button></div>`).join('')}</div>
+   <div class="float prop"><div class="line2"><b>הצעה ליוסי לוי</b><span class="sub">${PROP.km} ק"מ · ${PROP.min} דק'</span></div>
+     <ul class="stops">${PROP.stops.map(s=>`<li class="${s.kind}"><span><b>${s.a}</b> · <span class="sub">${s.w}</span></span></li>`).join('')}</ul>
+     <div style="display:flex;gap:8px"><button class="btn pri" style="flex:1">שלח לנהג</button><button class="btn">נהג אחר</button></div></div>
+  </div>`;
+}
+
+const DIRS=[
+ {k:'a',name:'לוח בהיר',fn:A,src:'השראה: עבודה 04 (Ongoing Delivery) ו-10 מ-Dribbble',
+  p:'רקע אפור-תכלת בהיר, כל אזור בכרטיס לבן עם פינות מעוגלות. התור כרשימת כרטיסים, והפרטים צפים מעל המפה.',
+  img:[['a1','עבודה 04 · Ongoing Delivery','ממנה: רשימה ליד מפה עם קו מסלול כחול, רקע אפור, כרטיסים לבנים ותגיות רכות'],['a2','עבודה 10 · Packing','ממנה: כרטיס נבחר עם מסגרת כחולה, וחלונית פרטים בצד']],
+  li:['כחול לפעולות, תגיות צבעוניות ורכות להמתנה','פרטי הפנייה בכרטיס צף מעל המפה, בלי חלונית נפרדת','קל לעין ומוכר, הכי קרוב לאפליקציות של היום']},
+ {k:'b',name:'טבלה שקטה',fn:B,src:'השראה: עבודה 24 (MoveLog) מ-Dribbble',
+  p:'שחור-לבן עם קווים דקים. התור הוא טבלה צפופה, ולכל פנייה פס קטן שמראה כמה זמן היא מחכה.',
+  img:[['b1','עבודה 24 · MoveLog','ממנה: הטבלה הצפופה, פס ההתקדמות בכל שורה, מסננים בשורה אחת, כפתור ראשי שחור ותפריט צד']],
+  li:['הכי הרבה פניות על המסך בבת אחת','מספרים בגופן שווה רוחב, קל להשוות','תפריט קבוע בצד, מתאים גם למנהל העיר ולמנהל המערכת']},
+ {k:'c',name:'מפה וגיליון',fn:C,src:'השראה: Wavespace (אפליקציית נסיעות) מ-Dribbble',
+  p:'המפה ממלאת את כל המסך, והכול צף מעליה: חיפוש, תור, נהגים וגיליון הצעה עם שלושה נתונים גדולים.',
+  img:[['c1','Wavespace · אפליקציית נסיעות','ממנה: מפה בהירה מלאה, גיליון לבן מלמטה, שורת שלושה נתונים, וזוג כפתורים אפור-ירוק']],
+  li:['ירוק כצבע פעולה (שינוי מהכחול הנוכחי)','כפתורים גדולים ועגולים, מרגיש כמו אפליקציה','אותה שפה בדיוק לאפליקציית הנהג']},
+ {k:'d',name:'ציר עצירות',fn:D,src:'השראה: עבודה 03 (Nova Post) ו-Sundas Ilyas מ-Dribbble',
+  p:'הרבה לבן, בלי כרטיסים, רק קווים דקים בין שלוש עמודות. ההצעה מוצגת כציר זמן אנכי עם שעה לכל עצירה.',
+  img:[['d1','עבודה 03 · Nova Post','ממנה: הרבה לבן, ציר הסטטוס האנכי עם תאריך ושעה, ותוויות קטנות ואפורות מעל הערכים'],['d2','Sundas Ilyas · מסלולי הסעה','ממנה: רשימת עצירות על קו אנכי עם שעה לכל עצירה, והעצירה הנוכחית מודגשת']],
+  li:['מספרי ההמתנה גדולים, נקראים ממרחק','ציר הזמן מחליף את קו המסלול הנוכחי','המפה קטנה ומשנית, העבודה בעיקר בטקסט']},
+ {k:'e',name:'כרטיסים צפים',fn:E,src:'השראה: עבודה 05 (fenderr Dispatch) מ-Dribbble',
+  p:'מפה תכלכלה ברקע, ועליה חלוניות לבנות. לכל פונה ונהג ריבוע ראשי תיבות, ולנהגים כפתור חיוג ישיר.',
+  img:[['e1','עבודה 05 · fenderr Dispatch','ממנה: מפה ברקע עם חלונית צפה, שלבים בראש החלונית, כרטיס נהג עם תמונה וכפתור חיוג, וכרטיס קופץ על המפה']],
+  li:['שלבים בראש החלונית: בתור, הוצעו, בדרך, הגיעו','כרטיס נהג קופץ על המפה ליד המיקום שלו','הכי "שיווקי" ומזמין מהחמישה']},
+];
+function show(){
+  const k=(location.hash||'#a').slice(1); const d=DIRS.find(x=>x.k===k)||DIRS[0];
+  document.getElementById('tabs').innerHTML=DIRS.map((x,i)=>`<a href="#${x.k}" class="${x===d?'on':''}"><b>${i+1}</b>${x.name}</a>`).join('');
+  document.getElementById('about').innerHTML=`<div><h2>${d.name}</h2><p>${d.p}</p><div class="src">${d.src}</div></div><ul>${d.li.map(l=>`<li>${l}</li>`).join('')}</ul><div class="refs">${d.img.map(m=>`<figure><img src="inspiration/${m[0]}.jpg" alt="${m[1]}" loading="lazy"><figcaption><b>${m[1]}</b><br>${m[2]}</figcaption></figure>`).join('')}</div>`;
+  document.getElementById('stage').innerHTML=d.fn();
+}
+addEventListener('hashchange',show); show();
+</script>

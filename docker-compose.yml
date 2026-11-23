@@ -1,0 +1,21 @@
+# Local development only: PostgreSQL with PostGIS. The password is for this machine, not a secret.
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    container_name: election-rides-db
+    environment:
+      POSTGRES_DB: election_rides
+      POSTGRES_USER: er
+      POSTGRES_PASSWORD: er_dev_only
+    ports:
+      - "5433:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U er -d election_rides"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  dbdata:
