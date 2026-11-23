@@ -18,7 +18,7 @@ public static class AuthEndpoints
 {
     public const string Scheme = "hq";
     public const string DeviceCookie = "er_device";
-    public const int MinPasswordLength = 10;
+    public const int MinPasswordLength = 8;
     const int CodeMinutes = 10;
     const int MaxCodeAttempts = 5;
 

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, errorMessage } from '../core/auth.service';
 
-export const MIN_PASSWORD = 10;
+export const MIN_PASSWORD = 8;
 
 @Component({
   selector: 'app-set-password',
