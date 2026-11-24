@@ -67,12 +67,12 @@
       <div class="flex min-h-0 flex-col gap-3">
         @if (selected(); as r) {
           <section class="card shrink-0 overflow-hidden" aria-label="פרטי פנייה">
-            <div class="flex items-center gap-3 border-b border-line px-4 py-3">
-              <h2 class="text-lg font-semibold">פנייה מס' {{ r.number }}</h2>
+            <div class="flex items-center gap-3 border-b border-line px-3 py-1.5">
+              <h2 class="font-semibold">פנייה מס' {{ r.number }}</h2>
               <span class="text-sm text-muted"><b class="tabular-nums text-ink">{{ r.waitMinutes }}</b> דקות המתנה</span>
-              <button type="button" class="ms-auto grid size-[42px] place-items-center rounded-full bg-soft hover:bg-bad-soft" aria-label="סגירה" (click)="selectedId.set(null)"><app-icon name="x" /></button>
+              <button type="button" class="ms-auto grid size-8 place-items-center rounded-full bg-soft hover:bg-bad-soft" aria-label="סגירה" (click)="selectedId.set(null)"><app-icon name="x" [size]="18" /></button>
             </div>
-            <dl class="grid max-h-[300px] grid-cols-[72px_minmax(0,1fr)] gap-x-3 gap-y-1.5 overflow-y-auto px-4 py-3 text-sm">
+            <dl class="grid max-h-[300px] grid-cols-[60px_minmax(0,1fr)] gap-x-3 gap-y-1 overflow-y-auto px-3 py-2 text-sm">
               <dt class="text-muted">נוסעים</dt>
               <dd>@for (p of r.passengers; track $index) { <span class="block"><b>{{ p.fullName }}</b> · {{ p.gender === 'Male' ? 'גבר' : 'אישה' }}</span> }</dd>
               <dt class="text-muted">טלפון</dt><dd dir="ltr" class="text-right whitespace-nowrap">{{ formatPhone(r.callerPhone) }}</dd>
@@ -97,18 +97,18 @@
               @if (r.pending) {
                 <dt class="text-muted">אימות</dt>
                 <dd class="flex items-center gap-2"><span class="rounded-full bg-warn-soft px-2 text-warn">ממתין לאימות</span>
-                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="verify(r)"><app-icon name="check" [size]="16" /> אומת</button></dd>
+                  <button type="button" class="btn-secondary h-8 px-3 text-sm" (click)="verify(r)"><app-icon name="check" [size]="16" /> אומת</button></dd>
               }
             </dl>
-            <div class="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
               @if (propDriver(); as d) {
                 @if (joinReason()) {
                   <span class="text-sm font-medium text-bad">לא ניתן לצרף ל{{ d.fullName }}: {{ joinReason() }}</span>
                 } @else {
-                  <button type="button" class="btn-primary h-11" (click)="addToProposal()">צרף להצעה של {{ d.fullName }}</button>
+                  <button type="button" class="btn-primary h-9 px-3 text-sm" (click)="addToProposal()">צרף להצעה של {{ d.fullName }}</button>
                 }
               }
-              <button type="button" class="btn-secondary ms-auto h-11 text-bad" (click)="openCancel()">ביטול פנייה</button>
+              <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm text-bad" (click)="openCancel()">ביטול פנייה</button>
             </div>
           </section>
         }
@@ -193,28 +193,38 @@
         <div class="min-h-0 flex-1 overflow-y-auto">
           @for (d of drivers(); track d.id) {
             <div class="border-b border-line">
-              <button type="button" class="flex w-full items-center gap-2 px-4 py-2.5 text-start hover:bg-bg" [class.bg-action-soft]="openDriverId() === d.id"
+              <button type="button" data-driver-row class="flex w-full items-center gap-2 border-s-4 px-3 py-2.5 text-start hover:bg-bg"
+                [class]="openDriverId() === d.id ? 'border-action bg-action-soft' : 'border-transparent'" [attr.aria-expanded]="openDriverId() === d.id"
+                [title]="openDriverId() === d.id ? 'לחיצה לסגירה' : 'לחיצה לפתיחה'"
                 (click)="openDriverId.set(openDriverId() === d.id ? null : d.id)">
                 <b class="min-w-0 flex-1 truncate">{{ d.fullName }}</b>
                 @if (!d.hasSmartphone) { <span class="rounded-full border border-dashed border-line2 px-1.5 text-xs text-muted">בלי אפליקציה</span> }
                 <span class="rounded-full px-2 py-0.5 text-xs font-medium"
                   [class]="offerLate(d) ? 'bg-bad text-white' : d.trip?.status === 'Offered' ? 'bg-warn-soft text-warn' : d.status === 'Free' ? 'bg-ok text-white' : d.status === 'Soon' ? 'bg-warn-soft text-warn' : 'bg-soft text-muted'">{{ driverLine(d) }}</span>
+                <app-icon name="chevron" [size]="18" class="shrink-0 text-muted transition-transform" [class.rotate-180]="openDriverId() === d.id" />
               </button>
               @if (openDriverId() === d.id) {
-                <div class="grid gap-2 bg-bg px-4 py-3 text-sm">
-                  <div class="flex flex-wrap items-center gap-2">
+                <div class="grid gap-2 border-s-4 border-action bg-bg px-3 py-2.5 text-sm">
+                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span dir="ltr" class="whitespace-nowrap">{{ formatPhone(d.phone) }}</span>
                     <span class="text-muted">· {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span>
-                    <span class="ms-auto flex gap-1.5">
+                    <span class="ms-auto flex flex-wrap gap-1.5">
+                      @if (!d.trip) {
+                        @if (d.status === 'Break') {
+                          <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium" (click)="action(d, 'BackFromBreak')">חזר מהפסקה</button>
+                        } @else {
+                          <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium" (click)="action(d, 'Break')">יוצא להפסקה</button>
+                        }
+                      }
+                      @if (d.hasSmartphone) {
+                        <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium" [title]="d.hasLink ? 'קישור כניסה חדש לאפליקציה' : 'קישור כניסה לאפליקציה'" (click)="makeLink(d)">{{ d.hasLink ? 'קישור חדש' : 'קישור לאפליקציה' }}</button>
+                      }
                       <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium" (click)="openEditDriver(d)">ערוך</button>
                       <button type="button" class="h-8 rounded-lg bg-surface px-2.5 text-xs font-medium disabled:text-line2" [disabled]="!!d.trip" (click)="action(d, 'Finish')">סיים לעבוד</button>
                     </span>
                   </div>
                   @if (d.lastDecline && !d.trip) {
                     <p class="rounded-xl bg-warn-soft px-3 py-2 text-warn">לא יכול לקחת: {{ d.lastDecline }}</p>
-                  }
-                  @if (d.hasSmartphone) {
-                    <button type="button" class="h-9 w-max rounded-lg bg-surface px-3 text-xs font-medium" (click)="makeLink(d)">{{ d.hasLink ? 'קישור כניסה חדש לאפליקציה' : 'קישור כניסה לאפליקציה' }}</button>
                   }
                   @if (d.trip?.status === 'Offered') {
                     <div class="flex flex-wrap items-center gap-2">
@@ -232,10 +242,6 @@
                       <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'Soon5')">מתפנה בעוד 5</button>
                       <button type="button" class="h-10 rounded-[10px] bg-action text-xs font-medium text-white" (click)="action(d, 'Free')">פנוי</button>
                     </div>
-                  } @else if (d.status === 'Break') {
-                    <button type="button" class="btn-secondary h-10 w-max px-3" (click)="action(d, 'BackFromBreak')">חזר מהפסקה, פנוי</button>
-                  } @else {
-                    <button type="button" class="btn-secondary h-10 w-max px-3" (click)="action(d, 'Break')">יוצא להפסקה</button>
                   }
                 </div>
               }

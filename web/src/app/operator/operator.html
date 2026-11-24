@@ -82,7 +82,7 @@
             <b>{{ selected().map(p => p.fullName).join(', ') }}</b>
             <span class="text-muted">אל {{ destText() }}</span>
             @if (needsText().length) { <span class="text-muted">· {{ needsText().join(', ') }}</span> }
-            <span class="ms-auto text-sm font-medium text-action">עריכה</span>
+            <span class="ms-auto flex items-center gap-1 text-sm font-medium text-action">עריכה <app-icon name="chevron" [size]="16" /></span>
           </button>
         } @else {
           <p class="label mb-2">מי צריך הסעה?<span class="req">*</span></p>
