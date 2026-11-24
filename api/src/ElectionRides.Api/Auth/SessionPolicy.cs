@@ -29,11 +29,23 @@ public static class SessionPolicy
 
         var id = Guid.Parse(ctx.Principal!.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        var ok = await db.Users.AnyAsync(u => u.Id == id && u.IsActive && (u.City == null || u.City.IsActive));
-        if (!ok)
+        var user = await db.Users.Where(u => u.Id == id && u.IsActive && (u.City == null || u.City.IsActive))
+            .Select(u => new { u.Role, u.ExtraRoles }).FirstOrDefaultAsync();
+        if (user is null)
         {
             await Reject(ctx);
             return;
+        }
+
+        // Roles changed by the city admin apply at once, without signing in again.
+        var roles = user.ExtraRoles.Prepend(user.Role).Distinct().Select(r => r.ToString()).Order().ToList();
+        var had = ctx.Principal.FindAll(ClaimTypes.Role).Select(c => c.Value).Order().ToList();
+        if (!roles.SequenceEqual(had))
+        {
+            var identity = new ClaimsIdentity(ctx.Principal.Claims.Where(c => c.Type != ClaimTypes.Role), ctx.Principal.Identity!.AuthenticationType);
+            identity.AddClaims(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            ctx.ReplacePrincipal(new ClaimsPrincipal(identity));
+            ctx.ShouldRenew = true;
         }
 
         // Refresh "last seen" at most once a minute, so the cookie is not rewritten on every request.

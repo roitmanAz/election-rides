@@ -2,6 +2,8 @@ import { Component, inject, input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ROLE_NAMES } from '../core/auth.service';
 import { Icon, IconName } from './icon';
+import { RoleSwitch } from './role-switch';
+import { Role } from '../core/auth.service';
 
 export interface ShellTab {
   path: string;
@@ -15,14 +17,15 @@ export interface ShellTab {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, RoleSwitch],
   template: `
     @if (auth.me(); as me) {
       <div class="min-h-screen">
         <header class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line bg-surface px-4 py-3 sm:px-6">
-          <span class="text-xl font-semibold">מטה הסעות</span>
+          <span class="text-xl font-semibold">מטה רכב</span>
           <span class="text-muted">{{ subtitle() }}</span>
-          <span class="ms-auto text-muted">{{ me.fullName }} · {{ roles[me.role] }}</span>
+          <span class="ms-auto text-muted">{{ me.fullName }} · {{ roles[area()] }}</span>
+          <app-role-switch [current]="area()" />
           <button type="button" class="btn-secondary h-10 px-3" (click)="logout()">
             <app-icon name="logout" [size]="18" /> יציאה
           </button>
@@ -49,6 +52,8 @@ export class Shell {
   readonly tabs = input.required<ShellTab[]>();
   readonly subtitle = input('');
   readonly menuLabel = input('תפריט');
+  /** Which role this area belongs to (for the switch to the user's other areas). */
+  readonly area = input.required<Role>();
 
   protected async logout() {
     await this.auth.logout();

@@ -45,7 +45,7 @@ public static class CityAdminEndpoints
             var ids = cities.Select(c => c.Id).ToList();
             var admins = await db.Users.Where(u => u.CityId != null && ids.Contains(u.CityId.Value) && u.IsActive && u.Role == UserRole.CityAdmin)
                 .Select(u => new { u.CityId, u.FullName, u.Email, u.LastLoginAt, invited = u.PasswordHash == null }).ToListAsync(ct);
-            var staff = await db.Users.Where(u => u.CityId != null && u.IsActive && u.Role != UserRole.CityAdmin)
+            var staff = await db.Users.Where(u => u.CityId != null && u.IsActive && (u.Role != UserRole.CityAdmin || u.ExtraRoles.Count > 0))
                 .GroupBy(u => u.CityId).Select(x => x.Key).ToListAsync(ct);
             var clusters = await db.Clusters.GroupBy(c => c.CityId).Select(x => x.Key).ToListAsync(ct);
             var streets = await db.Streets.GroupBy(c => c.CityId).Select(x => x.Key).ToListAsync(ct);

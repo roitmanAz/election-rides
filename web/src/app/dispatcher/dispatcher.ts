@@ -6,6 +6,7 @@ import { Api } from '../core/api';
 import { AuthService, errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
+import { RoleSwitch } from '../shared/role-switch';
 import { CANCEL_REASONS, formatPhone, phoneDigits, phoneError } from '../operator/intake.model';
 import { CityMap } from './city-map';
 import {
@@ -27,7 +28,7 @@ type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
  */
 @Component({
   selector: 'app-dispatcher',
-  imports: [FormsModule, Dialog, Icon, CityMap],
+  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch],
   templateUrl: './dispatcher.html',
 })
 export class DispatcherPage implements OnInit, OnDestroy {

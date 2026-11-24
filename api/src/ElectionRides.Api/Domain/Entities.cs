@@ -42,8 +42,21 @@ public class AppUser
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string Email { get; set; }
     public required string FullName { get; set; }
+    /// <summary>The main role: the highest of the user's roles. Decides the start page.</summary>
     public UserRole Role { get; set; }
+    /// <summary>More roles in the same city, e.g. an operator who also dispatches. Never SystemAdmin.</summary>
+    public List<UserRole> ExtraRoles { get; set; } = [];
     public Guid? CityId { get; set; }
+
+    public List<UserRole> AllRoles() => ExtraRoles.Prepend(Role).Distinct().OrderByDescending(r => r).ToList();
+
+    /// <summary>Keeps the highest role as the main one and the rest as extra roles.</summary>
+    public void SetRoles(IEnumerable<UserRole> roles)
+    {
+        var all = roles.Distinct().OrderByDescending(r => r).ToList();
+        Role = all[0];
+        ExtraRoles = all.Skip(1).ToList();
+    }
     public City? City { get; set; }
     /// <summary>Null until the user sets a password from the invitation link.</summary>
     public string? PasswordHash { get; set; }

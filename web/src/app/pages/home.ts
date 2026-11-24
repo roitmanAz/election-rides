@@ -9,7 +9,7 @@ import { AuthService, ROLE_NAMES } from '../core/auth.service';
     @if (auth.me(); as me) {
       <main class="min-h-screen p-4 sm:p-8">
         <header class="card mx-auto flex max-w-3xl flex-wrap items-center gap-3 p-4 sm:px-6">
-          <span class="text-xl font-semibold">מטה הסעות</span>
+          <span class="text-xl font-semibold">מטה רכב</span>
           @if (me.cityName) {
             <span class="text-muted">{{ me.cityName }}</span>
           }

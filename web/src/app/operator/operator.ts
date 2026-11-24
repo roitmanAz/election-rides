@@ -8,6 +8,7 @@ import { AuthService, errorMessage } from '../core/auth.service';
 import { Combo, ComboItem } from '../shared/combo';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
+import { RoleSwitch } from '../shared/role-switch';
 import {
   CANCEL_REASONS, ClusterRef, Gender, Passenger, ReturnMode, STATUS_NAMES, Status, TimeMode, URGENCY_REASONS,
   clusterLabel, formatPhone, idValid, isFamily, joinNames, phoneDigits, phoneError,
@@ -37,7 +38,7 @@ let keySeq = 0;
  */
 @Component({
   selector: 'app-operator',
-  imports: [FormsModule, Combo, Dialog, Icon, DatePipe],
+  imports: [FormsModule, Combo, Dialog, Icon, DatePipe, RoleSwitch],
   templateUrl: './operator.html',
 })
 export class OperatorPage implements OnInit {

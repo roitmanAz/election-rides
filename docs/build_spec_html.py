@@ -139,7 +139,7 @@ for sec in sections:
 nav = "\n".join('<li><a href="#%s"><span>%s</span>%s</a></li>' % (sid, num, inline(name)) for sid, num, name in toc)
 mnav = "\n".join('<li><a href="#%s">%s</a></li>' % (sid, inline(name)) for sid, num, name in toc)
 
-page = """<title>מטה הסעות לקלפי</title>
+page = """<title>מטה רכב לקלפי</title>
 %s
 %s
 

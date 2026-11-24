@@ -11,6 +11,7 @@ interface User {
   fullName: string;
   email: string;
   role: Role;
+  roles: Role[];
   lastLoginAt: string | null;
   invited: boolean;
   lockedUntil: string | null;
@@ -18,7 +19,7 @@ interface User {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** City users (spec 3.1): name, email, role, last sign-in, remove with confirmation; invite by email. */
+/** City users (spec 3.1): name, email, roles (one or more), last sign-in, remove with confirmation; invite by email. */
 @Component({
   selector: 'app-users',
   imports: [FormsModule, Dialog, Icon, DatePipe],
@@ -30,14 +31,14 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       </div>
       @if (notice()) { <p class="notice mx-5 mt-4" role="status">{{ notice() }}</p> }
       <div class="p-3 sm:p-5">
-        <div class="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_110px_150px_auto] gap-3 px-3 pb-2 text-sm font-medium text-muted md:grid">
-          <span>שם</span><span>אימייל</span><span>תפקיד</span><span>כניסה אחרונה</span><span></span>
+        <div class="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_150px_150px_auto] gap-3 px-3 pb-2 text-sm font-medium text-muted md:grid">
+          <span>שם</span><span>אימייל</span><span>תפקידים</span><span>כניסה אחרונה</span><span></span>
         </div>
         @for (u of users(); track u.id) {
-          <div class="grid items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2.5 odd:bg-bg md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_110px_150px_auto]">
+          <div class="grid items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2.5 odd:bg-bg md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_150px_150px_auto]">
             <span class="font-medium">{{ u.fullName }}</span>
             <span class="min-w-0 truncate text-muted" dir="ltr" style="text-align: right">{{ u.email }}</span>
-            <span>{{ roles[u.role] }}</span>
+            <span>{{ roleText(u.roles) }}</span>
             <span class="text-sm">
               @if (u.lockedUntil) {
                 <span class="inline-flex items-center gap-1 rounded-full bg-bad-soft px-2.5 py-0.5 text-bad"><app-icon name="lock" [size]="14" /> נעול עד {{ u.lockedUntil | date: 'HH:mm' }}</span>
@@ -54,6 +55,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               @if (u.invited) {
                 <button type="button" class="btn-secondary h-10 px-3" (click)="resend(u)"><app-icon name="mail" [size]="18" /> שלח הזמנה שוב</button>
               }
+              <button type="button" class="btn-secondary h-10 px-3" (click)="openRoles(u)"><app-icon name="edit" [size]="18" /> תפקידים</button>
               @if (u.id !== auth.me()?.id) {
                 <button type="button" class="btn-secondary h-10 px-3 text-bad" (click)="toRemove.set(u)"><app-icon name="trash" [size]="18" /> הסר</button>
               }
@@ -76,12 +78,15 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           <div class="error-text">{{ emailErr() }}</div>
         </div>
         <fieldset class="field">
-          <legend class="label mb-1.5">מה התפקיד?<span class="req">*</span></legend>
+          <legend class="label mb-1.5">מה התפקידים?<span class="req">*</span></legend>
           <div class="flex w-max flex-wrap gap-1 rounded-xl bg-soft p-1" [class.ring-2]="roleErr()" [class.ring-bad]="roleErr()">
             @for (r of cityRoles; track r) {
-              <button type="button" class="h-10 rounded-[10px] px-4 font-medium" [class]="role === r ? 'bg-ink text-white' : ''" (click)="role = r; roleErr.set('')">{{ roles[r] }}</button>
+              <button type="button" class="inline-flex h-10 items-center gap-1 rounded-[10px] px-4 font-medium" [attr.aria-pressed]="chosen.has(r)"
+                [class]="chosen.has(r) ? 'bg-ink text-white' : ''" (click)="toggle(chosen, r); roleErr.set('')">
+                @if (chosen.has(r)) { <app-icon name="check" [size]="16" /> }{{ roles[r] }}</button>
             }
           </div>
+          <span class="text-sm text-muted">אפשר לבחור יותר מתפקיד אחד.</span>
           <div class="error-text">{{ roleErr() }}</div>
         </fieldset>
         <p class="text-sm text-muted">המשתמש יקבל מייל עם קישור לקביעת סיסמה.</p>
@@ -91,6 +96,25 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           <button class="btn-secondary" type="button" (click)="inviteOpen.set(false)">ביטול</button>
         </div>
       </form>
+    </app-dialog>
+
+    <app-dialog [open]="!!editing()" [title]="'התפקידים של ' + (editing()?.fullName ?? '')" [width]="480" (closed)="editing.set(null)">
+      <fieldset class="field">
+        <legend class="label mb-1.5">אילו תפקידים?<span class="req">*</span></legend>
+        <div class="flex w-max flex-wrap gap-1 rounded-xl bg-soft p-1">
+          @for (r of cityRoles; track r) {
+            <button type="button" class="inline-flex h-10 items-center gap-1 rounded-[10px] px-4 font-medium" [attr.aria-pressed]="editRoles.has(r)"
+              [class]="editRoles.has(r) ? 'bg-ink text-white' : ''" (click)="toggle(editRoles, r)">
+              @if (editRoles.has(r)) { <app-icon name="check" [size]="16" /> }{{ roles[r] }}</button>
+          }
+        </div>
+        <span class="text-sm text-muted">השינוי חל מיד, גם אם המשתמש מחובר עכשיו.</span>
+      </fieldset>
+      @if (rolesError()) { <p class="notice bad mt-3" role="alert">{{ rolesError() }}</p> }
+      <div class="mt-5 flex gap-2">
+        <button type="button" class="btn-primary" (click)="saveRoles()">שמירה</button>
+        <button type="button" class="btn-secondary" (click)="editing.set(null)">ביטול</button>
+      </div>
     </app-dialog>
 
     <app-dialog [open]="!!toRemove()" title="הסרת משתמש" [width]="440" (closed)="toRemove.set(null)">
@@ -119,7 +143,38 @@ export class UsersPage implements OnInit {
   protected readonly roleErr = signal('');
   protected name = '';
   protected email = '';
-  protected role: Role | null = null;
+  protected chosen = new Set<Role>();
+  protected readonly editing = signal<User | null>(null);
+  protected readonly rolesError = signal('');
+  protected editRoles = new Set<Role>();
+
+  protected roleText(rs: Role[]) {
+    return rs.map((r) => this.roles[r]).join(', ');
+  }
+
+  protected toggle(set: Set<Role>, r: Role) {
+    set.has(r) ? set.delete(r) : set.add(r);
+  }
+
+  protected openRoles(u: User) {
+    this.editRoles = new Set(u.roles);
+    this.rolesError.set('');
+    this.editing.set(u);
+  }
+
+  protected async saveRoles() {
+    const u = this.editing()!;
+    if (!this.editRoles.size) return this.rolesError.set('צריך לבחור לפחות תפקיד אחד');
+    try {
+      await this.api.put(`/api/city/users/${u.id}/roles`, { roles: this.cityRoles.filter((r) => this.editRoles.has(r)) });
+      this.editing.set(null);
+      this.notice.set(`התפקידים של ${u.fullName} עודכנו`);
+      if (u.id === this.auth.me()?.id) await this.auth.loadMe();
+      await this.load();
+    } catch (e) {
+      this.rolesError.set(errorMessage(e));
+    }
+  }
 
   async ngOnInit() {
     await this.load();
@@ -131,7 +186,7 @@ export class UsersPage implements OnInit {
 
   protected openInvite() {
     this.name = this.email = '';
-    this.role = null;
+    this.chosen = new Set();
     [this.nameErr, this.emailErr, this.roleErr, this.inviteError].forEach((s) => s.set(''));
     this.inviteOpen.set(true);
   }
@@ -148,13 +203,13 @@ export class UsersPage implements OnInit {
   }
 
   protected async invite() {
-    const roleOk = !!this.role;
+    const roleOk = this.chosen.size > 0;
     this.roleErr.set(roleOk ? '' : 'צריך לבחור תפקיד');
     if (![this.checkName(), this.checkEmail(), roleOk].every(Boolean)) return;
     this.busy.set(true);
     this.inviteError.set('');
     try {
-      await this.api.post('/api/city/users', { email: this.email, fullName: this.name, role: this.role });
+      await this.api.post('/api/city/users', { email: this.email, fullName: this.name, roles: this.cityRoles.filter((r) => this.chosen.has(r)) });
       this.inviteOpen.set(false);
       this.notice.set(`נשלחה הזמנה אל ${this.email.trim()}`);
       await this.load();

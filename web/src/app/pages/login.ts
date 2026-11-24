@@ -11,7 +11,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   template: `
     <main class="grid min-h-screen place-items-center p-4">
       <div class="card w-full max-w-md p-6 sm:p-8">
-        <h1 class="text-2xl font-semibold">מטה הסעות</h1>
+        <h1 class="text-2xl font-semibold">מטה רכב</h1>
 
         @if (step() === 'credentials') {
           <p class="mt-1 text-muted">כניסה לצוות המטה</p>

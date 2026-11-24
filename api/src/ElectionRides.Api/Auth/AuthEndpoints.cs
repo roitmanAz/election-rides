@@ -12,7 +12,7 @@ public record LoginRequest(string Email, string Password);
 public record VerifyRequest(Guid ChallengeId, string Code);
 public record ResendRequest(Guid ChallengeId);
 public record SetPasswordRequest(string Token, string Password);
-public record MeResponse(Guid Id, string FullName, string Email, string Role, Guid? CityId, string? CityName);
+public record MeResponse(Guid Id, string FullName, string Email, string Role, List<string> Roles, Guid? CityId, string? CityName);
 
 public static class AuthEndpoints
 {
@@ -155,7 +155,7 @@ public static class AuthEndpoints
         }).RequireAuthorization();
     }
 
-    static MeResponse Me(AppUser u) => new(u.Id, u.FullName, u.Email, u.Role.ToString(), u.CityId, u.City?.Name);
+    static MeResponse Me(AppUser u) => new(u.Id, u.FullName, u.Email, u.Role.ToString(), u.AllRoles().Select(r => r.ToString()).ToList(), u.CityId, u.City?.Name);
 
     static async Task<bool> IsTrustedDevice(AppDbContext db, AppUser user, HttpContext http, CancellationToken ct)
     {
@@ -170,7 +170,7 @@ public static class AuthEndpoints
         var code = Secrets.NewCode();
         ch.CodeHash = Secrets.HashCode(ch.Id, code);
         db.LoginChallenges.Add(ch);
-        await mail.SendAsync(new EmailMessage(user.Email, $"קוד כניסה למטה הסעות: {code}",
+        await mail.SendAsync(new EmailMessage(user.Email, $"קוד כניסה למטה רכב: {code}",
             $"שלום {user.FullName},\n\nקוד הכניסה שלך: {code}\nהקוד תקף ל-{CodeMinutes} דקות.\n\nאם לא ניסית להתחבר, אפשר להתעלם מההודעה."), ct);
         return ch;
     }
@@ -186,10 +186,10 @@ public static class AuthEndpoints
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role.ToString()),
             // Idle timeout is fixed at sign-in: a policy change applies from the next sign-in (spec 3.2).
             new(SessionPolicy.IdleClaim, policy.IdleTimeoutMinutes.ToString()),
         };
+        claims.AddRange(user.AllRoles().Select(r => new Claim(ClaimTypes.Role, r.ToString())));
         if (user.CityId is { } city) claims.Add(new(SessionPolicy.CityClaim, city.ToString()));
         var props = new AuthenticationProperties();
         props.Items[SessionPolicy.LastSeenItem] = DateTimeOffset.UtcNow.ToString("O");

@@ -8,7 +8,7 @@ import { Shell, ShellTab } from '../shared/shell';
 @Component({
   selector: 'app-city-admin',
   imports: [Shell],
-  template: `<app-shell [tabs]="tabs" [subtitle]="'מנהל עיר · ' + (auth.me()?.cityName ?? '')" menuLabel="תפריט מנהל העיר" />`,
+  template: `<app-shell area="CityAdmin" [tabs]="tabs" [subtitle]="'מנהל עיר · ' + (auth.me()?.cityName ?? '')" menuLabel="תפריט מנהל העיר" />`,
 })
 export class CityAdmin {
   protected readonly auth = inject(AuthService);

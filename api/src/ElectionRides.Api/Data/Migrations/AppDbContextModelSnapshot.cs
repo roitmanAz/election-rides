@@ -79,6 +79,10 @@ namespace ElectionRides.Api.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
+                    b.PrimitiveCollection<int[]>("ExtraRoles")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.Property<int>("FailedLogins")
                         .HasColumnType("integer");
 

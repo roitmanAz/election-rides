@@ -303,7 +303,7 @@ public static class SystemEndpoints
         var streets = (await db.Streets.Where(c => ids.Contains(c.CityId)).Select(c => c.CityId).Distinct().ToListAsync(ct)).ToHashSet();
         var comms = (await db.Communities.Where(c => ids.Contains(c.CityId)).Select(c => c.CityId).Distinct().ToListAsync(ct)).ToHashSet();
         var bases = (await db.VoterBases.Where(c => ids.Contains(c.CityId)).Select(c => c.CityId).ToListAsync(ct)).ToHashSet();
-        var staff = (await db.Users.Where(u => u.CityId != null && ids.Contains(u.CityId.Value) && u.IsActive && u.Role != UserRole.CityAdmin)
+        var staff = (await db.Users.Where(u => u.CityId != null && ids.Contains(u.CityId.Value) && u.IsActive && (u.Role != UserRole.CityAdmin || u.ExtraRoles.Count > 0))
             .Select(u => u.CityId!.Value).Distinct().ToListAsync(ct)).ToHashSet();
         var phones = (await db.Cities.Where(c => ids.Contains(c.Id) && c.HqPhone != null).Select(c => c.Id).ToListAsync(ct)).ToHashSet();
         return ids.ToDictionary(id => id, id => new[] { clusters, streets, comms, bases, staff, phones }.Count(s => s.Contains(id)));

@@ -362,7 +362,7 @@ function A(){
   </div>`).join('');
   const d=DRV.map(x=>`<div class="drv"><div class="r1"><b>${x.name}</b><span class="st ${x.st}">${x.stt}</span></div><span style="color:var(--mute);font-size:13px">${x.info}</span>${x.prog?`<div class="prog"><i style="width:${x.prog}%"></i></div>`:''}</div>`).join('');
   return `<div class="scr A">
-   <div class="top"><span class="brand">מטה הסעות <span>· בני ברק</span></span><div class="search">${SEARCH}&nbsp; חיפוש לפי טלפון, ת"ז או שם</div><span class="me"><span class="av">ר</span> רבקה · משבצת</span></div>
+   <div class="top"><span class="brand">מטה רכב <span>· בני ברק</span></span><div class="search">${SEARCH}&nbsp; חיפוש לפי טלפון, ת"ז או שם</div><span class="me"><span class="av">ר</span> רבקה · משבצת</span></div>
    <div class="grid">
     <div class="panel"><div class="ph">תור פניות <small>${REQS.length} ממתינות</small></div>
       <div class="pills"><button class="pill on">הכול</button><button class="pill">גברים</button><button class="pill">נשים</button><button class="pill">משפחות</button><button class="pill">נגישות</button><button class="pill">ממתין לאימות</button></div>${q}</div>
@@ -385,7 +385,7 @@ function B(){
     <td class="num">${r.when}</td>
     <td><div class="flags">${tags(r,'tag')}</div></td></tr>`).join('');
   return `<div class="scr B">
-   <aside><div class="brand">מטה הסעות<small>בני ברק · יום בחירות</small></div><a class="on" href="#b">תור ושיבוץ</a><a href="#b">נהגים</a><a href="#b">מפה</a><a href="#b">כל הפניות</a></aside>
+   <aside><div class="brand">מטה רכב<small>בני ברק · יום בחירות</small></div><a class="on" href="#b">תור ושיבוץ</a><a href="#b">נהגים</a><a href="#b">מפה</a><a href="#b">כל הפניות</a></aside>
    <main>
     <div class="hd"><div><h3>תור ושיבוץ</h3><p>הכי דחוף למעלה: מי שיוצא בעוד פחות מ-30 דקות, ואז הכי ותיק בתור</p></div><button class="btn pri">+ נהג חדש</button></div>
     <div class="box"><div class="tbar"><b>ממתינות <span class="num">(${REQS.length})</span></b><div class="seg"><span class="on">הכול</span><span>גברים</span><span>נשים</span><span>משפחות</span><span>נגישות</span><span>ממתין לאימות</span></div></div>

@@ -25,8 +25,8 @@ public class Invitations(AppDbContext db, IEmailSender mail, IConfiguration conf
         });
         var baseUrl = (config["App:BaseUrl"] ?? "http://localhost:4200").TrimEnd('/');
         var link = $"{baseUrl}/set-password?token={token}";
-        await mail.SendAsync(new EmailMessage(user.Email, "הזמנה למערכת מטה הסעות",
-            $"שלום {user.FullName},\n\nהוזמנת למערכת מטה הסעות. כדי לקבוע סיסמה, יש להיכנס לקישור:\n{link}\n\nהקישור תקף ל-{ValidHours} שעות."), ct);
+        await mail.SendAsync(new EmailMessage(user.Email, "הזמנה למערכת מטה רכב",
+            $"שלום {user.FullName},\n\nהוזמנת למערכת מטה רכב. כדי לקבוע סיסמה, יש להיכנס לקישור:\n{link}\n\nהקישור תקף ל-{ValidHours} שעות."), ct);
     }
 
     /// <summary>

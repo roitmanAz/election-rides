@@ -8,7 +8,10 @@ export interface Me {
   id: string;
   fullName: string;
   email: string;
+  /** The main role (the highest); decides the start page. */
   role: Role;
+  /** All the user's roles in the city, e.g. operator and dispatcher. */
+  roles: Role[];
   cityId: string | null;
   cityName: string | null;
 }

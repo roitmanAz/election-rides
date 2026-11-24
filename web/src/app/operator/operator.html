@@ -1,7 +1,7 @@
 <div class="min-h-screen">
   <!-- Top bar: brand, my counts, status search, new request -->
   <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
-    <span class="text-xl font-semibold">מטה הסעות</span>
+    <span class="text-xl font-semibold">מטה רכב</span>
     <span class="text-muted">מוקדן · {{ auth.me()?.cityName }}</span>
     @if (mine(); as m) {
       <span class="rounded-full bg-soft px-3 py-1 text-sm"><b class="tabular-nums">{{ m.mineToday }}</b> פניות שלי היום</span>
@@ -45,6 +45,7 @@
       }
     </div>
     <button type="button" class="btn-primary" (click)="reset()"><app-icon name="plus" [size]="18" /> פנייה חדשה</button>
+    <app-role-switch current="Operator" />
     <button type="button" class="btn-secondary h-11 px-3" (click)="logout()" aria-label="יציאה"><app-icon name="logout" [size]="18" /></button>
   </header>
 

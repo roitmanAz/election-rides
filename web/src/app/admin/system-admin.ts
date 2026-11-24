@@ -12,7 +12,7 @@ import { Shell, ShellTab } from '../shared/shell';
 @Component({
   selector: 'app-system-admin',
   imports: [Shell],
-  template: `<app-shell [tabs]="tabs" subtitle="מנהל מערכת" menuLabel="תפריט מנהל המערכת" />`,
+  template: `<app-shell area="SystemAdmin" [tabs]="tabs" subtitle="מנהל מערכת" menuLabel="תפריט מנהל המערכת" />`,
 })
 export class SystemAdmin {
   protected readonly tabs: ShellTab[] = [

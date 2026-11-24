@@ -147,6 +147,28 @@ public class CitySetupTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task A_user_can_hold_several_roles_and_a_change_applies_without_signing_in_again()
+    {
+        var (admin, city, me) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        var (op, _, opUser) = await TestUsers.SignedIn(api, UserRole.Operator, city);
+        Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/dispatch/state")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/city/users/{opUser.Id}/roles", new { roles = new[] { "Operator", "Dispatcher" } })).StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await op.GetAsync("/api/dispatch/state")).StatusCode);
+        var mine = await Json(await op.GetAsync("/api/auth/me"));
+        Assert.Equal("Dispatcher", mine.GetProperty("role").GetString());
+        Assert.Equal(["Dispatcher", "Operator"], mine.GetProperty("roles").EnumerateArray().Select(r => r.GetString()!).ToArray());
+
+        // New user with two roles; never SystemAdmin; a city admin keeps their own admin role.
+        var add = await admin.PostAsJsonAsync("/api/city/users", new { email = $"two{Guid.NewGuid():N}@test.local", fullName = "דוד", roles = new[] { "Operator", "CityAdmin" } });
+        Assert.Equal(HttpStatusCode.OK, add.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync($"/api/city/users/{opUser.Id}/roles", new { roles = new[] { "SystemAdmin" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync($"/api/city/users/{me.Id}/roles", new { roles = new[] { "Dispatcher" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync($"/api/city/users/{me.Id}/roles", new { roles = new[] { "CityAdmin", "Dispatcher" } })).StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await admin.GetAsync("/api/dispatch/state")).StatusCode);
+    }
+
+    [Fact]
     public async Task City_admin_cannot_create_a_system_admin()
     {
         var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
