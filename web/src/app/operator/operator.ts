@@ -168,6 +168,19 @@ export class OperatorPage implements OnInit {
     this.passengers.set([...known, ...typed]);
     this.newOpen.set(known.length === 0 && typed.length === 0);
     this.peopleCollapsed.set(false);
+    this.moveOnFromPhone();
+  }
+
+  /**
+   * A complete, valid number moves the cursor on by itself (spec 5.1): to the name of a new passenger,
+   * or to the first person known on this phone. Only while the cursor is still in the phone field.
+   */
+  private moveOnFromPhone() {
+    if (document.activeElement?.id !== 'phone') return;
+    setTimeout(() => {
+      const next = document.getElementById('npName') ?? document.querySelector<HTMLElement>('input[aria-label^="נוסע: "]');
+      next?.focus();
+    });
   }
 
   protected phoneOk() {
