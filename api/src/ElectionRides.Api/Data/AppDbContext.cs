@@ -1,10 +1,13 @@
 using ElectionRides.Api.Domain;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElectionRides.Api.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
+    /// <summary>The keys that sign sign-in cookies, kept in the database so sessions survive a restart of the server.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<ElectionOperation> Operations => Set<ElectionOperation>();
     public DbSet<AppUser> Users => Set<AppUser>();

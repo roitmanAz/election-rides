@@ -1,0 +1,24 @@
+# Free test hosting on Render (one web service: screens + API). The database is on Neon (free plan).
+# Only test data here: the servers are outside Israel. Election day runs on the Israeli cloud (spec 13).
+services:
+  - type: web
+    name: election-rides
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      # Neon connection, for example: Host=ep-xxx.eu-central-1.aws.neon.tech;Database=neondb;Username=...;Password=...;SSL Mode=Require
+      - key: ConnectionStrings__Db
+        sync: false
+      # The site's address, for links in invitations (for example https://election-rides.onrender.com)
+      - key: App__BaseUrl
+        sync: false
+      # First run only: the first system admin; the invitation link is written to the service log.
+      - key: Bootstrap__AdminEmail
+        sync: false
+      - key: Geocoding__Provider
+        value: nominatim
+      - key: Routing__BaseUrl
+        value: https://router.project-osrm.org

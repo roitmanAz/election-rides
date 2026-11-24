@@ -13,6 +13,8 @@ using ElectionRides.Api.Maps;
 using ElectionRides.Api.SystemAdmin;
 using ElectionRides.Api.VoterBase;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -43,6 +45,15 @@ builder.Services.AddHttpClient("routing", c =>
     c.Timeout = TimeSpan.FromSeconds(6);
 });
 builder.Services.AddSignalR();
+// Cookie keys in the database: a hosted server that sleeps and restarts keeps everyone signed in.
+builder.Services.AddDataProtection().SetApplicationName("election-rides").PersistKeysToDbContext<AppDbContext>();
+// Behind a hosting proxy (HTTPS ends there): take the caller's address and scheme from its headers.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 builder.Services.AddScoped<VoterBaseService>();
 builder.Services.AddSingleton<AutoDeletion>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<AutoDeletion>());
@@ -117,6 +128,18 @@ builder.Services.AddCors(o => o.AddPolicy(WebCors, p =>
 
 var app = builder.Build();
 
+// Hosted: the database is brought up to date when the server starts (Database:MigrateOnStart).
+if (app.Configuration.GetValue("Database:MigrateOnStart", false))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+
+app.UseForwardedHeaders();
+// Hosted as one service: the built screens are served from wwwroot, next to the API.
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -150,6 +173,8 @@ app.MapIntake();
 app.MapDispatch();
 app.MapDriverApp();
 app.MapHub<CityHub>("/hubs/city");
+// Any other address is a screen of the app (it handles its own routes); unknown /api addresses stay 404.
+app.MapFallbackToFile("{*path:regex(^(?!api/|hubs/).*$)}", "index.html");
 
 try
 {

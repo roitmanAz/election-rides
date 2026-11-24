@@ -1,0 +1,9 @@
+**/node_modules
+**/bin
+**/obj
+**/.angular
+web/dist
+api/tests
+docs
+.git
+.claude
