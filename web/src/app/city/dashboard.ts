@@ -121,11 +121,14 @@ export class DashboardPage implements OnInit, OnDestroy {
   private timer?: ReturnType<typeof setInterval>;
 
   protected readonly max = computed(() => Math.max(0, ...(this.d()?.perHalfHour ?? []).map((b) => b.count)));
-  /** Step of the scale: 5, or bigger so there are at most 6 lines. */
-  protected readonly step = computed(() => [5, 10, 25, 50, 100, 250, 500].find((s) => Math.ceil(this.max() / s) <= 6) ?? 1000);
-  /** Top of the scale: at least two steps, so one request is not half the chart. */
-  protected readonly scaleMax = computed(() => Math.max(this.step() * 2, Math.ceil(this.max() / this.step()) * this.step()));
-  protected readonly ticks = computed(() => Array.from({ length: this.scaleMax() / this.step() + 1 }, (_, i) => i * this.step()));
+  /**
+   * Top of the scale: a fixed 50, so 30 and 40 requests look different and one request is a low bar.
+   * Only a busier half hour raises it, in steps of 25.
+   */
+  protected readonly scaleMax = computed(() => Math.max(50, Math.ceil(this.max() / 25) * 25));
+  /** A line every 5 requests, or more between lines when the scale is high (at most 10 lines). */
+  protected readonly step = computed(() => [5, 10, 25, 50, 100, 250, 500].find((s) => this.scaleMax() / s <= 10) ?? 1000);
+  protected readonly ticks = computed(() => Array.from({ length: Math.floor(this.scaleMax() / this.step()) + 1 }, (_, i) => i * this.step()));
   protected readonly labelEvery = computed(() => Math.max(1, Math.ceil((this.d()?.perHalfHour.length ?? 0) / 12)));
   protected readonly tiles = computed(() => {
     const v = this.d();
