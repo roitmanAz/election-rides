@@ -175,6 +175,31 @@ export class DispatcherPage implements OnInit, OnDestroy {
     await this.reloadProposals(background);
   }
 
+  protected readonly regrouping = signal(false);
+
+  /**
+   * "Regroup by proximity" (spec 7): all proposals not yet sent are built again, with driving times on the roads,
+   * and kept as they are when the automatic proposals refresh (until the dispatcher sends or changes them).
+   */
+  protected async regroup() {
+    this.regrouping.set(true);
+    try {
+      const list = await this.api.get<{ driverId: string; requestIds: string[] }[]>('/api/dispatch/proposals?regroup=true');
+      const avail = new Set(this.available().map((d) => d.id));
+      const curDriver = this.currentProp()?.driverId;
+      this.proposals.set(this.available().map((d) => {
+        const requestIds = list.find((p) => p.driverId === d.id && avail.has(d.id))?.requestIds ?? [];
+        // An empty one stays automatic, so new requests still reach that driver.
+        return { driverId: d.id, requestIds, manual: requestIds.length > 0 };
+      }));
+      const idx = this.proposals().findIndex((p) => p.driverId === curDriver);
+      this.propIdx.set(idx >= 0 ? idx : 0);
+      this.showToast('ההצעות סודרו מחדש לפי קרבה');
+    } finally {
+      this.regrouping.set(false);
+    }
+  }
+
   /** Automatic proposals, keeping the ones the dispatcher changed (as long as the driver and requests are still there). */
   private async reloadProposals(background = false) {
     const auto = await this.api.get<{ driverId: string; requestIds: string[] }[]>('/api/dispatch/proposals', background);

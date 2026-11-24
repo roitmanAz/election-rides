@@ -4,6 +4,7 @@ using ElectionRides.Api.Data;
 using ElectionRides.Api.Domain;
 using ElectionRides.Api.Intake;
 using Microsoft.EntityFrameworkCore;
+using ElectionRides.Api.Maps;
 using NetTopologySuite.Geometries;
 
 namespace ElectionRides.Api.Dispatch;
@@ -82,7 +83,10 @@ public static class DispatchEndpoints
             });
         });
 
-        g.MapGet("/proposals", async (ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        // Proposals. regroup=true is "regroup by proximity": driving times on the roads, and a group of requests to the
+        // same cluster may go before a single request that waited up to 10 minutes longer (spec 7).
+        g.MapGet("/proposals", async (bool? regroup, ClaimsPrincipal me, AppDbContext db, IConfiguration config,
+            IHttpClientFactory http, ILoggerFactory logs, CancellationToken ct) =>
         {
             var city = me.CityId();
             var op = await IntakeEndpoints.ActiveOperation(db, city, ct);
@@ -90,7 +94,11 @@ public static class DispatchEndpoints
             var now = DateTimeOffset.UtcNow;
             var queue = (await QueueItems(db, city, op.Id, now, ct)).Select(q => q.item).ToList();
             var drivers = await AvailableDrivers(db, city, op.Id, now, ct);
-            return Results.Ok(ProposalEngine.Build(queue, drivers));
+            if (regroup != true) return Results.Ok(ProposalEngine.Build(queue, drivers));
+            var points = queue.SelectMany(q => new[] { q.Pickup, q.Destination }).Concat(drivers.Select(d => d.Location))
+                .OfType<GeoPoint>();
+            var times = await RoadTimes.For(points, config, http, logs.CreateLogger("RoadTimes"), ct);
+            return Results.Ok(ProposalEngine.Build(queue, drivers, times, regroup: true));
         });
 
         // Confirm a proposal (as is, or after the dispatcher removed or added requests).

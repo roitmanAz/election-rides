@@ -48,6 +48,57 @@ public class ProposalEngineTests
     }
 
     [Fact]
+    public void Only_requests_to_exactly_the_same_cluster_join_a_ride()
+    {
+        var other = Guid.NewGuid();
+        var first = Q(RideKind.Men, wait: 30);
+        var sameCluster = Q(RideKind.Men, wait: 5, at: new GeoPoint(31.781, 35.211));
+        var otherCluster = new QueueItem(Guid.NewGuid(), RideKind.Men, 1, false, new GeoPoint(31.781, 35.211), [other],
+            new GeoPoint(31.785, 35.215), 5, null, false);
+        var p = ProposalEngine.Build([first, sameCluster, otherCluster], [D()]).Single();
+        Assert.Equal([first.Id, sameCluster.Id], p.RequestIds);
+    }
+
+    [Fact]
+    public void A_request_joins_only_if_it_adds_at_most_5_minutes_of_driving()
+    {
+        // Travel time: 1 minute per 0.001 degree of latitude, in this test.
+        ProposalEngine.TravelMinutes t = (a, b) => Math.Abs(a.Lat - b.Lat) * 1000 + Math.Abs(a.Lon - b.Lon) * 1000;
+        var first = Q(RideKind.Men, wait: 30, at: new GeoPoint(31.780, 35.215));
+        var onTheWay = Q(RideKind.Men, wait: 5, at: new GeoPoint(31.782, 35.215));   // between the pickup and the cluster
+        var backwards = Q(RideKind.Men, wait: 6, at: new GeoPoint(31.774, 35.215));  // 6 minutes the other way
+        var p = ProposalEngine.Build([first, onTheWay, backwards], [D()], t).Single();
+        Assert.Equal([first.Id, onTheWay.Id], p.RequestIds);
+    }
+
+    [Fact]
+    public void The_driver_who_reaches_the_first_request_soonest_gets_it()
+    {
+        var far = new DriverItem(Guid.NewGuid(), "רחוק", 4, false, false, null, new GeoPoint(31.90, 35.30));
+        var near = new DriverItem(Guid.NewGuid(), "קרוב", 4, false, false, null, new GeoPoint(31.781, 35.211));
+        var only = Q(RideKind.Men);
+        var ps = ProposalEngine.Build([only], [far, near]);
+        Assert.Equal([only.Id], ps.Single(p => p.DriverId == near.Id).RequestIds);
+        Assert.Empty(ps.Single(p => p.DriverId == far.Id).RequestIds);
+    }
+
+    [Fact]
+    public void Regroup_lets_a_group_go_first_only_within_10_minutes_of_the_longest_wait()
+    {
+        var other = Guid.NewGuid();
+        QueueItem There(double wait, double lat) => new(Guid.NewGuid(), RideKind.Women, 1, false, new GeoPoint(lat, 35.30), [other],
+            new GeoPoint(lat + 0.002, 35.30), wait, null, false);
+        var alone = Q(RideKind.Women, wait: 20);
+        var a = There(15, 31.900); var b = There(14, 31.9005); var c = There(13, 31.901);
+        // One driver: the regroup takes the three neighbours (waited up to 5 minutes less); the normal order takes the oldest.
+        Assert.Equal([alone.Id], ProposalEngine.Build([alone, a, b, c], [D()]).Single().RequestIds);
+        Assert.Equal(3, ProposalEngine.Build([alone, a, b, c], [D()], regroup: true).Single().RequestIds.Count);
+        // Waited 25 minutes longer than the group: it keeps its turn.
+        var longAlone = Q(RideKind.Women, wait: 40);
+        Assert.Equal([longAlone.Id], ProposalEngine.Build([longAlone, a, b, c], [D()], regroup: true).Single().RequestIds);
+    }
+
+    [Fact]
     public void Free_drivers_get_proposals_before_soon_free_drivers()
     {
         var soon = D(soon: true, inMin: 5);

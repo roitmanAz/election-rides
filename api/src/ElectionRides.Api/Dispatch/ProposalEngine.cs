@@ -16,14 +16,11 @@ public record Proposal(Guid DriverId, List<Guid> RequestIds);
 /// <summary>
 /// Version 1 dispatch rules (spec 5.3, 6, 7): no pre-assignment; every free or soon-free driver gets a proposal.
 /// Queue order: requests within 30 minutes of their "leave by" time first (nearest first), then the longest wait.
-/// The proposal starts with the first request that fits the car, then adds nearby requests that fit too.
-/// Distances are straight lines in version 1 (OSRM after version 1).
+/// Each request goes to the driver who reaches it first; others join only to exactly the same cluster and on the way.
 /// </summary>
 public static class ProposalEngine
 {
     public const double DeadlineMinutes = 30;
-    /// <summary>"Nearby" for joining a ride: pickups and destinations within this distance.</summary>
-    public const double NearbyKm = 1.5;
 
     public static bool DeadlineSoon(QueueItem r) => r.MinutesToDeadline is <= DeadlineMinutes;
 
@@ -47,35 +44,96 @@ public static class ProposalEngine
         return "";
     }
 
-    /// <summary>Free drivers first, then soon-free drivers by how soon they are free.</summary>
-    public static List<Proposal> Build(IEnumerable<QueueItem> queue, IEnumerable<DriverItem> drivers)
+    /// <summary>Travel time in minutes between two points (on the roads when known, otherwise an estimate).</summary>
+    public delegate double TravelMinutes(GeoPoint a, GeoPoint b);
+
+    /// <summary>Most extra driving one more request may add to the ride (minutes).</summary>
+    public const double DetourMinutes = 5;
+    /// <summary>"Regroup": a group may go before a request that has waited at most this much longer (minutes).</summary>
+    public const double JumpMinutes = 10;
+    /// <summary>Driving time assumed when the driver's location is not known.</summary>
+    const double UnknownTravel = 10;
+
+    /// <summary>Straight-line estimate: roads are about 1.3 times longer, at about 25 km/h in town.</summary>
+    public static double Estimate(GeoPoint a, GeoPoint b) => Km(a, b) * 1.3 / 25 * 60;
+
+    /// <summary>
+    /// Proposals for every free or soon-free driver (spec 5.3, 6, 7). Requests are taken in queue order; each one goes
+    /// to the driver who can reach it first (a soon-free driver counts the minutes until free). Other requests join
+    /// only when they go to exactly the same cluster(s), fit the car, and add at most 5 minutes of driving each,
+    /// the one adding least first. With <paramref name="regroup"/> ("regroup by proximity"), a larger group may go
+    /// before the first request in the queue, as long as that request is not near its deadline and has waited at
+    /// most 10 minutes longer than everyone in the group.
+    /// </summary>
+    public static List<Proposal> Build(IEnumerable<QueueItem> queue, IEnumerable<DriverItem> drivers,
+        TravelMinutes? minutes = null, bool regroup = false)
     {
+        var t = minutes ?? Estimate;
         var ordered = Order(queue.Where(q => !q.NotYet));
+        var all = drivers.Where(d => !d.Soon).Concat(drivers.Where(d => d.Soon).OrderBy(d => d.MinutesToFree ?? 0)).ToList();
+        var left = all.ToList();
         var taken = new HashSet<Guid>();
-        var result = new List<Proposal>();
-        var list = drivers.Where(d => !d.Soon).Concat(drivers.Where(d => d.Soon).OrderBy(d => d.MinutesToFree ?? 0));
-        foreach (var d in list)
+        var cars = new Dictionary<Guid, List<QueueItem>>();
+        while (left.Count > 0)
         {
-            var car = new List<QueueItem>();
-            var first = ordered.FirstOrDefault(r => !taken.Contains(r.Id) && WhyNot(d, car, r) == "");
-            if (first is not null)
-            {
-                car.Add(first);
-                taken.Add(first.Id);
-                if (first.Kind != RideKind.Family)
-                    foreach (var r in ordered.Where(r => !taken.Contains(r.Id) && Near(r.Pickup, first.Pickup) && Near(r.Destination, first.Destination)))
-                        if (WhyNot(d, car, r) == "")
-                        {
-                            car.Add(r);
-                            taken.Add(r.Id);
-                        }
-            }
-            result.Add(new Proposal(d.Id, car.Select(c => c.Id).ToList()));
+            var open = ordered.Where(r => !taken.Contains(r.Id) && left.Any(d => WhyNot(d, [], r) == "")).ToList();
+            if (open.Count == 0) break;
+            var head = open[0];
+            var best = Plan(head, open, left, t);
+            if (regroup && !DeadlineSoon(head))
+                foreach (var c in open.Skip(1).Take(30))
+                {
+                    var alt = Plan(c, open, left, t);
+                    if (alt.car.Sum(x => x.Passengers) > best.car.Sum(x => x.Passengers)
+                        && head.WaitMinutes - alt.car.Max(x => x.WaitMinutes) <= JumpMinutes)
+                        best = alt;
+                }
+            cars[best.driver.Id] = best.car;
+            left.Remove(best.driver);
+            foreach (var r in best.car) taken.Add(r.Id);
         }
-        return result;
+        return all.Select(d => new Proposal(d.Id, cars.GetValueOrDefault(d.Id)?.Select(r => r.Id).ToList() ?? [])).ToList();
     }
 
-    static bool Near(GeoPoint? a, GeoPoint? b) => a is not null && b is not null && Km(a, b) <= NearbyKm;
+    /// <summary>The driver who reaches <paramref name="seed"/> first, and the requests that join it on the way.</summary>
+    static (DriverItem driver, List<QueueItem> car) Plan(QueueItem seed, List<QueueItem> open, List<DriverItem> drivers, TravelMinutes t)
+    {
+        var driver = drivers.Where(d => WhyNot(d, [], seed) == "")
+            .OrderBy(d => (d.Soon ? d.MinutesToFree ?? 0 : 0) + (d.Location is { } l && seed.Pickup is { } p ? t(l, p) : UnknownTravel))
+            .First();
+        var car = new List<QueueItem> { seed };
+        if (seed.Kind == RideKind.Family || seed.Pickup is null) return (driver, car);
+        var clusters = seed.Clusters.ToHashSet();
+        while (true)
+        {
+            var now = RideMinutes(driver.Location, car, t);
+            var next = open
+                .Where(r => !car.Contains(r) && r.Pickup is not null && clusters.SetEquals(r.Clusters) && WhyNot(driver, car, r) == "")
+                .Select(r => (r, extra: RideMinutes(driver.Location, [.. car, r], t) - now))
+                .Where(x => x.extra <= DetourMinutes)
+                .OrderBy(x => x.extra)
+                .FirstOrDefault();
+            if (next.r is null) return (driver, car);
+            car.Add(next.r);
+        }
+    }
+
+    /// <summary>Driving minutes for a car: from the driver (or the first pickup), pickups nearest-next, then the cluster.</summary>
+    static double RideMinutes(GeoPoint? start, List<QueueItem> car, TravelMinutes t)
+    {
+        var left = car.Where(r => r.Pickup is not null).ToList();
+        var cur = start ?? left[0].Pickup!;
+        double total = 0;
+        while (left.Count > 0)
+        {
+            var next = left.MinBy(r => t(cur, r.Pickup!))!;
+            total += t(cur, next.Pickup!);
+            cur = next.Pickup!;
+            left.Remove(next);
+        }
+        if (car[0].Destination is { } dest) total += t(cur, dest);
+        return total;
+    }
 
     /// <summary>Straight-line distance in kilometres (haversine).</summary>
     public static double Km(GeoPoint a, GeoPoint b)

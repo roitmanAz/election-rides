@@ -126,6 +126,11 @@
       <!-- Proposals and drivers -->
       <section class="card flex min-h-[420px] flex-col overflow-hidden" aria-label="הצעות ונהגים">
         @if (proposals().length) {
+          <div class="mx-2 mt-2 flex items-center gap-2">
+            <button type="button" class="btn-secondary h-9 px-3 text-sm" [disabled]="regrouping()" (click)="regroup()"
+              title="בונה מחדש את ההצעות שעוד לא נשלחו: נוסעים לאותו אשכול ועל הדרך באותו רכב, והנהג הקרוב ביותר">
+              <app-icon name="refresh" [size]="16" /> {{ regrouping() ? 'משבץ...' : 'שיבוץ מחדש לפי קרבה' }}</button>
+          </div>
           <div class="m-2 shrink-0 rounded-[18px] shadow-[inset_0_0_0_1.5px_var(--color-line)]">
             @if (proposals().length > 1) {
             <div class="m-2 mb-0 flex flex-wrap gap-1 rounded-[12px] bg-soft p-1">
