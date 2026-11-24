@@ -210,6 +210,45 @@ public class DispatchTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Analytics_covers_requests_trips_and_staff_and_the_export_has_no_voter_details()
+    {
+        var (admin, city, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        await using (var db = api.NewDb())
+        {
+            var active = await db.Operations.Include(o => o.Cities).FirstOrDefaultAsync(o => o.IsActive)
+                ?? db.Operations.Add(new ElectionOperation { Type = ElectionType.Knesset, ElectionDay = new DateOnly(2026, 12, 1), IsActive = true }).Entity;
+            active.Cities.Add(await db.Cities.FirstAsync(c => c.Id == city.Id));
+            await db.SaveChangesAsync();
+        }
+        var street = (await Json(await admin.PostAsJsonAsync("/api/city/streets", new { name = "רבי עקיבא" }))).GetProperty("id").GetGuid();
+        var cluster = (await Json(await admin.PostAsJsonAsync("/api/city/clusters", new { name = "ישיבה", shortName = "ישיבה", number = 7, boxes = "10-12", streetId = street, buildingNumber = "9", accessible = true }))).GetProperty("id").GetGuid();
+        var (op, _, _) = await TestUsers.SignedIn(api, UserRole.Operator, city);
+        var (disp, _, _) = await TestUsers.SignedIn(api, UserRole.Dispatcher, city);
+        var req = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527666661", "מרים ויס", "000000083", "Female", street, cluster, wc: true)))).GetProperty("id").GetGuid();
+        var drv = (await Json(await disp.PostAsJsonAsync("/api/dispatch/drivers", new { phone = "0548000781", fullName = "אליהו רוזן", seats = 4, wheelchairCar = true, hasSmartphone = false }))).GetProperty("id").GetGuid();
+        await disp.PostAsJsonAsync("/api/dispatch/trips", new { driverId = drv, requestIds = new[] { req } });
+
+        var a = await Json(await admin.GetAsync("/api/city/analytics"));
+        var totals = a.GetProperty("totals");
+        Assert.Equal(1, totals.GetProperty("requests").GetInt32());
+        Assert.Equal(1, totals.GetProperty("trips").GetInt32());
+        Assert.Equal(1, a.GetProperty("needs").GetProperty("wheelchair").GetInt32());
+        Assert.Equal("אליהו רוזן", a.GetProperty("drivers")[0].GetProperty("name").GetString());
+        Assert.Equal(1, a.GetProperty("operators")[0].GetProperty("requests").GetInt32());
+        Assert.Equal(1, a.GetProperty("clusters")[0].GetProperty("requests").GetInt32());
+
+        var csv = await admin.GetAsync("/api/city/analytics/export");
+        var bytes = await csv.Content.ReadAsByteArrayAsync();
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes[..3]);
+        var text = System.Text.Encoding.UTF8.GetString(bytes);
+        Assert.Contains("כיסא גלגלים", text);
+        Assert.Contains("אליהו רוזן", text);
+        Assert.DoesNotContain("מרים ויס", text);
+        Assert.DoesNotContain("0527666661", text);
+        Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/city/analytics")).StatusCode);
+    }
+
+    [Fact]
     public async Task Dashboard_counts_today_and_drivers_and_only_the_city_admin_sees_it()
     {
         var (admin, city, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);

@@ -1325,6 +1325,9 @@ namespace ElectionRides.Api.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int?>("IntakeSeconds")
+                        .HasColumnType("integer");
+
                     b.Property<Point>("Location")
                         .HasColumnType("geography (point, 4326)");
 

@@ -140,6 +140,7 @@ app.MapRouting();
 app.MapClusters();
 app.MapCitySettings();
 app.MapDashboard();
+app.MapAnalytics();
 app.MapVoterBase();
 app.MapStreetImport();
 app.MapCityUsers();

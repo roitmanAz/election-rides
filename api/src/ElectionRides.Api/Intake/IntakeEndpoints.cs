@@ -14,7 +14,7 @@ public record RequestIn(
     Guid? StreetId, string BuildingNumber, string? Entrance, string? DriverNotes, Guid? CommunityId,
     bool NeedsWheelchair, bool NeedsWalker, bool NeedsHelp,
     string TimeMode, TimeOnly? WindowFrom, TimeOnly? WindowTo, string? UrgencyReason, string? UrgencyOther,
-    string ReturnMode, bool KeepNonAccessible, bool IgnoreDuplicate);
+    string ReturnMode, bool KeepNonAccessible, bool IgnoreDuplicate, int? IntakeSeconds = null);
 public record CancelIn(string Reason, string? Other);
 
 /// <summary>Operator intake (spec 5.1): who is on a phone, new request, edit, cancel, and status search.</summary>
@@ -72,6 +72,8 @@ public static class IntakeEndpoints
             var req = new RideRequest { CityId = city, OperationId = op.Id, CallerPhone = "", BuildingNumber = "", TakenById = me.UserId() };
             var error = await Apply(req, body, db, geo, ct);
             if (error is not null) return error;
+            // Only a sensible time counts (a screen left open for hours is not an intake time).
+            req.IntakeSeconds = body.IntakeSeconds is > 0 and <= 3600 ? body.IntakeSeconds : null;
 
             // Running number per city and operation; retried if two operators save at the same moment.
             for (var attempt = 0; ; attempt++)

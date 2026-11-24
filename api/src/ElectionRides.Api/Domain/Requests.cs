@@ -89,6 +89,8 @@ public class RideRequest
     public RequestStatus Status { get; set; } = RequestStatus.Queued;
     /// <summary>When a driver was given the request; the wait for reports is from CreatedAt to here.</summary>
     public DateTimeOffset? AssignedAt { get; set; }
+    /// <summary>Seconds the operator spent on this request, from the phone number to saving (new requests only).</summary>
+    public int? IntakeSeconds { get; set; }
     public string? CancelReason { get; set; }
     public List<RequestPassenger> Passengers { get; set; } = [];
 }

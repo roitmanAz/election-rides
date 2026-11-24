@@ -14,6 +14,7 @@ export class CityAdmin {
   protected readonly auth = inject(AuthService);
   protected readonly tabs: ShellTab[] = [
     { path: 'dashboard', label: 'דשבורד', icon: 'chart' },
+    { path: 'analytics', label: 'ניתוח נתונים', icon: 'pulse' },
     { path: 'clusters', label: 'אשכולות', icon: 'clusters' },
     { path: 'communities', label: 'קהילות', icon: 'comms' },
     { path: 'streets', label: 'רחובות', icon: 'streets' },

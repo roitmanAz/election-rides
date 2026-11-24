@@ -33,6 +33,7 @@ export const routes: Routes = [
     loadComponent: () => import('./city/city-admin').then((m) => m.CityAdmin),
     children: [
       { path: 'dashboard', loadComponent: () => import('./city/dashboard').then((m) => m.DashboardPage), title: 'דשבורד · מטה רכב' },
+      { path: 'analytics', loadComponent: () => import('./city/analytics').then((m) => m.AnalyticsPage), title: 'ניתוח נתונים · מטה רכב' },
       { path: 'clusters', loadComponent: () => import('./city/clusters').then((m) => m.ClustersPage), title: 'אשכולות · מטה רכב' },
       { path: 'communities', loadComponent: () => import('./city/list-manager').then((m) => m.CommunitiesPage), title: 'קהילות · מטה רכב' },
       { path: 'streets', loadComponent: () => import('./city/list-manager').then((m) => m.StreetsPage), title: 'רחובות · מטה רכב' },

@@ -150,7 +150,11 @@ export class OperatorPage implements OnInit {
     this.phoneErr.set(phoneError(this.phone));
   }
 
+  /** When the operator started this new request (the phone number), for the intake time in the analytics. */
+  private intakeStart = 0;
+
   private async lookupPhone() {
+    if (!this.editing() && !this.intakeStart) this.intakeStart = Date.now();
     const d = phoneDigits(this.phone);
     this.phoneChecked.set(d);
     const r = await this.api.get<{
@@ -379,6 +383,7 @@ export class OperatorPage implements OnInit {
       returnMode: this.returnMode,
       keepNonAccessible: this.accAnswer === 'stay',
       ignoreDuplicate: false,
+      intakeSeconds: !this.editing() && this.intakeStart ? Math.round((Date.now() - this.intakeStart) / 1000) : null,
     };
     this.saving.set(true);
     this.saveError.set('');
@@ -400,6 +405,7 @@ export class OperatorPage implements OnInit {
   }
 
   protected reset() {
+    this.intakeStart = 0;
     this.phone = '';
     this.phoneErr.set('');
     this.phoneChecked.set('');
