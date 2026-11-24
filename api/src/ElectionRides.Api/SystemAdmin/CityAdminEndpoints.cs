@@ -145,8 +145,8 @@ public static class CityAdminEndpoints
                 if (source is null) return Problems.Error("העיר להעתקה לא נמצאה");
                 city.HoursFrom = source.HoursFrom;
                 city.HoursTo = source.HoursTo;
-                var names = await db.Communities.Where(x => x.CityId == from).Select(x => x.Name).ToListAsync(ct);
-                db.Communities.AddRange(names.Select(n => new Community { CityId = city.Id, Name = n }));
+                var comms = await db.Communities.Where(x => x.CityId == from).Select(x => new { x.Name, x.CatalogId }).ToListAsync(ct);
+                db.Communities.AddRange(comms.Select(n => new Community { CityId = city.Id, Name = n.Name, CatalogId = n.CatalogId }));
             }
 
             var admin = new AppUser { Email = email, FullName = adminName, Role = UserRole.CityAdmin, CityId = city.Id };

@@ -4,16 +4,24 @@ import { Api } from '../core/api';
 import { errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
+import { markHtml } from '../shared/mark';
 
 interface Row {
   id: string;
   name: string;
-  source?: 'Official' | 'Manual';
+  source?: 'Official' | 'Manual' | 'Catalog';
+}
+
+interface CatalogItem {
+  id: number;
+  name: string;
+  chosen: boolean;
 }
 
 /**
  * Shared record list for communities and streets (spec 3.1): search, add, inline edit
  * (Enter saves, Esc cancels), remove, a running number, and "showing X of Y".
+ * Communities also pick from the system's shared list; those keep their name.
  */
 @Component({
   selector: 'app-list-manager',
@@ -22,6 +30,9 @@ interface Row {
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
         <h1 class="text-xl font-semibold">{{ title() }}</h1>
+        @if (kind() === 'communities') {
+          <button type="button" class="btn-primary ms-auto h-10 px-4" (click)="openCatalog()"><app-icon name="check" [size]="18" /> בחירה מהרשימה הכללית</button>
+        }
         @if (importable()) {
           <button type="button" class="btn-secondary ms-auto h-10 px-4" [disabled]="busy()" (click)="reimport()">
             <app-icon name="refresh" [size]="18" /> ייבא מחדש מהמאגר הרשמי
@@ -54,7 +65,7 @@ interface Row {
 
       <ol class="p-3 sm:p-5">
         <li class="hidden grid-cols-[48px_minmax(0,1fr)_140px_200px] gap-3 px-3 pb-2 text-sm font-medium text-muted md:grid">
-          <span>מס'</span><span>שם</span><span>{{ importable() ? 'מקור' : '' }}</span><span></span>
+          <span>מס'</span><span>שם</span><span>מקור</span><span></span>
         </li>
         @for (r of shown(); track r.id; let i = $index) {
           <li class="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-xl px-3 py-2 odd:bg-bg md:grid-cols-[48px_minmax(0,1fr)_140px_200px]">
@@ -68,13 +79,16 @@ interface Row {
             <span class="col-start-2 text-sm md:col-start-auto">
               @if (r.source === 'Manual') { <span class="rounded-full bg-action-soft px-2.5 py-0.5 text-ink">נוסף ידנית</span> }
               @if (r.source === 'Official') { <span class="text-muted">מאגר רשמי</span> }
+              @if (r.source === 'Catalog') { <span class="text-muted">מהרשימה הכללית</span> }
             </span>
             <span class="col-start-2 flex gap-2 md:col-start-auto md:justify-end">
               @if (editingId() === r.id) {
                 <button type="button" class="btn-primary h-10 px-4" (click)="saveEdit(r)">שמור</button>
                 <button type="button" class="btn-secondary h-10 px-4" (click)="editingId.set(null)">ביטול</button>
               } @else {
-                <button type="button" class="btn-secondary h-10 px-3" (click)="startEdit(r)"><app-icon name="edit" [size]="18" /> ערוך</button>
+                @if (r.source !== 'Catalog') {
+                  <button type="button" class="btn-secondary h-10 px-3" (click)="startEdit(r)"><app-icon name="edit" [size]="18" /> ערוך</button>
+                }
                 <button type="button" class="btn-secondary h-10 px-3 text-bad" (click)="toRemove.set(r)"><app-icon name="trash" [size]="18" /> הסר</button>
               }
             </span>
@@ -87,6 +101,33 @@ interface Row {
         }
       </ol>
     </section>
+
+    <app-dialog [open]="catalogOpen()" title="אילו קהילות יופיעו בעיר?" [width]="720" (closed)="catalogOpen.set(false)">
+      <div class="grid gap-3">
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted"><app-icon name="search" [size]="18" /></span>
+          <input class="input ps-10" placeholder="חיפוש ברשימה" aria-label="חיפוש ברשימה הכללית" [ngModel]="catalogQuery()" (ngModelChange)="catalogQuery.set($event)" />
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="text-muted">נבחרו {{ picked().size }} מתוך {{ catalog().length }}</span>
+          @if (catalogQuery().trim()) { <span class="text-muted">· מוצגות {{ catalogShown().length }}</span> }
+        </div>
+        <div class="grid max-h-[50vh] gap-x-4 gap-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-line p-3 sm:grid-cols-2 md:grid-cols-3">
+          @for (c of catalogShown(); track c.id) {
+            <label class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 hover:bg-soft">
+              <input type="checkbox" class="size-4 shrink-0 accent-[var(--color-action)]" [checked]="picked().has(c.id)" (change)="togglePick(c.id)" />
+              <span [innerHTML]="markCatalog(c.name)"></span>
+            </label>
+          } @empty { <p class="text-muted">לא נמצאה קהילה שמתאימה לחיפוש</p> }
+        </div>
+        <p class="text-sm text-muted">רק הקהילות שמסומנות מופיעות למוקדן. הורדת סימון מוציאה את הקהילה מרשימת העיר. קהילה שאין ברשימה אפשר להוסיף ידנית.</p>
+        @if (catalogError()) { <p class="notice bad" role="alert">{{ catalogError() }}</p> }
+        <div class="flex gap-2">
+          <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCatalog()">שמירה</button>
+          <button type="button" class="btn-secondary" (click)="catalogOpen.set(false)">ביטול</button>
+        </div>
+      </div>
+    </app-dialog>
 
     <app-dialog [open]="!!toRemove()" title="הסרה מהרשימה" [width]="440" (closed)="toRemove.set(null)">
       <p>להסיר את "{{ toRemove()?.name }}" מהרשימה?</p>
@@ -118,6 +159,49 @@ export class ListManager implements OnInit {
   protected readonly query = signal('');
   protected newName = '';
   protected editName = '';
+
+  protected readonly catalogOpen = signal(false);
+  protected readonly catalog = signal<CatalogItem[]>([]);
+  protected readonly picked = signal(new Set<number>());
+  protected readonly catalogQuery = signal('');
+  protected readonly catalogError = signal('');
+  protected readonly catalogShown = computed(() => {
+    const q = this.catalogQuery().trim();
+    return q ? this.catalog().filter((c) => c.name.includes(q)) : this.catalog();
+  });
+
+  protected async openCatalog() {
+    const list = await this.api.get<CatalogItem[]>('/api/city/communities/catalog');
+    this.catalog.set(list);
+    this.picked.set(new Set(list.filter((c) => c.chosen).map((c) => c.id)));
+    this.catalogQuery.set('');
+    this.catalogError.set('');
+    this.catalogOpen.set(true);
+  }
+
+  protected togglePick(id: number) {
+    const next = new Set(this.picked());
+    next.has(id) ? next.delete(id) : next.add(id);
+    this.picked.set(next);
+  }
+
+  protected markCatalog(name: string) {
+    return markHtml(name, this.catalogQuery());
+  }
+
+  protected async saveCatalog() {
+    this.busy.set(true);
+    try {
+      await this.api.put('/api/city/communities/catalog', { ids: [...this.picked()] });
+      this.catalogOpen.set(false);
+      this.notice.set(`נשמר: ${this.picked().size} קהילות מהרשימה הכללית`);
+      await this.load();
+    } catch (e) {
+      this.catalogError.set(errorMessage(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   protected readonly shown = computed(() => {
     const q = this.query().trim();
@@ -202,19 +286,16 @@ export class ListManager implements OnInit {
   }
 
   protected mark(name: string): string {
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-    const q = this.query().trim();
-    const i = q ? name.indexOf(q) : -1;
-    if (i < 0) return esc(name);
-    return esc(name.slice(0, i)) + '<mark class="rounded bg-action-soft text-ink">' + esc(q) + '</mark>' + esc(name.slice(i + q.length));
+    return markHtml(name, this.query());
   }
+
 }
 
 @Component({
   selector: 'app-communities',
   imports: [ListManager],
   template: `<app-list-manager kind="communities" title="קהילות" itemWord="קהילה" addQuestion="איזו קהילה להוסיף?"
-    emptyText="עוד אין קהילות. הקהילות מופיעות למוקדן כשהוא קולט פנייה." />`,
+    emptyText='עוד אין קהילות. "בחירה מהרשימה הכללית" מסמנת את הקהילות של העיר, והן מופיעות למוקדן כשהוא קולט פנייה.' />`,
 })
 export class CommunitiesPage {}
 

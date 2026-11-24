@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PasswordToken> PasswordTokens => Set<PasswordToken>();
     public DbSet<AuditEntry> Audit => Set<AuditEntry>();
     public DbSet<Community> Communities => Set<Community>();
+    public DbSet<CommunityCatalogItem> CommunityCatalog => Set<CommunityCatalogItem>();
     public DbSet<Street> Streets => Set<Street>();
     public DbSet<Cluster> Clusters => Set<Cluster>();
     public DbSet<BallotBox> BallotBoxes => Set<BallotBox>();
@@ -82,6 +83,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Name).HasMaxLength(60);
             e.HasIndex(x => new { x.CityId, x.Name }).IsUnique();
             e.HasOne<City>().WithMany().HasForeignKey(x => x.CityId);
+            e.HasOne<CommunityCatalogItem>().WithMany().HasForeignKey(x => x.CatalogId).OnDelete(DeleteBehavior.SetNull);
+        });
+        b.Entity<CommunityCatalogItem>(e =>
+        {
+            e.ToTable("CommunityCatalog");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Name).HasMaxLength(60);
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasData(CommunityCatalogItem.Seed.Select((n, i) => new CommunityCatalogItem { Id = i + 1, Name = n }));
         });
         b.Entity<Street>(e =>
         {

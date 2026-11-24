@@ -8,6 +8,8 @@ public class Community
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CityId { get; set; }
     public required string Name { get; set; }
+    /// <summary>Set when the community was picked from the shared list; null when the city added it by hand.</summary>
+    public int? CatalogId { get; set; }
 }
 
 public enum StreetSource { Official = 1, Manual = 2 }

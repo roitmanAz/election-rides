@@ -108,4 +108,26 @@ public class CityTests(ApiFactory api)
         Assert.Null(Rules.ParseBoxes("abc"));
         Assert.Null(Rules.ParseBoxes("20-10"));
     }
+
+    [Fact]
+    public async Task City_admin_picks_communities_from_the_shared_list()
+    {
+        var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        var catalog = (await Json(await admin.GetAsync("/api/city/communities/catalog"))).EnumerateArray().ToList();
+        Assert.Equal(112, catalog.Count);
+        int Id(string name) => catalog.First(c => c.GetProperty("name").GetString() == name).GetProperty("id").GetInt32();
+
+        // A hand-added community with the same name is linked, not doubled.
+        await admin.PostAsJsonAsync("/api/city/communities", new { name = "בעלזא" });
+        await admin.PutAsJsonAsync("/api/city/communities/catalog", new { ids = new[] { Id("גור"), Id("בעלזא"), Id("חב\"ד") } });
+        var list = (await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray().ToList();
+        Assert.Equal(3, list.Count);
+        Assert.All(list, c => Assert.Equal("Catalog", c.GetProperty("source").GetString()));
+
+        // A community from the list keeps its name; unticking removes it.
+        var gur = list.First(c => c.GetProperty("name").GetString() == "גור").GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync($"/api/city/communities/{gur}", new { name = "גור 2" })).StatusCode);
+        await admin.PutAsJsonAsync("/api/city/communities/catalog", new { ids = new[] { Id("בעלזא") } });
+        Assert.Single((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray());
+    }
 }

@@ -285,6 +285,9 @@ namespace ElectionRides.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("CatalogId")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("CityId")
                         .HasColumnType("uuid");
 
@@ -295,10 +298,592 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CatalogId");
+
                     b.HasIndex("CityId", "Name")
                         .IsUnique();
 
                     b.ToTable("Communities");
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.CommunityCatalogItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("CommunityCatalog", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "אוז'רוב"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "אוסטרובה-ביאלא"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "אונגוואר"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "אמשינוב"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "אנטניא"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "אלכסנדר"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Name = "אשלג"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Name = "באבוב"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Name = "באבוב 45"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Name = "ביאלא"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Name = "ביאלא בני ברק"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Name = "ביאלא בית שמש"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Name = "ביאלא פשיסחא"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Name = "ביאלא רמת אהרן"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Name = "ביטשקוב"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Name = "בישטינא"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Name = "בוהוש"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Name = "בויאן"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Name = "בוסטון"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Name = "בעלזא"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Name = "ברסלב"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Name = "ברסלב – צפת"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Name = "ברסלב – ירושלים"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Name = "ברסלב – יבנאל"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Name = "ברסלב – היכל הקודש"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Name = "ברסלב – חוט של חסד"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Name = "ברסלב – שובו בנים"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Name = "גור"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Name = "דז'יקוב-ויז'ניץ"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Name = "דאראג"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Name = "דושינסקיא"
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Name = "דעעש"
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Name = "הוסיאטין"
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Name = "זוועהיל"
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Name = "זלוטשוב"
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Name = "זוטשקא"
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Name = "זוטשקא אמסנא"
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Name = "זוטשקא ירושלים"
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Name = "חב\"ד"
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Name = "טאהש"
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Name = "טולנא"
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Name = "טמשוואר"
+                        },
+                        new
+                        {
+                            Id = 43,
+                            Name = "טריסק"
+                        },
+                        new
+                        {
+                            Id = 44,
+                            Name = "לעלוב"
+                        },
+                        new
+                        {
+                            Id = 45,
+                            Name = "לעלוב ביתר"
+                        },
+                        new
+                        {
+                            Id = 46,
+                            Name = "לעלוב בית שמש"
+                        },
+                        new
+                        {
+                            Id = 47,
+                            Name = "לעלוב ירושלים"
+                        },
+                        new
+                        {
+                            Id = 48,
+                            Name = "לעלוב בני ברק"
+                        },
+                        new
+                        {
+                            Id = 49,
+                            Name = "מאקאווא"
+                        },
+                        new
+                        {
+                            Id = 50,
+                            Name = "מבקשי אמונה"
+                        },
+                        new
+                        {
+                            Id = 51,
+                            Name = "מודז'יץ"
+                        },
+                        new
+                        {
+                            Id = 52,
+                            Name = "מטרסדורף"
+                        },
+                        new
+                        {
+                            Id = 53,
+                            Name = "מעליץ"
+                        },
+                        new
+                        {
+                            Id = 54,
+                            Name = "מחנובקה-בעלזא"
+                        },
+                        new
+                        {
+                            Id = 55,
+                            Name = "מישקולץ"
+                        },
+                        new
+                        {
+                            Id = 56,
+                            Name = "משכנות הרועים"
+                        },
+                        new
+                        {
+                            Id = 57,
+                            Name = "נדבורנה"
+                        },
+                        new
+                        {
+                            Id = 58,
+                            Name = "נדבורנה אלעד"
+                        },
+                        new
+                        {
+                            Id = 59,
+                            Name = "נדבורנה ארד"
+                        },
+                        new
+                        {
+                            Id = 60,
+                            Name = "נדבורנה ביתר"
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Name = "נדבורנה בני ברק"
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Name = "נדבורנה ירושלים"
+                        },
+                        new
+                        {
+                            Id = 63,
+                            Name = "נדבורנה צפת"
+                        },
+                        new
+                        {
+                            Id = 64,
+                            Name = "נחלת יעקב"
+                        },
+                        new
+                        {
+                            Id = 65,
+                            Name = "סדיגורא"
+                        },
+                        new
+                        {
+                            Id = 66,
+                            Name = "סקולען"
+                        },
+                        new
+                        {
+                            Id = 67,
+                            Name = "סקווירא"
+                        },
+                        new
+                        {
+                            Id = 68,
+                            Name = "ספינקא"
+                        },
+                        new
+                        {
+                            Id = 69,
+                            Name = "ספינקא אמרי יוסף"
+                        },
+                        new
+                        {
+                            Id = 70,
+                            Name = "ספינקא צפת"
+                        },
+                        new
+                        {
+                            Id = 71,
+                            Name = "ספינקא רמת אהרן"
+                        },
+                        new
+                        {
+                            Id = 72,
+                            Name = "סערט ויז'ניץ"
+                        },
+                        new
+                        {
+                            Id = 73,
+                            Name = "סאסוב"
+                        },
+                        new
+                        {
+                            Id = 74,
+                            Name = "סטרופקוב"
+                        },
+                        new
+                        {
+                            Id = 75,
+                            Name = "סטריקוב"
+                        },
+                        new
+                        {
+                            Id = 76,
+                            Name = "סטוטשין"
+                        },
+                        new
+                        {
+                            Id = 77,
+                            Name = "ערלוי"
+                        },
+                        new
+                        {
+                            Id = 78,
+                            Name = "פני מנחם"
+                        },
+                        new
+                        {
+                            Id = 79,
+                            Name = "פיטסבורג"
+                        },
+                        new
+                        {
+                            Id = 80,
+                            Name = "פינסק-קרלין"
+                        },
+                        new
+                        {
+                            Id = 81,
+                            Name = "פרמישלאן"
+                        },
+                        new
+                        {
+                            Id = 82,
+                            Name = "צאנז"
+                        },
+                        new
+                        {
+                            Id = 83,
+                            Name = "צאנז-ז'מיגראד"
+                        },
+                        new
+                        {
+                            Id = 84,
+                            Name = "צאנז-קלויזנבורג"
+                        },
+                        new
+                        {
+                            Id = 85,
+                            Name = "טשורטקוב"
+                        },
+                        new
+                        {
+                            Id = 86,
+                            Name = "טשרנוביל"
+                        },
+                        new
+                        {
+                            Id = 87,
+                            Name = "קאליב"
+                        },
+                        new
+                        {
+                            Id = 88,
+                            Name = "מתמידים"
+                        },
+                        new
+                        {
+                            Id = 89,
+                            Name = "קוזמיר"
+                        },
+                        new
+                        {
+                            Id = 90,
+                            Name = "קופיטשניץ"
+                        },
+                        new
+                        {
+                            Id = 91,
+                            Name = "קומארנא"
+                        },
+                        new
+                        {
+                            Id = 92,
+                            Name = "קוסון"
+                        },
+                        new
+                        {
+                            Id = 93,
+                            Name = "קרעטשניף"
+                        },
+                        new
+                        {
+                            Id = 94,
+                            Name = "קרעטשניף כפר אתא"
+                        },
+                        new
+                        {
+                            Id = 95,
+                            Name = "קרעטשניף ירושלים"
+                        },
+                        new
+                        {
+                            Id = 96,
+                            Name = "קרעטשניף קריית גת"
+                        },
+                        new
+                        {
+                            Id = 97,
+                            Name = "קרעטשניף סיגעט"
+                        },
+                        new
+                        {
+                            Id = 98,
+                            Name = "קרעטשניף רחובות"
+                        },
+                        new
+                        {
+                            Id = 99,
+                            Name = "קרלין-סטולין"
+                        },
+                        new
+                        {
+                            Id = 100,
+                            Name = "ראדזין"
+                        },
+                        new
+                        {
+                            Id = 101,
+                            Name = "ראחוב"
+                        },
+                        new
+                        {
+                            Id = 102,
+                            Name = "רחמסטריווקא"
+                        },
+                        new
+                        {
+                            Id = 103,
+                            Name = "רדושיץ"
+                        },
+                        new
+                        {
+                            Id = 104,
+                            Name = "שומרי אמונים"
+                        },
+                        new
+                        {
+                            Id = 105,
+                            Name = "שאץ"
+                        },
+                        new
+                        {
+                            Id = 106,
+                            Name = "שאץ-ויז'ניץ"
+                        },
+                        new
+                        {
+                            Id = 107,
+                            Name = "שבט הלוי"
+                        },
+                        new
+                        {
+                            Id = 108,
+                            Name = "שידלובצא"
+                        },
+                        new
+                        {
+                            Id = 109,
+                            Name = "שטפנשט"
+                        },
+                        new
+                        {
+                            Id = 110,
+                            Name = "תולדות אהרן"
+                        },
+                        new
+                        {
+                            Id = 111,
+                            Name = "תולדות אברהם יצחק"
+                        },
+                        new
+                        {
+                            Id = 112,
+                            Name = "תורת חכם"
+                        });
                 });
 
             modelBuilder.Entity("ElectionRides.Api.Domain.DeletionCertificate", b =>
@@ -1034,6 +1619,11 @@ namespace ElectionRides.Api.Data.Migrations
 
             modelBuilder.Entity("ElectionRides.Api.Domain.Community", b =>
                 {
+                    b.HasOne("ElectionRides.Api.Domain.CommunityCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ElectionRides.Api.Domain.City", null)
                         .WithMany()
                         .HasForeignKey("CityId")
