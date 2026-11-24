@@ -165,4 +165,12 @@ public class CityTests(ApiFactory api)
         Assert.DoesNotContain((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray(), c => c.GetProperty("name").GetString()!.StartsWith(name));
         Assert.DoesNotContain((await Json(await admin.GetAsync("/api/city/communities/catalog"))).EnumerateArray(), c => c.GetProperty("id").GetInt32() == id);
     }
+
+    [Fact]
+    public void Address_search_tries_the_common_spelling_variants()
+    {
+        Assert.Equal(["קדושת אהרון", "קדושת אהרן"], ElectionRides.Api.Maps.NominatimGeocoder.SpellingVariants("קדושת אהרון"));
+        Assert.Equal(["דוויק", "דויק"], ElectionRides.Api.Maps.NominatimGeocoder.SpellingVariants("דוויק"));
+        Assert.Equal(["יפו"], ElectionRides.Api.Maps.NominatimGeocoder.SpellingVariants("יפו"));
+    }
 }

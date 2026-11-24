@@ -41,16 +41,39 @@ public class NominatimGeocoder(HttpClient http) : IGeocoder
             var area = await Area(city, ct);
             if (area is null) return new GeoResult(null, true);
             var box = FormattableString.Invariant($"&viewbox={area[2]},{area[1]},{area[3]},{area[0]}&bounded=1");
-            var exact = await Search($"street={Uri.EscapeDataString(building + " " + street)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
-            if (exact is not null) return new GeoResult(exact, false);
-            var streetOnly = await Search($"street={Uri.EscapeDataString(street)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
-            return new GeoResult(streetOnly, true);
+            // The official list and the map often spell a name differently ("קדושת אהרון" / "קדושת אהרן"),
+            // so the common spelling variants are tried too.
+            var names = SpellingVariants(street);
+            foreach (var name in names)
+            {
+                var exact = await Search($"street={Uri.EscapeDataString(building + " " + name)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
+                if (exact is not null) return new GeoResult(exact, false);
+            }
+            foreach (var name in names)
+            {
+                var streetOnly = await Search($"street={Uri.EscapeDataString(name)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
+                if (streetOnly is not null) return new GeoResult(streetOnly, true);
+            }
+            return new GeoResult(null, true);
         }
         catch (Exception) when (!ct.IsCancellationRequested)
         {
             // The lookup never blocks saving a request.
             return new GeoResult(null, true);
         }
+    }
+
+    /// <summary>
+    /// The name as written, then common Hebrew spelling variants: "ון" at a word's end as "ן" (אהרון / אהרן),
+    /// and a doubled "וו" or "יי" as one letter. At most three names, so a missing address costs few lookups.
+    /// </summary>
+    public static List<string> SpellingVariants(string name)
+    {
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var shortEnd = string.Join(' ', words.Select(w => w.Length > 3 && w.EndsWith("ון") ? w[..^2] + "ן" : w));
+        var single = name.Replace("וו", "ו").Replace("יי", "י");
+        return new[] { name, shortEnd, string.Join(' ', shortEnd.Split(' ').Select(w => w.Replace("וו", "ו").Replace("יי", "י"))), single }
+            .Distinct().Take(3).ToList();
     }
 
     async Task<double[]?> Area(string city, CancellationToken ct)
