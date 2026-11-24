@@ -36,6 +36,12 @@ builder.Services.AddHttpClient("nominatim", c =>
 builder.Services.AddSingleton<IGeocoder>(sp => sp.GetRequiredService<IConfiguration>()["Geocoding:Provider"] == "nominatim"
     ? new NominatimGeocoder(sp.GetRequiredService<IHttpClientFactory>().CreateClient("nominatim"))
     : new NoGeocoder());
+// Driving routes for the dispatcher's map (OSRM; the address is in Routing:BaseUrl).
+builder.Services.AddHttpClient("routing", c =>
+{
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("election-rides-dev/0.1");
+    c.Timeout = TimeSpan.FromSeconds(6);
+});
 builder.Services.AddSignalR();
 builder.Services.AddScoped<VoterBaseService>();
 builder.Services.AddSingleton<AutoDeletion>();
@@ -130,6 +136,7 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
 app.MapAuth();
 app.MapCityLists();
 app.MapCommunityCatalog();
+app.MapRouting();
 app.MapClusters();
 app.MapCitySettings();
 app.MapDashboard();

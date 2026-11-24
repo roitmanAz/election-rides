@@ -31,6 +31,26 @@ public enum RequestStatus { Queued = 1, Assigned = 2, PickedUp = 3, Arrived = 4,
 public enum TimeMode { Now = 1, Between = 2, LeaveBy = 3 }
 public enum ReturnMode { DriverWaits = 1, CallsSeparately = 2, NoReturn = 3 }
 
+/// <summary>When a request starts waiting (spec 6): when it was saved, or for a pickup window
+/// ("between 14:00 and 15:00") the start of the window if that is later. Before that it is not waiting.</summary>
+public static class Waiting
+{
+    static readonly TimeZoneInfo Israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+
+    public static DateTimeOffset Since(DateTimeOffset created, TimeMode mode, TimeOnly? windowFrom)
+    {
+        if (mode != TimeMode.Between || windowFrom is not { } from) return created;
+        var day = TimeZoneInfo.ConvertTime(created, Israel).Date;
+        var local = day + from.ToTimeSpan();
+        var start = new DateTimeOffset(local, Israel.GetUtcOffset(local));
+        return start > created ? start : created;
+    }
+
+    /// <summary>Whole minutes waited so far, never below zero.</summary>
+    public static double Minutes(DateTimeOffset now, DateTimeOffset created, TimeMode mode, TimeOnly? windowFrom) =>
+        Math.Max(0, (now - Since(created, mode, windowFrom)).TotalMinutes);
+}
+
 /// <summary>A ride request taken by an operator (spec 5.1).</summary>
 public class RideRequest
 {

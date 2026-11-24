@@ -42,7 +42,7 @@ public static class SystemEndpoints
             var ids = op.Cities.Select(c => c.Id).ToList();
 
             var reqs = await db.Requests.Where(r => ids.Contains(r.CityId) && r.OperationId == op.Id && (r.CreatedAt >= dayStart || r.Status == RequestStatus.Queued))
-                .Select(r => new { r.CityId, r.CreatedAt, r.Status }).ToListAsync(ct);
+                .Select(r => new { r.CityId, r.CreatedAt, r.Status, r.TimeMode, r.WindowFrom }).ToListAsync(ct);
             var drivers = await db.Drivers.Where(d => ids.Contains(d.CityId) && d.OperationId == op.Id && d.Status != DriverStatus.Finished)
                 .Select(d => new { d.CityId, d.Status }).ToListAsync(ct);
             var admins = await db.Users.Where(u => u.CityId != null && ids.Contains(u.CityId.Value) && u.Role == UserRole.CityAdmin && u.IsActive)
@@ -52,7 +52,7 @@ public static class SystemEndpoints
             var rows = op.Cities.OrderBy(c => c.Name).Select(c =>
             {
                 var queued = reqs.Where(r => r.CityId == c.Id && r.Status == RequestStatus.Queued).ToList();
-                var longest = queued.Count == 0 ? 0 : (int)Math.Floor(queued.Max(r => (now - r.CreatedAt).TotalMinutes));
+                var longest = queued.Count == 0 ? 0 : (int)Math.Floor(queued.Max(r => Waiting.Minutes(now, r.CreatedAt, r.TimeMode, r.WindowFrom)));
                 var cityAdmins = admins.Where(a => a.CityId == c.Id).ToList();
                 return new
                 {
@@ -363,15 +363,16 @@ public static class SystemEndpoints
         if (op is null) return null;
         var prev = await db.Operations.Where(o => o.ElectionDay < op.ElectionDay).OrderByDescending(o => o.ElectionDay).FirstOrDefaultAsync(ct);
 
+        // "created" here is when the request started waiting (the window start for a pickup window).
         async Task<Dictionary<Guid, List<(DateTimeOffset created, DateTimeOffset? assigned, RequestStatus status)>>> Load(Guid opId) =>
-            (await db.Requests.Where(r => r.OperationId == opId).Select(r => new { r.CityId, r.CreatedAt, r.AssignedAt, r.Status }).ToListAsync(ct))
-                .GroupBy(r => r.CityId).ToDictionary(g => g.Key, g => g.Select(r => (r.CreatedAt, r.AssignedAt, r.Status)).ToList());
+            (await db.Requests.Where(r => r.OperationId == opId).Select(r => new { r.CityId, r.CreatedAt, r.AssignedAt, r.Status, r.TimeMode, r.WindowFrom }).ToListAsync(ct))
+                .GroupBy(r => r.CityId).ToDictionary(g => g.Key, g => g.Select(r => (Waiting.Since(r.CreatedAt, r.TimeMode, r.WindowFrom), r.AssignedAt, r.Status)).ToList());
 
         var now = await Load(op.Id);
         var before = prev is null ? new() : await Load(prev.Id);
         static double? AvgWait(List<(DateTimeOffset created, DateTimeOffset? assigned, RequestStatus status)> rs)
         {
-            var waits = rs.Where(r => r.assigned is not null).Select(r => (r.assigned!.Value - r.created).TotalMinutes).ToList();
+            var waits = rs.Where(r => r.assigned is not null).Select(r => Math.Max(0, (r.assigned!.Value - r.created).TotalMinutes)).ToList();
             return waits.Count == 0 ? null : waits.Average();
         }
 
@@ -386,7 +387,7 @@ public static class SystemEndpoints
             return new CityReport(
                 c.Name, rs.Count, counted == 0 ? 0 : (int)Math.Round(100.0 * arrived / counted),
                 avg is null ? 0 : (int)Math.Round(avg.Value),
-                rs.Where(r => r.assigned is not null).Select(r => (int)(r.assigned!.Value - r.created).TotalMinutes).DefaultIfEmpty(0).Max(),
+                rs.Where(r => r.assigned is not null).Select(r => (int)Math.Max(0, (r.assigned!.Value - r.created).TotalMinutes)).DefaultIfEmpty(0).Max(),
                 rs.Count(r => r.status == RequestStatus.Cancelled),
                 peak is null ? null : $"{peak.Key:00}:00",
                 avg is not null && prevAvg is not null ? (int)Math.Round(avg.Value - prevAvg.Value) : null);

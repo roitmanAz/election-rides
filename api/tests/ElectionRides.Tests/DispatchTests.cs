@@ -189,4 +189,24 @@ public class DispatchTests(ApiFactory api)
         var (op, _, _, _) = await Setup();
         Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/dispatch/state")).StatusCode);
     }
+
+    [Fact]
+    public void A_pickup_window_starts_waiting_at_its_start_not_when_saved()
+    {
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var saved = new DateTimeOffset(2026, 12, 15, 10, 0, 0, israel.GetUtcOffset(new DateTime(2026, 12, 15, 10, 0, 0)));
+        // Saved at 10:00 for "between 14:00 and 15:00": at 14:20 it has waited 20 minutes, at 12:00 none.
+        Assert.Equal(20, Waiting.Minutes(saved.AddHours(4).AddMinutes(20), saved, TimeMode.Between, new TimeOnly(14, 0)), 3);
+        Assert.Equal(0, Waiting.Minutes(saved.AddHours(2), saved, TimeMode.Between, new TimeOnly(14, 0)));
+        // "Now" requests and a window that already started count from saving.
+        Assert.Equal(30, Waiting.Minutes(saved.AddMinutes(30), saved, TimeMode.Now, null), 3);
+        Assert.Equal(30, Waiting.Minutes(saved.AddMinutes(30), saved, TimeMode.Between, new TimeOnly(9, 0)), 3);
+    }
+
+    [Fact]
+    public async Task Route_answers_empty_when_no_routing_server_is_set()
+    {
+        var (disp, _, _) = await TestUsers.SignedIn(api, UserRole.Dispatcher);
+        Assert.Equal(HttpStatusCode.NoContent, (await disp.GetAsync("/api/route?points=31.78,35.21;31.79,35.22")).StatusCode);
+    }
 }

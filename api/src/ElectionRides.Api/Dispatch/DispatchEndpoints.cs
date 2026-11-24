@@ -389,7 +389,7 @@ public static class DispatchEndpoints
             double? toDeadline = r.TimeMode == TimeMode.LeaveBy && r.WindowTo is { } to ? (At(to) - now).TotalMinutes : null;
             // A pickup window that starts more than 30 minutes from now is not offered to drivers yet.
             var notYet = r.TimeMode == TimeMode.Between && r.WindowFrom is { } from && (At(from) - now).TotalMinutes > ProposalEngine.DeadlineMinutes;
-            var wait = (now - r.CreatedAt).TotalMinutes;
+            var wait = Waiting.Minutes(now, r.CreatedAt, r.TimeMode, r.WindowFrom);
             var item = new QueueItem(r.Id, kind, r.Passengers.Count, r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet);
             object dto = new
             {

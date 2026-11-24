@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { Api } from '../core/api';
 import * as L from 'leaflet';
 import { ClusterRow, DriverRow, LatLon, QueueRow, waitClass } from './dispatch.model';
 
@@ -6,7 +7,8 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
 
 /**
  * The dispatcher's map (spec 10): requests colored by wait, drivers, cluster plates, and the selected
- * proposal's route. OpenStreetMap during development; Google can replace the tiles before going live.
+ * proposal's route along the roads (from our server's routing; a dashed straight line until it arrives or if
+ * it is not available). OpenStreetMap during development; Google can replace the tiles before going live.
  * Zoom and pan with the mouse or the buttons.
  */
 @Component({
@@ -28,11 +30,33 @@ export class CityMap implements AfterViewInit, OnDestroy {
   private map?: L.Map;
   private layer = L.layerGroup();
   private fitted = false;
+  private readonly api = inject(Api);
+  /** The road route for the current points, once the server answered. */
+  private readonly road = signal<{ key: string; points: LatLon[]; km: number; minutes: number } | null>(null);
+  private roadSeq = 0;
 
   constructor() {
     effect(() => {
-      this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route());
+      this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
     });
+    effect(() => this.loadRoad(this.route()));
+  }
+
+  private static key(route: LatLon[]) {
+    return route.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(';');
+  }
+
+  private async loadRoad(route: LatLon[]) {
+    const seq = ++this.roadSeq;
+    if (route.length < 2) return;
+    const key = CityMap.key(route);
+    if (this.road()?.key === key) return;
+    try {
+      const r = await this.api.get<{ points: LatLon[]; km: number; minutes: number } | null>(`/api/route?points=${encodeURIComponent(key)}`);
+      if (seq === this.roadSeq && r?.points?.length) this.road.set({ key, ...r });
+    } catch {
+      // No route: the straight line stays.
+    }
   }
 
   ngAfterViewInit() {
@@ -42,7 +66,7 @@ export class CityMap implements AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap',
     }).addTo(this.map);
     this.layer.addTo(this.map);
-    this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route());
+    this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
     // The box can change size with the layout; let the map follow.
     new ResizeObserver(() => this.map?.invalidateSize()).observe(this.box().nativeElement);
   }
@@ -57,7 +81,8 @@ export class CityMap implements AfterViewInit, OnDestroy {
     if (this.map && pts.length) this.map.fitBounds(L.latLngBounds(pts.map((p) => [p.lat, p.lon] as L.LatLngTuple)), { padding: [30, 30], maxZoom: 16 });
   }
 
-  private draw(queue: QueueRow[], drivers: DriverRow[], clusters: ClusterRow[], selected: string | null, route: LatLon[]) {
+  private draw(queue: QueueRow[], drivers: DriverRow[], clusters: ClusterRow[], selected: string | null, route: LatLon[],
+    road: { key: string; points: LatLon[]; km: number; minutes: number } | null) {
     if (!this.map) return;
     this.layer.clearLayers();
     for (const c of clusters) {
@@ -68,8 +93,14 @@ export class CityMap implements AfterViewInit, OnDestroy {
         title: `${c.name}, ${c.street} ${c.buildingNumber}`,
       }).addTo(this.layer);
     }
-    if (route.length > 1)
-      L.polyline(route.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 5, opacity: 0.85 }).addTo(this.layer);
+    if (route.length > 1) {
+      if (road && road.key === CityMap.key(route))
+        L.polyline(road.points.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 5, opacity: 0.9 })
+          .bindTooltip(`${road.km} ק"מ על הכבישים, כ-${road.minutes} דקות נסיעה`, { sticky: true })
+          .addTo(this.layer);
+      else
+        L.polyline(route.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 4, opacity: 0.7, dashArray: '6 8' }).addTo(this.layer);
+    }
     for (const q of queue) {
       if (!q.location) continue;
       const sel = q.id === selected;

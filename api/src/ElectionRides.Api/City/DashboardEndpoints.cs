@@ -28,8 +28,8 @@ public static class DashboardEndpoints
             var today = await db.Requests.Where(r => r.CityId == city && r.OperationId == op.Id && r.CreatedAt >= dayStart)
                 .Select(r => new { r.CreatedAt, r.Status, r.CancelReason, r.TakenById }).ToListAsync(ct);
             var waiting = await db.Requests.Where(r => r.CityId == city && r.OperationId == op.Id && r.Status == RequestStatus.Queued)
-                .Select(r => r.CreatedAt).ToListAsync(ct);
-            var waits = waiting.Select(c => (now - c).TotalMinutes).ToList();
+                .Select(r => new { r.CreatedAt, r.TimeMode, r.WindowFrom }).ToListAsync(ct);
+            var waits = waiting.Select(c => Waiting.Minutes(now, c.CreatedAt, c.TimeMode, c.WindowFrom)).ToList();
 
             // Half-hour buckets from the first request of the day to now, oldest first (time runs left to right).
             var buckets = today.GroupBy(r =>
