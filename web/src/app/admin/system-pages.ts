@@ -8,7 +8,7 @@ import { AuthService, errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Select, SelectOption, dayText } from '../shared/select';
-import { markHtml } from '../shared/mark';
+import { filterRanked, markHtml } from '../shared/mark';
 import { RowMenu } from '../shared/row-menu';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -623,7 +623,7 @@ export class CatalogPage implements OnInit {
   protected readonly deleteError = signal('');
   protected readonly shown = computed(() => {
     const q = this.q().trim();
-    return q ? this.items().filter((c) => c.name.includes(q)) : this.items();
+    return filterRanked(this.items(), q, (c) => c.name);
   });
 
   protected async remove(c: CatalogRow) {

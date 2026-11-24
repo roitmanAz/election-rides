@@ -196,6 +196,9 @@ export class DispatcherPage implements OnInit, OnDestroy {
       i === this.propIdx() ? { ...p, requestIds: [...p.requestIds, r.id], manual: true }
         : p.requestIds.includes(r.id) ? { ...p, requestIds: p.requestIds.filter((x) => x !== r.id), manual: true } : p,
     ));
+    // Show the updated route at once: close the request card so the map gets its room, then zoom to the route.
+    this.selectedId.set(null);
+    setTimeout(() => this.map()?.fitTo(this.route()), 200);
   }
 
   protected removeStop(id: string) {

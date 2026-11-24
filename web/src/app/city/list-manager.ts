@@ -4,7 +4,7 @@ import { Api } from '../core/api';
 import { errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
-import { markHtml } from '../shared/mark';
+import { filterRanked, markHtml } from '../shared/mark';
 
 interface Row {
   id: string;
@@ -200,7 +200,7 @@ export class ListManager implements OnInit {
   protected readonly catalogError = signal('');
   protected readonly catalogShown = computed(() => {
     const q = this.catalogQuery().trim();
-    return q ? this.catalog().filter((c) => c.name.includes(q)) : this.catalog();
+    return filterRanked(this.catalog(), q, (c) => c.name);
   });
 
   protected async openCatalog() {
@@ -286,7 +286,7 @@ export class ListManager implements OnInit {
 
   protected readonly shown = computed(() => {
     const q = this.query().trim();
-    return q ? this.rows().filter((r) => r.name.includes(q)) : this.rows();
+    return filterRanked(this.rows(), q, (r) => r.name);
   });
 
   private get url() {

@@ -1,5 +1,5 @@
 import { Component, computed, input, model, output, signal } from '@angular/core';
-import { markHtml } from './mark';
+import { filterRanked, markHtml } from './mark';
 
 export interface ComboItem {
   id: string;
@@ -59,7 +59,7 @@ export class Combo {
   protected readonly filtered = computed(() => {
     const q = (this.query() ?? '').trim();
     const list = this.items();
-    return (q ? list.filter((i) => i.label.includes(q)) : list).slice(0, 60);
+    return filterRanked(list, q, (i) => i.label).slice(0, 60);
   });
 
   protected onType(v: string) {

@@ -75,6 +75,12 @@ export class CityMap implements AfterViewInit, OnDestroy {
     this.map?.remove();
   }
 
+  /** Zooms to the given points, e.g. the proposal's route after a stop was added. */
+  fitTo(points: LatLon[]) {
+    if (this.map && points.length > 1)
+      this.map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lon] as L.LatLngTuple)), { padding: [40, 40], maxZoom: 16 });
+  }
+
   /** Re-fit to all points (the "reset" button). */
   fit() {
     const pts = [...this.queue().map((q) => q.location), ...this.clusters().map((c) => c.location)].filter(Boolean) as LatLon[];
