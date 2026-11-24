@@ -29,14 +29,21 @@ public class NominatimGeocoder(HttpClient http) : IGeocoder
 {
     static readonly SemaphoreSlim OneAtATime = new(1, 1);
     static DateTimeOffset _last = DateTimeOffset.MinValue;
+    /// <summary>Each city's area (south, north, west, east), looked up once.</summary>
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, double[]> Areas = new();
 
     public async Task<GeoResult> FindAsync(string city, string street, string building, CancellationToken ct = default)
     {
         try
         {
-            var exact = await Search($"street={Uri.EscapeDataString(building + " " + street)}&city={Uri.EscapeDataString(city)}", ct);
+            // Every search stays inside the city's area: without that, "6 <street>" can come back as
+            // Highway 6 in another city. A result outside the area is dropped.
+            var area = await Area(city, ct);
+            if (area is null) return new GeoResult(null, true);
+            var box = FormattableString.Invariant($"&viewbox={area[2]},{area[1]},{area[3]},{area[0]}&bounded=1");
+            var exact = await Search($"street={Uri.EscapeDataString(building + " " + street)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
             if (exact is not null) return new GeoResult(exact, false);
-            var streetOnly = await Search($"street={Uri.EscapeDataString(street)}&city={Uri.EscapeDataString(city)}", ct);
+            var streetOnly = await Search($"street={Uri.EscapeDataString(street)}&city={Uri.EscapeDataString(city)}{box}", area, ct);
             return new GeoResult(streetOnly, true);
         }
         catch (Exception) when (!ct.IsCancellationRequested)
@@ -46,7 +53,18 @@ public class NominatimGeocoder(HttpClient http) : IGeocoder
         }
     }
 
-    async Task<Point?> Search(string query, CancellationToken ct)
+    async Task<double[]?> Area(string city, CancellationToken ct)
+    {
+        if (Areas.TryGetValue(city, out var known)) return known;
+        using var doc = System.Text.Json.JsonDocument.Parse(await Get($"search?city={Uri.EscapeDataString(city)}&country=Israel&format=jsonv2&limit=1", ct));
+        var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+        if (first.ValueKind == System.Text.Json.JsonValueKind.Undefined) return null;
+        var area = first.GetProperty("boundingbox").EnumerateArray()
+            .Select(v => double.Parse(v.GetString()!, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        return Areas[city] = area;
+    }
+
+    async Task<string> Get(string path, CancellationToken ct)
     {
         await OneAtATime.WaitAsync(ct);
         try
@@ -54,17 +72,22 @@ public class NominatimGeocoder(HttpClient http) : IGeocoder
             var wait = _last.AddSeconds(1.1) - DateTimeOffset.UtcNow;
             if (wait > TimeSpan.Zero) await Task.Delay(wait, ct);
             _last = DateTimeOffset.UtcNow;
-            using var doc = System.Text.Json.JsonDocument.Parse(
-                await http.GetStringAsync($"search?{query}&country=Israel&format=jsonv2&limit=1", ct));
-            var first = doc.RootElement.EnumerateArray().FirstOrDefault();
-            if (first.ValueKind == System.Text.Json.JsonValueKind.Undefined) return null;
-            var lat = double.Parse(first.GetProperty("lat").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
-            var lon = double.Parse(first.GetProperty("lon").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
-            return new Point(lon, lat) { SRID = 4326 };
+            return await http.GetStringAsync(path, ct);
         }
         finally
         {
             OneAtATime.Release();
         }
+    }
+
+    async Task<Point?> Search(string query, double[] area, CancellationToken ct)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(await Get($"search?{query}&country=Israel&format=jsonv2&limit=1", ct));
+        var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+        if (first.ValueKind == System.Text.Json.JsonValueKind.Undefined) return null;
+        var lat = double.Parse(first.GetProperty("lat").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+        var lon = double.Parse(first.GetProperty("lon").GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+        if (lat < area[0] || lat > area[1] || lon < area[2] || lon > area[3]) return null;
+        return new Point(lon, lat) { SRID = 4326 };
     }
 }

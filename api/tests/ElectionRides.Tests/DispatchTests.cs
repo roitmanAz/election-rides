@@ -209,4 +209,23 @@ public class DispatchTests(ApiFactory api)
         var (disp, _, _) = await TestUsers.SignedIn(api, UserRole.Dispatcher);
         Assert.Equal(HttpStatusCode.NoContent, (await disp.GetAsync("/api/route?points=31.78,35.21;31.79,35.22")).StatusCode);
     }
+
+    [Fact]
+    public async Task Dispatcher_marks_a_pickup_on_the_map_and_the_address_keeps_it()
+    {
+        var (op, disp, street, cluster) = await Setup();
+        // Tests have no address lookup, so the request starts without a location.
+        var id = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527333331", "שרה לוין", "000000042", "Female", street, cluster)))).GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.BadRequest, (await disp.PostAsJsonAsync($"/api/dispatch/requests/{id}/location", new { lat = 40.0, lon = 35.2 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await disp.PostAsJsonAsync($"/api/dispatch/requests/{id}/location", new { lat = 31.7869, lon = 35.2236 })).StatusCode);
+
+        var row = (await Json(await disp.GetAsync("/api/dispatch/state"))).GetProperty("queue").EnumerateArray().First(q => q.GetProperty("id").GetGuid() == id);
+        Assert.Equal(31.7869, row.GetProperty("location").GetProperty("lat").GetDouble(), 4);
+        Assert.False(row.GetProperty("approximateLocation").GetBoolean());
+
+        // The next request from the same address gets the point.
+        var next = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527333332", "רבקה לוין", "000000059", "Female", street, cluster)))).GetProperty("id").GetGuid();
+        var row2 = (await Json(await disp.GetAsync("/api/dispatch/state"))).GetProperty("queue").EnumerateArray().First(q => q.GetProperty("id").GetGuid() == next);
+        Assert.Equal(35.2236, row2.GetProperty("location").GetProperty("lon").GetDouble(), 4);
+    }
 }

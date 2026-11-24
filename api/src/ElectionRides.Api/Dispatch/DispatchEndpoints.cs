@@ -11,6 +11,7 @@ namespace ElectionRides.Api.Dispatch;
 public record DriverIn(string Phone, string FullName, int Seats, bool WheelchairCar, bool HasSmartphone);
 public record TripIn(Guid DriverId, List<Guid> RequestIds);
 public record DriverActionIn(string Action);
+public record LocationIn(double Lat, double Lon);
 
 /// <summary>Dispatcher screen (spec 5.3 to 5.7): queue, drivers, proposals, trips and driver statuses.</summary>
 public static class DispatchEndpoints
@@ -254,6 +255,25 @@ public static class DispatchEndpoints
             var n = await db.Passengers.Where(p => p.RequestId == id && db.Requests.Any(r => r.Id == id && r.CityId == city))
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.PendingVerification, false), ct);
             if (n == 0) return Results.NotFound();
+            await events.Changed(city);
+            return Results.NoContent();
+        });
+
+        // The dispatcher marks the pickup on the map when the address was not found or is only the street's
+        // centre (spec 10). The point is also kept for the address, so the next request from there gets it.
+        g.MapPost("/requests/{id:guid}/location", async (Guid id, LocationIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        {
+            if (b.Lat is < 29 or > 34 || b.Lon is < 34 or > 36) return Problems.Error("הנקודה מחוץ לישראל");
+            var city = me.CityId();
+            var r = await db.Requests.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city, ct);
+            if (r is null) return Results.NotFound();
+            var point = new NetTopologySuite.Geometries.Point(b.Lon, b.Lat) { SRID = 4326 };
+            r.Location = point;
+            r.ApproximateLocation = false;
+            var saved = await db.AddressLocations.FirstOrDefaultAsync(a => a.StreetId == r.StreetId && a.BuildingNumber == r.BuildingNumber, ct);
+            if (saved is null) db.AddressLocations.Add(new AddressLocation { StreetId = r.StreetId, BuildingNumber = r.BuildingNumber, Location = point, Approximate = false });
+            else { saved.Location = point; saved.Approximate = false; saved.CheckedAt = DateTimeOffset.UtcNow; }
+            await db.SaveChangesAsync(ct);
             await events.Changed(city);
             return Results.NoContent();
         });

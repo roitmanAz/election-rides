@@ -43,7 +43,7 @@
                 <span class="flex flex-wrap items-center gap-1 text-xs text-muted">{{ kindOf(r) }}
                   @if (r.needsWheelchair) { <span class="inline-flex text-ink" title="כיסא גלגלים"><app-icon name="wc" [size]="14" /></span> }
                   @if (r.pending) { <span class="rounded-full bg-warn-soft px-1.5 text-warn">ממתין לאימות</span> }
-                  @if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
+                  @if (!r.location) { <span class="rounded-full bg-bad-soft px-1.5 text-bad">לא נמצא מיקום</span> } @else if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
                 </span>
               </span>
               <span class="flex min-w-0 items-center gap-1.5 text-sm">
@@ -76,7 +76,11 @@
               <dt class="text-muted">נוסעים</dt>
               <dd>@for (p of r.passengers; track $index) { <span class="block"><b>{{ p.fullName }}</b> · {{ p.gender === 'Male' ? 'גבר' : 'אישה' }}</span> }</dd>
               <dt class="text-muted">טלפון</dt><dd dir="ltr" class="text-right whitespace-nowrap">{{ formatPhone(r.callerPhone) }}</dd>
-              <dt class="text-muted">מאיפה</dt><dd>{{ r.street }} {{ r.buildingNumber }}@if (r.entrance) { , כניסה {{ r.entrance }} }@if (r.approximateLocation) { <span class="text-warn"> · מיקום משוער</span> }</dd>
+              <dt class="text-muted">מאיפה</dt><dd>{{ r.street }} {{ r.buildingNumber }}@if (r.entrance) { , כניסה {{ r.entrance }} }@if (!r.location) { <span class="text-bad"> · לא נמצא מיקום, לא מופיע במפה ובהצעות לפי מרחק</span> } @else if (r.approximateLocation) { <span class="text-warn"> · מיקום משוער (מרכז הרחוב)</span> }
+                @if (!r.location || r.approximateLocation) {
+                  <button type="button" class="btn-secondary mt-1 flex h-9 px-3 text-sm" [class.!bg-ink]="pinFor() === r.id" [class.!text-white]="pinFor() === r.id"
+                    (click)="pinFor.set(pinFor() === r.id ? null : r.id)">{{ pinFor() === r.id ? 'בוחרים נקודה במפה... (ביטול)' : 'סמן מיקום במפה' }}</button>
+                }</dd>
               <dt class="text-muted">לאן</dt>
               <dd>@for (id of r.clusterIds; track id) { <span class="block">{{ cluster(id)?.name }}</span> }
                 @for (p of r.passengers; track $index) { @if (p.ballotBox) { <span class="block text-muted">קלפי {{ p.ballotBox }}</span> } }</dd>
@@ -116,7 +120,9 @@
           </div>
           <div class="min-h-0 flex-1">
             @if (!mapBig()) {
-              <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" (picked)="selectedId.set($event)" />
+              @if (pinFor()) { <p class="border-b border-line bg-warn-soft px-4 py-2 text-sm font-medium text-warn">לחיצה על המפה קובעת את מקום האיסוף. Esc מבטל.</p> }
+              <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()"
+                [pickPoint]="!!pinFor()" (pointPicked)="setPin($event)" (picked)="pinFor() ? null : selectedId.set($event)" />
             }
           </div>
         </section>

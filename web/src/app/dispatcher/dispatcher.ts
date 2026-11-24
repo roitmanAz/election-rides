@@ -29,6 +29,7 @@ type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
  */
 @Component({
   selector: 'app-dispatcher',
+  host: { '(document:keydown.escape)': 'pinFor.set(null)' },
   imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch, Select],
   templateUrl: './dispatcher.html',
 })
@@ -221,6 +222,21 @@ export class DispatcherPage implements OnInit, OnDestroy {
     } catch (e) {
       this.notice.set(errorMessage(e));
       await this.reload();
+    }
+  }
+
+  /** The request whose pickup is being marked on the map by hand. */
+  protected readonly pinFor = signal<string | null>(null);
+
+  protected async setPin(p: LatLon) {
+    const id = this.pinFor();
+    if (!id) return;
+    this.pinFor.set(null);
+    try {
+      await this.api.post(`/api/dispatch/requests/${id}/location`, { lat: p.lat, lon: p.lon });
+      await this.reload();
+    } catch (e) {
+      this.notice.set(errorMessage(e));
     }
   }
 

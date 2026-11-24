@@ -15,7 +15,7 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
   selector: 'app-city-map',
   // Its own stacking layer: Leaflet's high z-index values stay inside the map, so dialogs cover it.
   host: { class: 'relative isolate z-0 block h-full w-full' },
-  template: `<div #box class="h-full min-h-[280px] w-full" role="img" aria-label="מפת העיר"></div>`,
+  template: `<div #box class="h-full min-h-[280px] w-full" [class.cursor-crosshair]="pickPoint()" role="img" aria-label="מפת העיר"></div>`,
 })
 export class CityMap implements AfterViewInit, OnDestroy {
   readonly queue = input<QueueRow[]>([]);
@@ -25,6 +25,9 @@ export class CityMap implements AfterViewInit, OnDestroy {
   /** The route of the selected proposal: points in stop order. */
   readonly route = input<LatLon[]>([]);
   readonly picked = output<string>();
+  /** While on, a click on the map reports the point (for marking a pickup by hand). */
+  readonly pickPoint = input(false);
+  readonly pointPicked = output<LatLon>();
 
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
   private map?: L.Map;
@@ -66,6 +69,9 @@ export class CityMap implements AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap',
     }).addTo(this.map);
     this.layer.addTo(this.map);
+    this.map.on('click', (e: L.LeafletMouseEvent) => {
+      if (this.pickPoint()) this.pointPicked.emit({ lat: e.latlng.lat, lon: e.latlng.lng });
+    });
     this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
     // The box can change size with the layout; let the map follow.
     new ResizeObserver(() => this.map?.invalidateSize()).observe(this.box().nativeElement);
