@@ -255,6 +255,9 @@ export class DispatcherPage implements OnInit, OnDestroy {
     }
   }
 
+  /** The text to read to a driver without the app: closed until opened. */
+  protected readonly scriptOpen = signal(false);
+
   /** The request whose pickup is being marked on the map by hand. */
   protected readonly pinFor = signal<string | null>(null);
 

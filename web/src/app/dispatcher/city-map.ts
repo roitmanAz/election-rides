@@ -87,7 +87,8 @@ export class CityMap implements AfterViewInit, OnDestroy {
     if (route.length > 1) {
       if (road)
         L.polyline(road.points.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 5, opacity: 0.9 })
-          .bindTooltip(`${road.km} ק"מ על הכבישים, כ-${road.minutes} דקות נסיעה`, { sticky: true })
+          // "auto" opens the label on the side with room, so the map's edge never cuts it.
+          .bindTooltip(`${road.km} ק"מ על הכבישים, כ-${road.minutes} דקות נסיעה`, { sticky: true, direction: 'auto' })
           .addTo(this.layer);
       else
         L.polyline(route.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 4, opacity: 0.7, dashArray: '6 8' }).addTo(this.layer);

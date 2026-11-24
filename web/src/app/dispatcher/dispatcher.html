@@ -164,9 +164,15 @@
                     </li>
                   </ol>
                   @if (!d.hasSmartphone) {
-                    <div class="mt-3 rounded-2xl bg-soft p-3 text-sm">
-                      <b class="mb-1 block">להקריא לנהג בטלפון</b>
-                      @for (l of scriptLines(); track $index) { <p>{{ l }}</p> }
+                    <div class="mt-3 rounded-2xl bg-soft text-sm">
+                      <button type="button" class="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-start font-semibold hover:bg-soft2"
+                        [attr.aria-expanded]="scriptOpen()" (click)="scriptOpen.set(!scriptOpen())">
+                        להקריא לנהג בטלפון
+                        <app-icon name="chevron" [size]="18" class="ms-auto text-muted transition-transform" [class.rotate-180]="scriptOpen()" />
+                      </button>
+                      @if (scriptOpen()) {
+                        <div class="px-3 pb-3">@for (l of scriptLines(); track $index) { <p>{{ l }}</p> }</div>
+                      }
                     </div>
                   }
                   <button type="button" class="btn-primary mt-3 w-full" (click)="confirm()">{{ d.hasSmartphone ? 'שלח לנהג' : 'התקשרתי, הנהג אישר' }}</button>
