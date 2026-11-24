@@ -263,15 +263,15 @@
   </div>
 </app-dialog>
 
-<app-dialog [open]="drvOpen()" [title]="drvEditId() ? 'עריכת נהג' : 'נהג חדש'" [width]="520" (closed)="drvOpen.set(false)">
-  <div class="grid gap-3">
+<app-dialog [open]="drvOpen()" [title]="drvEditId() ? 'עריכת נהג' : 'נהג חדש'" [width]="680" (closed)="drvOpen.set(false)">
+  <div class="grid gap-x-4 gap-y-2 sm:grid-cols-2">
     <div class="field">
       <label class="label" for="dPhone">מה מספר הטלפון?<span class="req">*</span></label>
       <input id="dPhone" class="input text-right" type="tel" inputmode="numeric" dir="ltr" [(ngModel)]="drv.phone" (blur)="checkDriverPhone()" [class.invalid]="drvErr().phone" />
       <div class="error-text">{{ drvErr().phone }}</div>
     </div>
     @if (known(); as k) {
-      <div class="grid gap-2 rounded-2xl bg-action-soft p-3">
+      <div class="grid gap-2 rounded-2xl bg-action-soft p-3 sm:col-span-2">
         @if (k.onList) {
           <p>{{ k.fullName }} כבר ברשימה של היום.</p>
         } @else {
@@ -285,6 +285,7 @@
         <input id="dName" class="input" [(ngModel)]="drv.fullName" [class.invalid]="drvErr().name" />
         <div class="error-text">{{ drvErr().name }}</div>
       </div>
+      <div class="grid gap-x-4 gap-y-2 sm:col-span-2 sm:grid-cols-3">
       <div class="field">
         <label class="label" for="dSeats">כמה מקומות פנויים יש ברכב?<span class="req">*</span></label>
         <app-select inputId="dSeats" class="w-32" placeholder="בחר" [options]="seatOpts" [(ngModel)]="drv.seats" [invalid]="!!drvErr().seats" />
@@ -305,8 +306,9 @@
         </div>
         <div class="error-text">{{ drvErr().app }}</div>
       </fieldset>
-      @if (drvErr().save) { <p class="notice bad" role="alert">{{ drvErr().save }}</p> }
-      <div class="flex gap-2">
+      </div>
+      @if (drvErr().save) { <p class="notice bad sm:col-span-2" role="alert">{{ drvErr().save }}</p> }
+      <div class="flex gap-2 sm:col-span-2">
         <button type="button" class="btn-primary" (click)="saveDriver()">{{ drvEditId() ? 'שמירה' : 'הוסף נהג' }}</button>
         <button type="button" class="btn-secondary" (click)="drvOpen.set(false)">ביטול</button>
       </div>

@@ -11,7 +11,8 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
  */
 @Component({
   selector: 'app-city-map',
-  host: { class: 'block h-full w-full' },
+  // Its own stacking layer: Leaflet's high z-index values stay inside the map, so dialogs cover it.
+  host: { class: 'relative isolate z-0 block h-full w-full' },
   template: `<div #box class="h-full min-h-[280px] w-full" role="img" aria-label="מפת העיר"></div>`,
 })
 export class CityMap implements AfterViewInit, OnDestroy {

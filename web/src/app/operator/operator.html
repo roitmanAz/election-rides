@@ -188,7 +188,7 @@
       <!-- 3. Pickup address -->
       <section class="border-b border-line p-5" [class.opacity-40]="!selected().length" [attr.inert]="selected().length ? null : ''">
         <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">3</span>כתובת איסוף</h2>
-        <div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_130px_130px]">
+        <div class="grid gap-3 md:grid-cols-[minmax(0,22rem)_8rem_8rem]">
           <div class="field">
             <label class="label" for="street">באיזה רחוב לאסוף?<span class="req">*</span></label>
             <app-combo inputId="street" [items]="streetItems()" [(value)]="streetId" (left)="checkStreet()" [invalid]="!!streetErr()" placeholder="חלק משם הרחוב" />
