@@ -227,7 +227,7 @@
           @if (timeMode === 'LeaveBy') {
             <label class="field"><span class="label">עד איזו שעה?</span><input type="time" name="lb" class="input w-36" [(ngModel)]="leaveBy" /></label>
             <label class="field"><span class="label">למה דווקא עד אז?<span class="req">*</span></span>
-              <select name="urg" class="input w-48" [(ngModel)]="urgency"><option value="">בחר סיבה</option>@for (r of urgencyReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+              <app-select name="urg" class="w-48" placeholder="בחר סיבה" [options]="urgencyOpts" [(ngModel)]="urgency" /></label>
             @if (urgency === 'אחר') {
               <label class="field"><span class="label">מה הסיבה?<span class="req">*</span></span><input name="urgo" class="input w-60" maxlength="100" [(ngModel)]="urgencyOther" /></label>
             }
@@ -286,7 +286,7 @@
   @if (cancelOf(); as h) {
     <p>פנייה מס' {{ h.number }}: <b>{{ hitNames(h) }}</b></p>
     <label class="field mt-4"><span class="label">למה מבטלים?<span class="req">*</span></span>
-      <select class="input" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')"><option value="">בחר סיבה</option>@for (r of cancelReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+      <app-select placeholder="בחר סיבה" [options]="cancelOpts" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')" /></label>
     @if (cancelReason === 'אחר') {
       <label class="field mt-3"><span class="label">מה הסיבה?<span class="req">*</span></span><input class="input" maxlength="150" [(ngModel)]="cancelOther" /></label>
     }

@@ -252,7 +252,7 @@
 
 <app-dialog [open]="cancelOpen()" title="ביטול פנייה" [width]="460" (closed)="cancelOpen.set(false)">
   <label class="field"><span class="label">למה מבטלים?<span class="req">*</span></span>
-    <select class="input" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')"><option value="">בחר סיבה</option>@for (r of cancelReasons; track r) { <option [value]="r">{{ r }}</option> }</select></label>
+    <app-select placeholder="בחר סיבה" [options]="cancelOpts" [(ngModel)]="cancelReason" (ngModelChange)="cancelErr.set('')" /></label>
   @if (cancelReason === 'אחר') {
     <label class="field mt-3"><span class="label">פרט בקצרה<span class="req">*</span></span><input class="input" maxlength="150" [(ngModel)]="cancelOther" /></label>
   }
@@ -287,7 +287,7 @@
       </div>
       <div class="field">
         <label class="label" for="dSeats">כמה מקומות פנויים יש ברכב?<span class="req">*</span></label>
-        <select id="dSeats" class="input w-32" [(ngModel)]="drv.seats" [class.invalid]="drvErr().seats"><option value="">בחר</option>@for (n of [1,2,3,4,5,6,7,8]; track n) { <option [value]="'' + n">{{ n }}</option> }</select>
+        <app-select inputId="dSeats" class="w-32" placeholder="בחר" [options]="seatOpts" [(ngModel)]="drv.seats" [invalid]="!!drvErr().seats" />
         <div class="error-text">{{ drvErr().seats }}</div>
       </div>
       <fieldset class="field">

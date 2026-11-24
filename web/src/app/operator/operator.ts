@@ -9,6 +9,7 @@ import { Combo, ComboItem } from '../shared/combo';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { RoleSwitch } from '../shared/role-switch';
+import { Select, textOptions } from '../shared/select';
 import {
   CANCEL_REASONS, ClusterRef, Gender, Passenger, ReturnMode, STATUS_NAMES, Status, TimeMode, URGENCY_REASONS,
   clusterLabel, formatPhone, idValid, isFamily, joinNames, phoneDigits, phoneError,
@@ -38,7 +39,7 @@ let keySeq = 0;
  */
 @Component({
   selector: 'app-operator',
-  imports: [FormsModule, Combo, Dialog, Icon, DatePipe, RoleSwitch],
+  imports: [FormsModule, Combo, Dialog, Icon, DatePipe, RoleSwitch, Select],
   templateUrl: './operator.html',
 })
 export class OperatorPage implements OnInit {
@@ -48,6 +49,8 @@ export class OperatorPage implements OnInit {
   protected readonly statusNames = STATUS_NAMES;
   protected readonly urgencyReasons = URGENCY_REASONS;
   protected readonly cancelReasons = CANCEL_REASONS;
+  protected readonly urgencyOpts = textOptions(URGENCY_REASONS);
+  protected readonly cancelOpts = textOptions(CANCEL_REASONS);
   protected readonly editable = EDITABLE;
   protected readonly clusterLabel = clusterLabel;
   protected readonly formatPhone = formatPhone;

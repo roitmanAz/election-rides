@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -7,6 +7,7 @@ import { Api } from '../core/api';
 import { AuthService, errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
+import { Select, SelectOption, dayText } from '../shared/select';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -107,14 +108,12 @@ interface Report {
 /** Reports (spec 3.2): per city for the chosen operation, with the change against the previous one; Excel export. */
 @Component({
   selector: 'app-reports',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, Select],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
         <h1 class="text-xl font-semibold">דוחות</h1>
-        <select class="input ms-auto w-auto" aria-label="איזה מבצע?" [ngModel]="opId()" (ngModelChange)="choose($event)">
-          @for (o of ops(); track o.id) { <option [value]="o.id">{{ o.type === 'Knesset' ? 'כנסת' : 'רשויות' }} {{ o.electionDay | date: 'dd.MM.yyyy' }}</option> }
-        </select>
+        <app-select class="ms-auto w-56" ariaLabel="איזה מבצע?" [options]="opOptions()" [ngModel]="opId()" (ngModelChange)="choose($event)" />
         <button type="button" class="btn-secondary" [disabled]="!r()" (click)="excel()">ייצוא ל-Excel</button>
       </div>
       @if (r(); as rep) {
@@ -148,6 +147,8 @@ export class ReportsPage implements OnInit {
   protected readonly heads = ['עיר', 'פניות', 'הגיעו לקלפי', 'המתנה ממוצעת', 'המתנה ארוכה', 'ביטולים', 'שעת השיא', 'שינוי בהמתנה'];
   protected readonly ops = signal<{ id: string; type: string; electionDay: string }[]>([]);
   protected readonly opId = signal('');
+  protected readonly opOptions = computed<SelectOption[]>(() =>
+    this.ops().map((o) => ({ value: o.id, label: `${o.type === 'Knesset' ? 'כנסת' : 'רשויות'} ${dayText(o.electionDay)}` })));
   protected readonly r = signal<Report | null>(null);
 
   async ngOnInit() {
@@ -223,15 +224,12 @@ interface AuditRow { id: number; at: string; userEmail: string | null; city: str
 /** Audit log (spec 3.2): search and filter by city; entries cannot be deleted. */
 @Component({
   selector: 'app-audit',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Select],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
         <h1 class="text-xl font-semibold">יומן פעולות</h1>
-        <select class="input ms-auto w-auto" aria-label="איזו עיר?" [(ngModel)]="cityId" (ngModelChange)="load()">
-          <option [ngValue]="null">כל הערים</option>
-          @for (c of cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-        </select>
+        <app-select class="ms-auto w-48" ariaLabel="איזו עיר?" [options]="cityOptions()" [(ngModel)]="cityId" (ngModelChange)="load()" />
         <input class="input w-64 max-w-full" placeholder="חיפוש בפעולות" aria-label="חיפוש" [(ngModel)]="q" (ngModelChange)="load()" />
       </div>
       <div class="p-3 text-sm">
@@ -252,13 +250,14 @@ export class AuditPage implements OnInit {
   private readonly api = inject(Api);
   protected readonly rows = signal<AuditRow[]>([]);
   protected readonly cities = signal<{ id: string; name: string }[]>([]);
+  protected readonly cityOptions = computed<SelectOption[]>(() => [{ value: null, label: 'כל הערים' }, ...this.cities().map((c) => ({ value: c.id, label: c.name }))]);
   protected cityId: string | null = null;
   protected q = '';
   private seq = 0;
   private static readonly NAMES: Record<string, string> = {
     'user.login': 'כניסה', 'user.locked': 'נעילה', 'user.password-set': 'קביעת סיסמה', 'user.add': 'הוספת משתמש', 'user.remove': 'הסרת משתמש',
     'user.unlock': 'שחרור נעילה', 'user.bootstrap': 'מנהל מערכת ראשון', 'city.add': 'פתיחת עיר', 'city.settings': 'הגדרות עיר',
-    'city.admin-add': 'הוספת מנהל עיר', 'city.admin-remove': 'הסרת מנהל עיר', 'city.enable': 'הפעלת עיר', 'city.disable': 'השבתת עיר',
+    'city.admin-add': 'הוספת מנהל עיר', 'city.admin-remove': 'הסרת מנהל עיר', 'city.admin-invite': 'הזמנה חוזרת למנהל עיר', 'city.enable': 'הפעלת עיר', 'city.disable': 'השבתת עיר',
     'operation.open': 'פתיחת מבצע', 'operation.close': 'סגירת מבצע', 'streets.import': 'ייבוא רחובות', 'base.import': 'טעינת בייס',
     'base.delete': 'מחיקת בייס', 'request.cancel': 'ביטול פנייה', 'sysadmin.add': 'הוספת מנהל מערכת', 'sysadmin.remove': 'הסרת מנהל מערכת',
     'security.policy': 'מדיניות אבטחה', 'party.settings': 'פרטיות והגדרות',
@@ -369,7 +368,7 @@ export class SysAdminsPage implements OnInit {
 /** Security policy for all users in all cities (spec 3.2); applies from the next sign-in. */
 @Component({
   selector: 'app-security',
-  imports: [FormsModule],
+  imports: [FormsModule, Select],
   template: `
     <section class="card max-w-2xl overflow-hidden">
       <div class="border-b border-line px-5 py-4"><h1 class="text-xl font-semibold">מדיניות אבטחה</h1></div>
@@ -384,14 +383,14 @@ export class SysAdminsPage implements OnInit {
             @if (!p.requireEmailCode) { <p class="text-sm font-medium text-bad">בלי קוד במייל, סיסמה שדלפה מספיקה כדי להיכנס. לא מומלץ.</p> }
           </fieldset>
           <label class="field"><span class="label">כמה זמן המכשיר נזכר?</span>
-            <select class="input w-48" [(ngModel)]="p.rememberDeviceHours"><option [ngValue]="8">8 שעות</option><option [ngValue]="24">יום</option><option [ngValue]="168">שבוע</option></select></label>
+            <app-select class="w-48" [options]="rememberOpts" [(ngModel)]="p.rememberDeviceHours" /></label>
           <label class="field"><span class="label">אחרי כמה זמן בלי פעילות מנתקים?</span>
-            <select class="input w-48" [(ngModel)]="p.idleTimeoutMinutes"><option [ngValue]="15">15 דקות</option><option [ngValue]="30">30 דקות</option><option [ngValue]="60">שעה</option><option [ngValue]="240">4 שעות</option></select>
+            <app-select class="w-48" [options]="idleOpts" [(ngModel)]="p.idleTimeoutMinutes" />
             <span class="text-sm text-muted">ביום הבחירות כדאי ארוך יותר, כדי לא לנתק מוקדנים באמצע עבודה.</span></label>
           <label class="field"><span class="label">אחרי כמה ניסיונות כניסה שגויים נועלים?</span>
-            <select class="input w-48" [(ngModel)]="p.maxFailedLogins"><option [ngValue]="3">3</option><option [ngValue]="5">5</option><option [ngValue]="10">10</option></select></label>
+            <app-select class="w-48" [options]="attemptOpts" [(ngModel)]="p.maxFailedLogins" /></label>
           <label class="field"><span class="label">לכמה זמן נועלים?</span>
-            <select class="input w-48" [(ngModel)]="p.lockMinutes"><option [ngValue]="5">5 דקות</option><option [ngValue]="15">15 דקות</option><option [ngValue]="30">30 דקות</option><option [ngValue]="60">שעה</option></select>
+            <app-select class="w-48" [options]="lockOpts" [(ngModel)]="p.lockMinutes" />
             <span class="text-sm text-muted">מנהל העיר יכול לשחרר נעילה מוקדם.</span></label>
           @if (msg()) { <p class="notice" [class.bad]="bad()">{{ msg() }}</p> }
           <p class="text-sm text-muted">שינוי חל מהכניסה הבאה של כל משתמש, ונרשם ביומן.</p>
@@ -403,6 +402,10 @@ export class SysAdminsPage implements OnInit {
 })
 export class SecurityPage implements OnInit {
   private readonly api = inject(Api);
+  protected readonly rememberOpts = [{ value: 8, label: '8 שעות' }, { value: 24, label: 'יום' }, { value: 168, label: 'שבוע' }];
+  protected readonly idleOpts = [{ value: 15, label: '15 דקות' }, { value: 30, label: '30 דקות' }, { value: 60, label: 'שעה' }, { value: 240, label: '4 שעות' }];
+  protected readonly attemptOpts = [3, 5, 10].map((n) => ({ value: n, label: String(n) }));
+  protected readonly lockOpts = [{ value: 5, label: '5 דקות' }, { value: 15, label: '15 דקות' }, { value: 30, label: '30 דקות' }, { value: 60, label: 'שעה' }];
   protected readonly pol = signal<{ requireEmailCode: boolean; rememberDeviceHours: number; idleTimeoutMinutes: number; maxFailedLogins: number; lockMinutes: number } | null>(null);
   protected readonly msg = signal('');
   protected readonly bad = signal(false);

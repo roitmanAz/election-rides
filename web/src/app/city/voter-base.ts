@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Api } from '../core/api';
 import { errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
+import { Select, SelectOption } from '../shared/select';
 
 interface Status {
   loaded: boolean;
@@ -58,7 +59,7 @@ const GUESS: Record<FieldKey, RegExp> = {
  */
 @Component({
   selector: 'app-voter-base',
-  imports: [FormsModule, Dialog, Icon, DatePipe],
+  imports: [FormsModule, Dialog, Icon, DatePipe, Select],
   template: `
     <section class="card overflow-hidden">
       <div class="border-b border-line px-5 py-4"><h1 class="text-xl font-semibold">בייס מצביעים</h1></div>
@@ -103,10 +104,8 @@ const GUESS: Record<FieldKey, RegExp> = {
               <div class="grid gap-3 sm:grid-cols-2">
                 @for (f of fields; track f.key) {
                   <label class="field"><span class="label">{{ f.label }}@if (f.required) { <span class="req">*</span> }</span>
-                    <select class="input" [(ngModel)]="map[f.key]" [class.invalid]="f.required && tried() && map[f.key] === null">
-                      <option [ngValue]="null">{{ f.required ? 'בחר עמודה' : 'אין בקובץ' }}</option>
-                      @for (h of headers(); track $index) { <option [ngValue]="$index">{{ h || 'עמודה ' + ($index + 1) }}</option> }
-                    </select></label>
+                    <app-select [options]="f.required ? requiredCols() : optionalCols()" placeholder="בחר עמודה"
+                      [invalid]="f.required && tried() && map[f.key] === null" [(ngModel)]="map[f.key]" /></label>
                 }
               </div>
               <fieldset class="field">
@@ -180,6 +179,9 @@ export class VoterBasePage implements OnInit {
   protected readonly s = signal<Status | null>(null);
   protected readonly file = signal<File | null>(null);
   protected readonly headers = signal<string[]>([]);
+  private readonly columns = computed<SelectOption[]>(() => this.headers().map((h, i) => ({ value: i, label: h || 'עמודה ' + (i + 1) })));
+  protected readonly requiredCols = computed(() => this.columns());
+  protected readonly optionalCols = computed<SelectOption[]>(() => [{ value: null, label: 'אין בקובץ' }, ...this.columns()]);
   protected readonly sample = signal<string[][]>([]);
   protected readonly rowCount = signal(0);
   protected readonly busy = signal('');

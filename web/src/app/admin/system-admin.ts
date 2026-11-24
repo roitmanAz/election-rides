@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Api } from '../core/api';
@@ -8,6 +8,7 @@ import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Shell, ShellTab } from '../shared/shell';
 import { RowMenu } from '../shared/row-menu';
+import { Select } from '../shared/select';
 
 /** System admin screen (spec 3.2). Opens on the live status. */
 @Component({
@@ -50,7 +51,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Cities (spec 3.2): setup progress out of 6 steps, city admins, and a new city with its first admin. */
 @Component({
   selector: 'app-cities',
-  imports: [FormsModule, Dialog, Icon, Combo, DatePipe, RowMenu],
+  imports: [FormsModule, Dialog, Icon, Combo, DatePipe, RowMenu, Select],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
@@ -104,7 +105,10 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             @for (a of admins(); track a.id) {
               <div class="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-sm odd:bg-bg">
                 <b>{{ a.fullName }}</b><span class="text-muted" dir="ltr">{{ a.email }}</span>
-                @if (a.invited) { <span class="text-warn">הוזמן</span> }
+                @if (a.invited) {
+                  <span class="text-warn">הוזמן, עוד לא נכנס</span>
+                  <button type="button" class="btn-link text-sm" (click)="resendAdmin(a)">שליחת הזמנה שוב</button>
+                }
                 @if (confirmRemove() === a.id) {
                   <span class="ms-auto">להסיר?</span>
                   <button type="button" class="btn-primary h-9 !bg-bad px-3 text-sm" (click)="removeAdmin(a.id)">כן, הסר</button>
@@ -156,10 +160,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         </div>
         <div class="field">
           <label class="label" for="copy">להעתיק קהילות ושעות פעילות מעיר קיימת?</label>
-          <select id="copy" name="copy" class="input" [(ngModel)]="copyFrom">
-            <option [ngValue]="null">לא להעתיק</option>
-            @for (c of cities(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-          </select>
+          <app-select inputId="copy" name="copy" [options]="copyOptions()" [(ngModel)]="copyFrom" />
         </div>
         <p class="text-sm text-muted">מנהל העיר יקבל מייל עם קישור לקביעת סיסמה.</p>
         @if (createError()) { <p class="notice bad" role="alert">{{ createError() }}</p> }
@@ -175,6 +176,7 @@ export class CitiesPage implements OnInit {
   private readonly api = inject(Api);
   protected readonly steps = STEPS;
   protected readonly cities = signal<CityRow[]>([]);
+  protected readonly copyOptions = computed(() => [{ value: null, label: 'לא להעתיק' }, ...this.cities().map((c) => ({ value: c.id, label: c.name }))]);
   protected readonly localities = signal<ComboItem[]>([]);
   protected readonly notice = signal('');
   protected readonly newOpen = signal(false);
@@ -222,6 +224,15 @@ export class CitiesPage implements OnInit {
       const email = this.newAdminEmail.trim();
       this.newAdminName = this.newAdminEmail = '';
       await this.afterManage(`נשלחה הזמנה אל ${email}`);
+    } catch (e) {
+      await this.afterManage(errorMessage(e), true);
+    }
+  }
+
+  protected async resendAdmin(a: { id: string; email: string }) {
+    try {
+      await this.api.post(`/api/admin/cities/${this.managed()!.id}/admins/${a.id}/invite`);
+      await this.afterManage(`נשלחה הזמנה חדשה אל ${a.email}. הקישור הקודם כבר לא תקף.`);
     } catch (e) {
       await this.afterManage(errorMessage(e), true);
     }

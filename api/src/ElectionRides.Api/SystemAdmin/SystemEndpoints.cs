@@ -118,6 +118,17 @@ public static class SystemEndpoints
             return Results.NoContent();
         });
 
+        // A new invitation for a city admin who lost the link; the older link stops working.
+        g.MapPost("/cities/{id:guid}/admins/{userId:guid}/invite", async (Guid id, Guid userId, ClaimsPrincipal me, AppDbContext db, Invitations inv, CancellationToken ct) =>
+        {
+            var u = await db.Users.FirstOrDefaultAsync(x => x.Id == userId && x.CityId == id && x.Role == UserRole.CityAdmin && x.IsActive, ct);
+            if (u is null) return Results.NotFound();
+            await inv.SendAsync(u, ct);
+            Audit.Add(db, await Actor(db, me, ct), "city.admin-invite", $"{u.FullName} ({u.Email})", id);
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
         g.MapGet("/cities/{id:guid}/admins", async (Guid id, AppDbContext db, CancellationToken ct) =>
             await db.Users.Where(u => u.CityId == id && u.Role == UserRole.CityAdmin && u.IsActive)
                 .Select(u => new { u.Id, u.FullName, u.Email, u.LastLoginAt, invited = u.PasswordHash == null }).ToListAsync(ct));

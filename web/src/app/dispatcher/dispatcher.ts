@@ -7,6 +7,7 @@ import { AuthService, errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { RoleSwitch } from '../shared/role-switch';
+import { Select, textOptions } from '../shared/select';
 import { CANCEL_REASONS, formatPhone, phoneDigits, phoneError } from '../operator/intake.model';
 import { CityMap } from './city-map';
 import {
@@ -28,7 +29,7 @@ type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
  */
 @Component({
   selector: 'app-dispatcher',
-  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch],
+  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch, Select],
   templateUrl: './dispatcher.html',
 })
 export class DispatcherPage implements OnInit, OnDestroy {
@@ -41,6 +42,8 @@ export class DispatcherPage implements OnInit, OnDestroy {
   protected readonly driverStatus = DRIVER_STATUS;
   protected readonly formatPhone = formatPhone;
   protected readonly cancelReasons = CANCEL_REASONS;
+  protected readonly cancelOpts = textOptions(CANCEL_REASONS);
+  protected readonly seatOpts = textOptions(['1', '2', '3', '4', '5', '6', '7', '8']);
   protected readonly filters: { key: Filter; label: string }[] = [
     { key: 'all', label: 'הכול' },
     { key: 'Men', label: 'גברים' },
