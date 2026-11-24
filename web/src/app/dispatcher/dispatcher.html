@@ -97,7 +97,7 @@
               @if (r.pending) {
                 <dt class="text-muted">אימות</dt>
                 <dd class="flex items-center gap-2"><span class="rounded-full bg-warn-soft px-2 text-warn">ממתין לאימות</span>
-                  <button type="button" class="btn-secondary h-8 px-3 text-sm" (click)="verify(r)"><app-icon name="check" [size]="16" /> אומת</button></dd>
+                  <button type="button" class="inline-flex h-6 items-center gap-1 rounded-lg bg-soft px-2 text-xs font-semibold hover:bg-soft2" (click)="verify(r)"><app-icon name="check" [size]="13" /> אומת</button></dd>
               }
             </dl>
             <div class="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
@@ -113,16 +113,11 @@
           </section>
         }
         <section class="card flex min-h-[320px] flex-1 flex-col overflow-hidden" aria-label="מפה">
-          <div class="flex items-center gap-2 border-b border-line px-4 py-2">
-            <h2 class="text-lg font-semibold">מפה</h2>
-            <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="fitMap()">איפוס</button>
-            <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="mapBig.set(true)">הגדל</button>
-          </div>
           <div class="min-h-0 flex-1">
             @if (!mapBig()) {
               @if (pinFor()) { <p class="border-b border-line bg-warn-soft px-4 py-2 text-sm font-medium text-warn">לחיצה על המפה קובעת את מקום האיסוף. Esc מבטל.</p> }
               <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" [road]="road()"
-                [pickPoint]="!!pinFor()" (pointPicked)="setPin($event)" (picked)="pinFor() ? null : selectedId.set($event)" />
+                [pickPoint]="!!pinFor()" (pointPicked)="setPin($event)" (picked)="pinFor() ? null : selectedId.set($event)" (expand)="mapBig.set(true)" />
             }
           </div>
         </section>
@@ -193,8 +188,8 @@
         <div class="min-h-0 flex-1 overflow-y-auto">
           @for (d of drivers(); track d.id) {
             <div class="border-b border-line">
-              <button type="button" data-driver-row class="flex w-full items-center gap-2 border-s-4 px-3 py-2.5 text-start hover:bg-bg"
-                [class]="openDriverId() === d.id ? 'border-action bg-action-soft' : 'border-transparent'" [attr.aria-expanded]="openDriverId() === d.id"
+              <button type="button" data-driver-row class="flex w-full items-center gap-2 px-4 py-2.5 text-start"
+                [class]="openDriverId() === d.id ? 'bg-action-soft hover:bg-action-soft2' : 'hover:bg-bg'" [attr.aria-expanded]="openDriverId() === d.id"
                 [title]="openDriverId() === d.id ? 'לחיצה לסגירה' : 'לחיצה לפתיחה'"
                 (click)="openDriverId.set(openDriverId() === d.id ? null : d.id)">
                 <b class="min-w-0 flex-1 truncate">{{ d.fullName }}</b>
@@ -204,7 +199,7 @@
                 <app-icon name="chevron" [size]="18" class="shrink-0 text-muted transition-transform" [class.rotate-180]="openDriverId() === d.id" />
               </button>
               @if (openDriverId() === d.id) {
-                <div class="grid gap-2 border-s-4 border-action bg-bg px-3 py-2.5 text-sm">
+                <div class="grid gap-2 bg-bg px-4 py-2.5 text-sm">
                   <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span dir="ltr" class="whitespace-nowrap">{{ formatPhone(d.phone) }}</span>
                     <span class="text-muted">· {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span>
@@ -258,7 +253,7 @@
 <app-dialog [open]="mapBig()" title="מפה" [width]="1400" (closed)="mapBig.set(false)">
   <div class="h-[75vh]">
     @if (mapBig()) {
-      <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" [road]="road()" (picked)="selectedId.set($event); mapBig.set(false)" />
+      <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" [road]="road()" [canExpand]="false" (picked)="selectedId.set($event); mapBig.set(false)" />
     }
   </div>
 </app-dialog>

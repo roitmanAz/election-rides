@@ -1,6 +1,7 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, viewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, signal, viewChild } from '@angular/core';
 import * as L from 'leaflet';
 import { ClusterRow, DriverRow, LatLon, QueueRow, RoadRoute, waitClass } from './dispatch.model';
+import { Icon } from '../shared/icon';
 
 const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
 
@@ -8,13 +9,49 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
  * The dispatcher's map (spec 10): requests colored by wait, drivers, cluster plates, and the selected
  * proposal's route along the roads (from our server's routing; a dashed straight line until it arrives or if
  * it is not available). OpenStreetMap during development; Google can replace the tiles before going live.
- * Zoom and pan with the mouse or the buttons.
+ * Zoom and pan with the mouse or the buttons. A request is a pin whose tip is on the address, so the house
+ * number on the map stays readable; marks get smaller when the map is zoomed out. Buttons sit on the map
+ * itself (fit, enlarge) and a legend opens from the bottom corner.
  */
 @Component({
   selector: 'app-city-map',
   // Its own stacking layer: Leaflet's high z-index values stay inside the map, so dialogs cover it.
   host: { class: 'relative isolate z-0 block h-full w-full' },
-  template: `<div #box class="h-full min-h-[280px] w-full" [class.cursor-crosshair]="pickPoint()" role="img" aria-label="מפת העיר"></div>`,
+  imports: [Icon],
+  template: `
+    <div #box class="h-full min-h-[280px] w-full" [class.cursor-crosshair]="pickPoint()" [class.map-far]="far()" role="img" aria-label="מפת העיר"></div>
+    <div class="absolute right-2.5 top-2.5 z-[1001] flex flex-col gap-1.5">
+      <button type="button" class="map-btn" title="הצג את כל הפניות" aria-label="הצג את כל הפניות" (click)="fit()"><app-icon name="fit" [size]="18" /></button>
+      @if (canExpand()) {
+        <button type="button" class="map-btn" title="הגדל מפה" aria-label="הגדל מפה" (click)="expand.emit()"><app-icon name="expand" [size]="18" /></button>
+      }
+    </div>
+    <div class="absolute bottom-2.5 left-2.5 z-[1001] flex flex-col items-start gap-1.5">
+      @if (legendOpen()) {
+        <div class="w-56 rounded-2xl bg-surface p-3 text-xs shadow-[var(--shadow-pop)]" role="region" aria-label="מקרא למפה">
+          <p class="mb-1.5 font-semibold">פניות (לפי זמן המתנה)</p>
+          <ul class="grid gap-1">
+            <li class="flex items-center gap-2"><span class="legend-pin" style="background:#1f7a3a"></span>עד 15 דקות</li>
+            <li class="flex items-center gap-2"><span class="legend-pin" style="background:#c98a00"></span>15 עד 30 דקות</li>
+            <li class="flex items-center gap-2"><span class="legend-pin" style="background:#c92a2a"></span>30 דקות ומעלה, או חלון זמן שנגמר בקרוב</li>
+            <li class="flex items-center gap-2"><span class="legend-pin legend-pin-sel" style="background:#c92a2a"></span>הפנייה הפתוחה</li>
+            <li class="flex items-center gap-2"><span class="legend-pin legend-pin-approx" style="background:#1f7a3a"></span>מיקום משוער (מרכז הרחוב)</li>
+          </ul>
+          <p class="mb-1.5 mt-2.5 font-semibold">נהגים ומקומות</p>
+          <ul class="grid gap-1">
+            <li class="flex items-center gap-2"><span class="map-car !transform-none">יכ</span>נהג פנוי</li>
+            <li class="flex items-center gap-2"><span class="map-car map-car-Soon !transform-none">יכ</span>מתפנה בקרוב</li>
+            <li class="flex items-center gap-2"><span class="map-car map-car-OnTrip !transform-none">יכ</span>בנסיעה או בהפסקה</li>
+            <li class="flex items-center gap-2"><span class="map-plate !transform-none">12</span>אשכול קלפיות (מספר או שם)</li>
+            <li class="flex items-center gap-2"><span class="inline-block h-1 w-6 rounded bg-action"></span>מסלול ההצעה על הכבישים</li>
+            <li class="flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-action"></span>מסלול משוער (קו אווירי)</li>
+          </ul>
+        </div>
+      }
+      <button type="button" data-legend class="map-btn" [class.!bg-ink]="legendOpen()" [class.!text-white]="legendOpen()"
+        title="מקרא" aria-label="מקרא למפה" [attr.aria-expanded]="legendOpen()" (click)="legendOpen.set(!legendOpen())"><app-icon name="info" [size]="18" /></button>
+    </div>
+  `,
 })
 export class CityMap implements AfterViewInit, OnDestroy {
   readonly queue = input<QueueRow[]>([]);
@@ -27,6 +64,13 @@ export class CityMap implements AfterViewInit, OnDestroy {
   /** While on, a click on the map reports the point (for marking a pickup by hand). */
   readonly pickPoint = input(false);
   readonly pointPicked = output<LatLon>();
+  /** Shows the "enlarge" button on the map; off inside the big map. */
+  readonly canExpand = input(true);
+  readonly expand = output<void>();
+  protected readonly legendOpen = signal(false);
+  /** Zoomed out: marks drawn smaller. */
+  protected readonly far = signal(false);
+  private zoom = 13;
 
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
   private map?: L.Map;
@@ -48,6 +92,14 @@ export class CityMap implements AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap',
     }).addTo(this.map);
     this.layer.addTo(this.map);
+    // Marks follow the zoom: smaller when zoomed out.
+    this.map.on('zoomend', () => {
+      const z = this.map!.getZoom();
+      if (z === this.zoom) return;
+      this.zoom = z;
+      this.far.set(z <= 13);
+      this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
+    });
     this.map.on('click', (e: L.LeafletMouseEvent) => {
       if (this.pickPoint()) this.pointPicked.emit({ lat: e.latlng.lat, lon: e.latlng.lng });
     });
@@ -93,12 +145,24 @@ export class CityMap implements AfterViewInit, OnDestroy {
       else
         L.polyline(route.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 4, opacity: 0.7, dashArray: '6 8' }).addTo(this.layer);
     }
+    // Pin size by zoom: full near the street, smaller as the map shows more of the city.
+    const scale = this.zoom >= 15 ? 1 : this.zoom >= 13 ? 0.75 : 0.55;
     for (const q of queue) {
       if (!q.location) continue;
       const sel = q.id === selected;
-      L.circleMarker([q.location.lat, q.location.lon], {
-        radius: sel ? 10 : 7, color: sel ? '#16a34a' : '#fff', weight: sel ? 4 : 2,
-        fillColor: WAIT_COLORS[waitClass(q)], fillOpacity: 1, dashArray: q.approximateLocation ? '3 3' : undefined,
+      const w = Math.round((sel ? 26 : 20) * scale);
+      const h = Math.round(w * 1.4);
+      L.marker([q.location.lat, q.location.lon], {
+        icon: L.divIcon({
+          className: '',
+          html: pinSvg(WAIT_COLORS[waitClass(q)], sel, q.approximateLocation, w, h),
+          iconSize: [w, h],
+          // The tip of the pin is on the address; the pin itself stands above it, beside the house number.
+          iconAnchor: [w / 2, h],
+          tooltipAnchor: [0, -h * 0.6],
+        }),
+        zIndexOffset: sel ? 1000 : 0,
+        keyboard: false,
       })
         .bindTooltip(`פנייה ${q.number}: ${q.passengers.map((p) => p.fullName).join(', ')}, ${q.street} ${q.buildingNumber}${q.entrance ? ', כניסה ' + q.entrance : ''}`)
         .on('click', () => this.picked.emit(q.id))
@@ -116,6 +180,16 @@ export class CityMap implements AfterViewInit, OnDestroy {
       this.fit();
     }
   }
+}
+
+/** A map pin: a drop shape with a white dot, the tip at the bottom. Selected: a green ring; approximate: dashed. */
+function pinSvg(fill: string, selected: boolean, approximate: boolean, w: number, h: number) {
+  const stroke = selected ? '#16a34a' : '#fff';
+  const sw = selected ? 3.5 : 2;
+  const dash = approximate ? ' stroke-dasharray="3 2.5"' : '';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 20 28" style="display:block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))">`
+    + `<path d="M10 27C10 27 1.5 17 1.5 10a8.5 8.5 0 0 1 17 0C18.5 17 10 27 10 27z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`
+    + `<circle cx="10" cy="10" r="3.2" fill="#fff"/></svg>`;
 }
 
 function initials(name: string) {

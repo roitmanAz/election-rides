@@ -440,10 +440,6 @@ export class DispatcherPage implements OnInit, OnDestroy {
     setTimeout(() => this.toast() === text && this.toast.set(''), 4000);
   }
 
-  protected fitMap() {
-    this.map()?.fit();
-  }
-
   protected async logout() {
     await this.auth.logout();
     await this.router.navigateByUrl('/login');

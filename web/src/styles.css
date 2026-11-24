@@ -17,6 +17,8 @@
   --color-action: #16a34a;
   --color-action-hover: #12913f;
   --color-action-soft: #e8f7ee;
+  /* Stronger than action-soft: hover on something already marked green. */
+  --color-action-soft2: #c9ecd5;
   /* The typed letters inside a list item. */
   --color-mark: #b5ebc6;
 
@@ -105,4 +107,19 @@
   background: var(--color-ok); color: #fff; font: 600 11px var(--font-sans); box-shadow: 0 0 0 2px #fff; transform: translate(-50%, -50%);
 }
 .map-car-Soon { background: #c98a00; }
+/* Zoomed out: plates and cars smaller. */
+.map-far .map-plate, .map-far .map-car { transform: translate(-50%, -50%) scale(0.72); }
+/* Round icon buttons that sit on the map. */
+.map-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  background: var(--color-surface); color: var(--color-ink); box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25); cursor: pointer;
+}
+.map-btn:hover { background: var(--color-soft); }
+/* Legend swatches: the same drop shape as the pins. */
+.legend-pin {
+  display: inline-block; width: 12px; height: 12px; flex-shrink: 0; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0, 0, 0, 0.15);
+}
+.legend-pin-sel { box-shadow: 0 0 0 2.5px #16a34a; }
+.legend-pin-approx { outline: 1.5px dashed #4b5650; outline-offset: 1px; box-shadow: none; }
 .map-car-OnTrip, .map-car-Break { background: var(--color-muted); }
