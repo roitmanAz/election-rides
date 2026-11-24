@@ -1,5 +1,22 @@
 namespace ElectionRides.Api.Domain;
 
+public enum RenameStatus { Pending = 1, Approved = 2, Rejected = 3 }
+
+/// <summary>A city admin's request to rename a shared-list community; applies to every city once a system admin approves.</summary>
+public class CommunityRename
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public int CatalogId { get; set; }
+    public Guid CityId { get; set; }
+    public required string OldName { get; set; }
+    public required string NewName { get; set; }
+    public Guid RequestedById { get; set; }
+    public DateTimeOffset RequestedAt { get; set; } = DateTimeOffset.UtcNow;
+    public RenameStatus Status { get; set; } = RenameStatus.Pending;
+    public Guid? DecidedById { get; set; }
+    public DateTimeOffset? DecidedAt { get; set; }
+}
+
 /// <summary>
 /// The shared list of communities (chasidut and groups) for the whole system. Each city admin picks
 /// which of them appear in their city (spec 3.1); a city can still add its own communities by hand.

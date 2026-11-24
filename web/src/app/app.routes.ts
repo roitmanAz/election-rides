@@ -65,6 +65,7 @@ export const routes: Routes = [
       { path: 'cities', loadComponent: () => import('./admin/system-admin').then((m) => m.CitiesPage), title: 'ערים · מטה רכב' },
       { path: 'operations', loadComponent: () => import('./admin/system-admin').then((m) => m.OperationsPage), title: 'מבצעי בחירות · מטה רכב' },
       { path: 'live', loadComponent: () => import('./admin/system-pages').then((m) => m.LivePage), title: 'תמונת מצב · מטה רכב' },
+      { path: 'catalog', loadComponent: () => import('./admin/system-pages').then((m) => m.CatalogPage), title: 'קהילות · מטה רכב' },
       { path: 'reports', loadComponent: () => import('./admin/system-pages').then((m) => m.ReportsPage), title: 'דוחות · מטה רכב' },
       { path: 'certificates', loadComponent: () => import('./admin/system-pages').then((m) => m.CertificatesPage), title: 'אישורי מחיקה · מטה רכב' },
       { path: 'audit', loadComponent: () => import('./admin/system-pages').then((m) => m.AuditPage), title: 'יומן פעולות · מטה רכב' },

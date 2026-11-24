@@ -129,6 +129,7 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
 });
 app.MapAuth();
 app.MapCityLists();
+app.MapCommunityCatalog();
 app.MapClusters();
 app.MapCitySettings();
 app.MapDashboard();

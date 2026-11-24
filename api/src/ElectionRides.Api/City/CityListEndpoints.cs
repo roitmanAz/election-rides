@@ -29,14 +29,6 @@ public static class CityListEndpoints
             await db.Communities.Where(c => c.CityId == me.CityId()).OrderBy(c => c.Name)
                 .Select(c => new { c.Id, c.Name, source = c.CatalogId == null ? "Manual" : "Catalog" }).ToListAsync(ct));
 
-        // The shared list, with what this city picked (spec 3.1).
-        g.MapGet("/communities/catalog", async (ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
-        {
-            var city = me.CityId();
-            var picked = (await db.Communities.Where(c => c.CityId == city && c.CatalogId != null).Select(c => c.CatalogId!.Value).ToListAsync(ct)).ToHashSet();
-            return (await db.CommunityCatalog.OrderBy(c => c.Name).ToListAsync(ct)).Select(c => new { c.Id, c.Name, chosen = picked.Contains(c.Id) });
-        }).RequireAuthorization(Policies.CityAdmin);
-
         // Saves the city's choice from the shared list: ticked ones are added (a hand-added community
         // with the same name is linked instead of doubled), unticked ones leave the city's list.
         g.MapPut("/communities/catalog", async (CatalogChoiceBody body, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>

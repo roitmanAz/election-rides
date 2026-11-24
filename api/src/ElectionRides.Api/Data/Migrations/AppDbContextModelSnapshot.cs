@@ -886,6 +886,52 @@ namespace ElectionRides.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ElectionRides.Api.Domain.CommunityRename", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CatalogId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NewName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("OldName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("CommunityRenames");
+                });
+
             modelBuilder.Entity("ElectionRides.Api.Domain.DeletionCertificate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1627,6 +1673,15 @@ namespace ElectionRides.Api.Data.Migrations
                     b.HasOne("ElectionRides.Api.Domain.City", null)
                         .WithMany()
                         .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ElectionRides.Api.Domain.CommunityRename", b =>
+                {
+                    b.HasOne("ElectionRides.Api.Domain.CommunityCatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

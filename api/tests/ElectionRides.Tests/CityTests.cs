@@ -114,7 +114,7 @@ public class CityTests(ApiFactory api)
     {
         var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
         var catalog = (await Json(await admin.GetAsync("/api/city/communities/catalog"))).EnumerateArray().ToList();
-        Assert.Equal(112, catalog.Count);
+        Assert.All(CommunityCatalogItem.Seed, n => Assert.Contains(catalog, c => c.GetProperty("name").GetString() == n));
         int Id(string name) => catalog.First(c => c.GetProperty("name").GetString() == name).GetProperty("id").GetInt32();
 
         // A hand-added community with the same name is linked, not doubled.
@@ -129,5 +129,35 @@ public class CityTests(ApiFactory api)
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync($"/api/city/communities/{gur}", new { name = "גור 2" })).StatusCode);
         await admin.PutAsJsonAsync("/api/city/communities/catalog", new { ids = new[] { Id("בעלזא") } });
         Assert.Single((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray());
+    }
+
+    [Fact]
+    public async Task New_community_joins_the_shared_list_and_renaming_waits_for_a_system_admin()
+    {
+        var (admin, city, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        var (sys, _, _) = await TestUsers.SignedIn(api, UserRole.SystemAdmin);
+        var name = "קהילה " + Guid.NewGuid().ToString("N")[..6];
+
+        // Added by a city admin: straight into the shared list, and picked for the city.
+        var added = await Json(await admin.PostAsJsonAsync("/api/city/communities/catalog/new", new { name }));
+        var id = added.GetProperty("id").GetInt32();
+        Assert.Contains((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray(), c => c.GetProperty("name").GetString() == name);
+
+        // Rename request: nothing changes until approved.
+        var renamed = name + " חדש";
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/city/communities/catalog/{id}/rename", new { name = renamed })).StatusCode);
+        var mine = (await Json(await admin.GetAsync("/api/city/communities/catalog"))).EnumerateArray().First(c => c.GetProperty("id").GetInt32() == id);
+        Assert.Equal(name, mine.GetProperty("name").GetString());
+        Assert.Equal(renamed, mine.GetProperty("pendingName").GetString());
+
+        var request = (await Json(await sys.GetAsync("/api/admin/catalog"))).GetProperty("requests").EnumerateArray()
+            .First(r => r.GetProperty("catalogId").GetInt32() == id);
+        Assert.Equal(city.Name, request.GetProperty("city").GetString());
+        Assert.Equal(HttpStatusCode.NoContent, (await sys.PostAsync($"/api/admin/catalog/requests/{request.GetProperty("id").GetGuid()}/approve", null)).StatusCode);
+        Assert.Contains((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray(), c => c.GetProperty("name").GetString() == renamed);
+
+        // A system admin renames directly; a city admin cannot use the system admin's route.
+        Assert.Equal(HttpStatusCode.NoContent, (await sys.PutAsJsonAsync($"/api/admin/catalog/{id}", new { name = name + " ב" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await admin.PutAsJsonAsync($"/api/admin/catalog/{id}", new { name = "x" })).StatusCode);
     }
 }

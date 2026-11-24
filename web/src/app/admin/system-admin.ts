@@ -21,6 +21,7 @@ export class SystemAdmin {
     { path: 'live', label: 'תמונת מצב', icon: 'pulse' },
     { path: 'cities', label: 'ערים', icon: 'city' },
     { path: 'operations', label: 'מבצעי בחירות', icon: 'calendar' },
+    { path: 'catalog', label: 'קהילות', icon: 'comms' },
     { path: 'reports', label: 'דוחות', icon: 'chart' },
     { path: 'certificates', label: 'אישורי מחיקה', icon: 'trash' },
     { path: 'audit', label: 'יומן פעולות', icon: 'list' },

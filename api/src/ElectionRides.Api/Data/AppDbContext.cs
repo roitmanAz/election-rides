@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<AuditEntry> Audit => Set<AuditEntry>();
     public DbSet<Community> Communities => Set<Community>();
     public DbSet<CommunityCatalogItem> CommunityCatalog => Set<CommunityCatalogItem>();
+    public DbSet<CommunityRename> CommunityRenames => Set<CommunityRename>();
     public DbSet<Street> Streets => Set<Street>();
     public DbSet<Cluster> Clusters => Set<Cluster>();
     public DbSet<BallotBox> BallotBoxes => Set<BallotBox>();
@@ -84,6 +85,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(x => new { x.CityId, x.Name }).IsUnique();
             e.HasOne<City>().WithMany().HasForeignKey(x => x.CityId);
             e.HasOne<CommunityCatalogItem>().WithMany().HasForeignKey(x => x.CatalogId).OnDelete(DeleteBehavior.SetNull);
+        });
+        b.Entity<CommunityRename>(e =>
+        {
+            e.Property(x => x.OldName).HasMaxLength(60);
+            e.Property(x => x.NewName).HasMaxLength(60);
+            e.HasOne<CommunityCatalogItem>().WithMany().HasForeignKey(x => x.CatalogId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.Status);
         });
         b.Entity<CommunityCatalogItem>(e =>
         {

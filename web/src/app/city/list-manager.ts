@@ -16,6 +16,8 @@ interface CatalogItem {
   id: number;
   name: string;
   chosen: boolean;
+  /** This city's rename request, waiting for a system admin. */
+  pendingName: string | null;
 }
 
 /**
@@ -102,25 +104,56 @@ interface CatalogItem {
       </ol>
     </section>
 
-    <app-dialog [open]="catalogOpen()" title="אילו קהילות יופיעו בעיר?" [width]="720" (closed)="catalogOpen.set(false)">
+    <app-dialog [open]="catalogOpen()" title="אילו קהילות יופיעו בעיר?" [width]="760" (closed)="catalogOpen.set(false)">
       <div class="grid gap-3">
-        <div class="relative">
-          <span class="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted"><app-icon name="search" [size]="18" /></span>
-          <input class="input ps-10" placeholder="חיפוש ברשימה" aria-label="חיפוש ברשימה הכללית" [ngModel]="catalogQuery()" (ngModelChange)="catalogQuery.set($event)" />
+        <div class="grid gap-3 sm:grid-cols-2 sm:items-start">
+          <div class="field">
+            <label class="label" for="cat-search">מה לחפש?</label>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted"><app-icon name="search" [size]="18" /></span>
+              <input id="cat-search" class="input ps-10" placeholder="חיפוש ברשימה" [ngModel]="catalogQuery()" (ngModelChange)="catalogQuery.set($event)" />
+            </div>
+          </div>
+          <form class="field" (ngSubmit)="addToCatalog()">
+            <label class="label" for="cat-new">איזו קהילה חסרה ברשימה?</label>
+            <div class="flex gap-2">
+              <input id="cat-new" name="catNew" class="input" maxlength="60" [class.invalid]="newCatError()" [(ngModel)]="newCatName" (input)="newCatError.set('')" />
+              <button class="btn-primary shrink-0" type="submit" [disabled]="busy()">שמירה</button>
+            </div>
+            <div class="error-text">{{ newCatError() }}</div>
+          </form>
         </div>
-        <div class="flex flex-wrap items-center gap-3 text-sm">
-          <span class="text-muted">נבחרו {{ picked().size }} מתוך {{ catalog().length }}</span>
-          @if (catalogQuery().trim()) { <span class="text-muted">· מוצגות {{ catalogShown().length }}</span> }
-        </div>
-        <div class="grid max-h-[50vh] gap-x-4 gap-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-line p-3 sm:grid-cols-2 md:grid-cols-3">
+        <p class="text-sm text-muted">נבחרו {{ picked().size }} מתוך {{ catalog().length }}@if (catalogQuery().trim()) { · מוצגות {{ catalogShown().length }} }</p>
+        <div class="grid max-h-[max(160px,calc(92vh-540px))] gap-x-3 sm:max-h-[max(180px,calc(92vh-430px))] gap-y-1 overflow-y-auto rounded-2xl border-[1.5px] border-line p-2 sm:grid-cols-2 md:grid-cols-3">
           @for (c of catalogShown(); track c.id) {
-            <label class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 hover:bg-soft">
-              <input type="checkbox" class="size-4 shrink-0 accent-[var(--color-action)]" [checked]="picked().has(c.id)" (change)="togglePick(c.id)" />
-              <span [innerHTML]="markCatalog(c.name)"></span>
-            </label>
-          } @empty { <p class="text-muted">לא נמצאה קהילה שמתאימה לחיפוש</p> }
+            <div class="relative rounded-lg hover:bg-soft">
+              @if (renamingId() === c.id) {
+                <div class="grid gap-1 p-1.5">
+                  <input class="input h-10" maxlength="60" [attr.aria-label]="'שם חדש ל' + c.name" [(ngModel)]="renameText" (input)="renameError.set('')"
+                    [class.invalid]="renameError()" (keydown.enter)="askRename(c)" (keydown.escape)="$event.stopPropagation(); renamingId.set(null)" #rn />
+                  <div class="flex gap-1.5">
+                    <button type="button" class="btn-primary h-9 px-3 text-sm" (click)="askRename(c)">שליחה לאישור</button>
+                    <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="renamingId.set(null)">ביטול</button>
+                  </div>
+                  @if (renameError()) { <span class="error-text">{{ renameError() }}</span> }
+                </div>
+              } @else {
+                <label class="flex min-h-10 cursor-pointer items-start gap-2 py-2 pe-8 ps-2">
+                  <input type="checkbox" class="mt-1 size-4 shrink-0 accent-[var(--color-action)]" [checked]="picked().has(c.id)" (change)="togglePick(c.id)" />
+                  <span class="grid">
+                    <span [innerHTML]="markCatalog(c.name)"></span>
+                    @if (c.pendingName) { <span class="text-xs font-medium text-warn">ממתין לאישור: {{ c.pendingName }}</span> }
+                  </span>
+                </label>
+                <button type="button" class="absolute end-1 top-1 grid size-7 place-items-center rounded-md text-muted hover:bg-soft2 hover:text-ink"
+                  [attr.aria-label]="'שינוי השם של ' + c.name" title="שינוי שם (לכל הערים, באישור מנהל מערכת)" (click)="startRename(c)">
+                  <app-icon name="edit" [size]="15" />
+                </button>
+              }
+            </div>
+          } @empty { <p class="p-2 text-muted">לא נמצאה קהילה שמתאימה לחיפוש</p> }
         </div>
-        <p class="text-sm text-muted">רק הקהילות שמסומנות מופיעות למוקדן. הורדת סימון מוציאה את הקהילה מרשימת העיר. קהילה שאין ברשימה אפשר להוסיף ידנית.</p>
+        <p class="text-sm text-muted">רק המסומנות מופיעות למוקדן. שינוי שם חל על כל הערים, ולכן מחכה לאישור מנהל מערכת.</p>
         @if (catalogError()) { <p class="notice bad" role="alert">{{ catalogError() }}</p> }
         <div class="flex gap-2">
           <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCatalog()">שמירה</button>
@@ -176,7 +209,55 @@ export class ListManager implements OnInit {
     this.picked.set(new Set(list.filter((c) => c.chosen).map((c) => c.id)));
     this.catalogQuery.set('');
     this.catalogError.set('');
+    this.newCatName = '';
+    this.newCatError.set('');
+    this.renamingId.set(null);
     this.catalogOpen.set(true);
+  }
+
+  protected readonly newCatError = signal('');
+  protected readonly renamingId = signal<number | null>(null);
+  protected readonly renameError = signal('');
+  protected newCatName = '';
+  protected renameText = '';
+
+  /** A missing community goes into the shared list and is ticked for this city at once. */
+  protected async addToCatalog() {
+    if (!this.newCatName.trim()) return this.newCatError.set('צריך למלא שם');
+    this.busy.set(true);
+    try {
+      const r = await this.api.post<{ id: number; name: string }>('/api/city/communities/catalog/new', { name: this.newCatName });
+      const keep = new Set(this.picked());
+      keep.add(r.id);
+      this.catalog.set(await this.api.get<CatalogItem[]>('/api/city/communities/catalog'));
+      this.picked.set(keep);
+      this.newCatName = '';
+      this.catalogQuery.set('');
+      this.notice.set(`הקהילה "${r.name}" נוספה לרשימה הכללית וסומנה לעיר`);
+      await this.load();
+    } catch (e) {
+      this.newCatError.set(errorMessage(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected startRename(c: CatalogItem) {
+    this.renameText = c.pendingName ?? c.name;
+    this.renameError.set('');
+    this.renamingId.set(c.id);
+    setTimeout(() => (document.querySelector('app-dialog input[maxlength="60"].h-10') as HTMLInputElement | null)?.focus());
+  }
+
+  protected async askRename(c: CatalogItem) {
+    if (!this.renameText.trim()) return this.renameError.set('צריך למלא שם');
+    try {
+      await this.api.post(`/api/city/communities/catalog/${c.id}/rename`, { name: this.renameText });
+      this.catalog.update((list) => list.map((x) => (x.id === c.id ? { ...x, pendingName: this.renameText.trim() } : x)));
+      this.renamingId.set(null);
+    } catch (e) {
+      this.renameError.set(errorMessage(e));
+    }
   }
 
   protected togglePick(id: number) {

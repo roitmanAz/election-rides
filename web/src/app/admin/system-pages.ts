@@ -516,3 +516,143 @@ export class PartyPage implements OnInit {
     }
   }
 }
+
+// ---------------------------------------------------------------- Shared community list
+interface CatalogRow { id: number; name: string; cities: number }
+interface RenameRequest { id: string; catalogId: number; oldName: string; newName: string; city: string | null; requestedAt: string; by: string }
+
+/**
+ * The shared community list (spec 3.2): rename requests from city admins to approve or reject,
+ * and the list itself, where the system admin adds and renames directly (the change reaches every city).
+ */
+@Component({
+  selector: 'app-catalog',
+  imports: [FormsModule, Icon, DatePipe],
+  template: `
+    @if (requests().length) {
+      <section class="card mb-4 overflow-hidden">
+        <div class="border-b border-line px-5 py-4"><h2 class="text-lg font-semibold">בקשות לשינוי שם ({{ requests().length }})</h2></div>
+        <div class="grid gap-2 p-3 sm:p-5">
+          @for (r of requests(); track r.id) {
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-bg px-3 py-2">
+              <span>מ-<b>{{ r.oldName }}</b> ל-<b>{{ r.newName }}</b></span>
+              <span class="text-sm text-muted">{{ r.city }} · {{ r.by }} · {{ r.requestedAt | date: 'dd.MM HH:mm' }}</span>
+              <span class="ms-auto flex gap-2">
+                <button type="button" class="btn-primary h-10 px-4" (click)="decide(r, 'approve')">אישור</button>
+                <button type="button" class="btn-secondary h-10 px-4" (click)="decide(r, 'reject')">דחייה</button>
+              </span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+    <section class="card overflow-hidden">
+      <div class="border-b border-line px-5 py-4"><h1 class="text-xl font-semibold">קהילות</h1></div>
+      <div class="grid gap-3 border-b border-line p-5 sm:grid-cols-2 sm:items-start">
+        <div class="field">
+          <label class="label" for="sc-search">מה לחפש?</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 grid place-items-center text-muted"><app-icon name="search" [size]="18" /></span>
+            <input id="sc-search" class="input ps-10" placeholder="חיפוש ברשימה" [ngModel]="q()" (ngModelChange)="q.set($event)" />
+          </div>
+        </div>
+        <form class="field" (ngSubmit)="add()">
+          <label class="label" for="sc-new">איזו קהילה להוסיף?</label>
+          <div class="flex gap-2">
+            <input id="sc-new" name="scNew" class="input" maxlength="60" [class.invalid]="addError()" [(ngModel)]="newName" (input)="addError.set('')" />
+            <button class="btn-primary shrink-0" type="submit"><app-icon name="plus" [size]="18" /> הוספה</button>
+          </div>
+          <div class="error-text">{{ addError() }}</div>
+        </form>
+      </div>
+      @if (notice()) { <p class="notice mx-5 mt-4" role="status">{{ notice() }}</p> }
+      <p class="px-5 pt-4 text-sm text-muted">מוצגות {{ shown().length }} מתוך {{ items().length }}. שינוי שם כאן חל מיד על כל הערים.</p>
+      <div class="grid gap-x-3 gap-y-1 p-3 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+        @for (c of shown(); track c.id) {
+          <div class="relative rounded-lg px-2 py-2 pe-9 odd:bg-bg">
+            @if (editingId() === c.id) {
+              <div class="grid gap-1">
+                <input class="input h-10" maxlength="60" [attr.aria-label]="'שם חדש ל' + c.name" [(ngModel)]="editName" (input)="editError.set('')"
+                  [class.invalid]="editError()" (keydown.enter)="save(c)" (keydown.escape)="editingId.set(null)" />
+                <div class="flex gap-1.5">
+                  <button type="button" class="btn-primary h-9 px-3 text-sm" (click)="save(c)">שמירה</button>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="editingId.set(null)">ביטול</button>
+                </div>
+                @if (editError()) { <span class="error-text">{{ editError() }}</span> }
+              </div>
+            } @else {
+              <span class="font-medium" [innerHTML]="mark(c.name)"></span>
+              <span class="block text-xs text-muted">{{ c.cities ? 'נבחרה ב-' + c.cities + (c.cities === 1 ? ' עיר' : ' ערים') : 'לא נבחרה עדיין' }}</span>
+              <button type="button" class="absolute end-1 top-1 grid size-7 place-items-center rounded-md text-muted hover:bg-soft2 hover:text-ink"
+                [attr.aria-label]="'שינוי השם של ' + c.name" (click)="startEdit(c)"><app-icon name="edit" [size]="15" /></button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  `,
+})
+export class CatalogPage implements OnInit {
+  private readonly api = inject(Api);
+  protected readonly items = signal<CatalogRow[]>([]);
+  protected readonly requests = signal<RenameRequest[]>([]);
+  protected readonly q = signal('');
+  protected readonly notice = signal('');
+  protected readonly addError = signal('');
+  protected readonly editError = signal('');
+  protected readonly editingId = signal<number | null>(null);
+  protected readonly shown = computed(() => {
+    const q = this.q().trim();
+    return q ? this.items().filter((c) => c.name.includes(q)) : this.items();
+  });
+  protected newName = '';
+  protected editName = '';
+
+  async ngOnInit() {
+    await this.load();
+  }
+  private async load() {
+    const r = await this.api.get<{ items: CatalogRow[]; requests: RenameRequest[] }>('/api/admin/catalog');
+    this.items.set(r.items);
+    this.requests.set(r.requests);
+  }
+  protected mark(name: string) {
+    return markHtml(name, this.q());
+  }
+  protected async add() {
+    if (!this.newName.trim()) return this.addError.set('צריך למלא שם');
+    try {
+      await this.api.post('/api/admin/catalog', { name: this.newName });
+      this.notice.set(`"${this.newName.trim()}" נוספה לרשימה הכללית`);
+      this.newName = '';
+      await this.load();
+    } catch (e) {
+      this.addError.set(errorMessage(e));
+    }
+  }
+  protected startEdit(c: CatalogRow) {
+    this.editName = c.name;
+    this.editError.set('');
+    this.editingId.set(c.id);
+  }
+  protected async save(c: CatalogRow) {
+    if (!this.editName.trim()) return this.editError.set('צריך למלא שם');
+    try {
+      await this.api.put(`/api/admin/catalog/${c.id}`, { name: this.editName });
+      this.editingId.set(null);
+      this.notice.set(`השם שונה ל"${this.editName.trim()}" בכל הערים`);
+      await this.load();
+    } catch (e) {
+      this.editError.set(errorMessage(e));
+    }
+  }
+  protected async decide(r: RenameRequest, decision: 'approve' | 'reject') {
+    try {
+      await this.api.post(`/api/admin/catalog/requests/${r.id}/${decision}`);
+      this.notice.set(decision === 'approve' ? `השם שונה ל"${r.newName}" בכל הערים` : `הבקשה לשנות את "${r.oldName}" נדחתה`);
+    } catch (e) {
+      this.notice.set(errorMessage(e));
+    }
+    await this.load();
+  }
+}
