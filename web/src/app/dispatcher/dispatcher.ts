@@ -146,7 +146,7 @@ export class DispatcherPage implements OnInit, OnDestroy {
       this.notice.set('אין עדכון חי כרגע. המסך מתעדכן כל דקה.');
     }
     // Wait minutes and the 2-minute offer alert change by themselves; refresh every 30 seconds even without changes.
-    this.clock = setInterval(() => this.reload(), 30_000);
+    this.clock = setInterval(() => this.reload(true), 30_000);
   }
 
   ngOnDestroy() {
@@ -157,22 +157,23 @@ export class DispatcherPage implements OnInit, OnDestroy {
 
   private scheduleReload() {
     clearTimeout(this.reloadTimer);
-    this.reloadTimer = setTimeout(() => this.reload(), 250);
+    this.reloadTimer = setTimeout(() => this.reload(true), 250);
   }
 
-  protected async reload() {
-    const s = await this.api.get<{ active: boolean; queue?: QueueRow[]; drivers?: DriverRow[] }>('/api/dispatch/state');
+  /** background: an automatic refresh (live update or timer), which is not the user's activity. */
+  protected async reload(background = false) {
+    const s = await this.api.get<{ active: boolean; queue?: QueueRow[]; drivers?: DriverRow[] }>('/api/dispatch/state', background);
     this.active.set(s.active);
     if (!s.active) return;
     this.queue.set(s.queue ?? []);
     this.drivers.set(s.drivers ?? []);
     if (this.selectedId() && !this.queue().some((r) => r.id === this.selectedId())) this.selectedId.set(null);
-    await this.reloadProposals();
+    await this.reloadProposals(background);
   }
 
   /** Automatic proposals, keeping the ones the dispatcher changed (as long as the driver and requests are still there). */
-  private async reloadProposals() {
-    const auto = await this.api.get<{ driverId: string; requestIds: string[] }[]>('/api/dispatch/proposals');
+  private async reloadProposals(background = false) {
+    const auto = await this.api.get<{ driverId: string; requestIds: string[] }[]>('/api/dispatch/proposals', background);
     const queued = new Set(this.queue().map((r) => r.id));
     const avail = new Set(this.available().map((d) => d.id));
     const manual = this.proposals().filter((p) => p.manual && avail.has(p.driverId))

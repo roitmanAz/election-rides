@@ -59,7 +59,7 @@ describe('LoginPage', () => {
     await submit();
     const verify = http.expectOne('/api/auth/verify');
     expect(verify.request.body).toEqual({ challengeId: 'c1', code: '123456' });
-    verify.flush({ status: 'signed-in', user: { id: 'u1', fullName: 'רחל', email: 'rachel@example.com', role: 'Operator', cityId: 'x', cityName: 'ירושלים' } });
+    verify.flush({ status: 'signed-in', user: { id: 'u1', fullName: 'רחל', email: 'rachel@example.com', role: 'Operator', cityId: 'x', cityName: 'ירושלים', roles: ['Operator'], idleMinutes: 30 } });
     await settle();
     expect(nav).toHaveBeenCalledWith('/');
   });

@@ -126,14 +126,14 @@ export class DashboardPage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     await this.load();
-    this.timer = setInterval(() => this.load(), 60_000);
+    this.timer = setInterval(() => this.load(true), 60_000);
   }
 
   ngOnDestroy() {
     clearInterval(this.timer);
   }
 
-  private async load() {
-    this.d.set(await this.api.get<Dashboard>('/api/city/dashboard'));
+  private async load(background = false) {
+    this.d.set(await this.api.get<Dashboard>('/api/city/dashboard', background));
   }
 }

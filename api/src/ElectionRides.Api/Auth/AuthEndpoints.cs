@@ -13,7 +13,8 @@ public record LoginRequest(string Email, string Password);
 public record VerifyRequest(Guid ChallengeId, string Code);
 public record ResendRequest(Guid ChallengeId);
 public record SetPasswordRequest(string Token, string Password);
-public record MeResponse(Guid Id, string FullName, string Email, string Role, List<string> Roles, Guid? CityId, string? CityName);
+/// <param name="IdleMinutes">Minutes without activity before the session ends; the screen warns 2 minutes before.</param>
+public record MeResponse(Guid Id, string FullName, string Email, string Role, List<string> Roles, Guid? CityId, string? CityName, int IdleMinutes);
 
 public static class AuthEndpoints
 {
@@ -70,7 +71,7 @@ public static class AuthEndpoints
             if (!policy.RequireEmailCode || await IsTrustedDevice(db, user, http, ct))
             {
                 await SignIn(http, db, user, policy, ct);
-                return Results.Ok(new { status = "signed-in", user = Me(user) });
+                return Results.Ok(new { status = "signed-in", user = Me(user, policy.IdleTimeoutMinutes) });
             }
 
             var challenge = await SendCode(db, mail, user, ct);
@@ -108,7 +109,7 @@ public static class AuthEndpoints
             });
 
             await SignIn(http, db, user, policy, ct);
-            return Results.Ok(new { status = "signed-in", user = Me(user) });
+            return Results.Ok(new { status = "signed-in", user = Me(user, policy.IdleTimeoutMinutes) });
         });
 
         g.MapPost("/resend", async (ResendRequest req, AppDbContext db, IEmailSender mail, CancellationToken ct) =>
@@ -152,11 +153,11 @@ public static class AuthEndpoints
         {
             var id = Guid.Parse(p.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var user = await db.Users.Include(u => u.City).FirstAsync(u => u.Id == id, ct);
-            return Results.Ok(Me(user));
+            return Results.Ok(Me(user, int.TryParse(p.FindFirstValue(SessionPolicy.IdleClaim), out var idle) ? idle : 30));
         }).RequireAuthorization();
     }
 
-    static MeResponse Me(AppUser u) => new(u.Id, u.FullName, u.Email, u.Role.ToString(), u.AllRoles().Select(r => r.ToString()).ToList(), u.CityId, u.City?.Name);
+    static MeResponse Me(AppUser u, int idleMinutes) => new(u.Id, u.FullName, u.Email, u.Role.ToString(), u.AllRoles().Select(r => r.ToString()).ToList(), u.CityId, u.City?.Name, idleMinutes);
 
     static async Task<bool> IsTrustedDevice(AppDbContext db, AppUser user, HttpContext http, CancellationToken ct)
     {

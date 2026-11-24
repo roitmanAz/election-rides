@@ -14,6 +14,8 @@ export interface Me {
   roles: Role[];
   cityId: string | null;
   cityName: string | null;
+  /** Minutes without activity before the session ends (security policy). */
+  idleMinutes: number;
 }
 
 export type LoginResult =

@@ -14,6 +14,8 @@ public static class SessionPolicy
 {
     public const string IdleClaim = "idle";
     public const string CityClaim = "city";
+    /// <summary>Sent by the screen on automatic refreshes, which do not keep the session alive.</summary>
+    public const string BackgroundHeader = "X-Background";
     public const string LastSeenItem = "last";
 
     public static async Task Validate(CookieValidatePrincipalContext ctx)
@@ -48,8 +50,10 @@ public static class SessionPolicy
             ctx.ShouldRenew = true;
         }
 
-        // Refresh "last seen" at most once a minute, so the cookie is not rewritten on every request.
-        if (now - last > TimeSpan.FromMinutes(1))
+        // Refresh "last seen" at most every 20 seconds, so the cookie is not rewritten on every request
+        // and the screen's countdown (core/idle-watch.ts) stays in step with the server.
+        // Automatic refreshes by the screen (marked with the header) are not activity of the user.
+        if (now - last > TimeSpan.FromSeconds(20) && !ctx.HttpContext.Request.Headers.ContainsKey(BackgroundHeader))
         {
             ctx.Properties.Items[LastSeenItem] = now.ToString("O");
             ctx.ShouldRenew = true;

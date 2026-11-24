@@ -192,6 +192,18 @@ public class CitySetupTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Signed_in_user_learns_the_idle_limit_for_the_warning()
+    {
+        var (op, _, _) = await TestUsers.SignedIn(api, UserRole.Operator);
+        var me = await Json(await op.GetAsync("/api/auth/me"));
+        Assert.True(me.GetProperty("idleMinutes").GetInt32() >= 15);
+        // An automatic refresh is still answered; it just does not count as activity.
+        var bg = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        bg.Headers.Add("X-Background", "1");
+        Assert.Equal(HttpStatusCode.OK, (await op.SendAsync(bg)).StatusCode);
+    }
+
+    [Fact]
     public async Task City_admin_cannot_create_a_system_admin()
     {
         var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);

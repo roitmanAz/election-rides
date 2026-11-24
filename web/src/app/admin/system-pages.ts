@@ -78,13 +78,13 @@ export class LivePage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     await this.load();
-    this.timer = setInterval(() => this.load(), 60_000);
+    this.timer = setInterval(() => this.load(true), 60_000);
   }
   ngOnDestroy() {
     clearInterval(this.timer);
   }
-  private async load() {
-    this.v.set(await this.api.get<Live>('/api/admin/live'));
+  private async load(background = false) {
+    this.v.set(await this.api.get<Live>('/api/admin/live', background));
   }
   protected tiles(l: Live) {
     const t = l.totals!;
