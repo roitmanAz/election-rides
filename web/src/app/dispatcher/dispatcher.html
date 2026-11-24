@@ -14,7 +14,7 @@
       <p class="notice bad mx-4 mt-3 flex items-center gap-3" role="alert">{{ notice() }}
         <button type="button" class="ms-auto text-sm underline" (click)="notice.set('')">סגירה</button></p>
     }
-    <div class="grid gap-3 p-3 xl:h-[calc(100vh-68px)] xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(320px,380px)]">
+    <div class="grid gap-3 p-3 xl:h-[calc(100vh-68px)] xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(400px,0.95fr)]">
 
       <!-- Queue -->
       <section class="card flex min-h-[420px] flex-col overflow-hidden" aria-label="תור פניות">
@@ -131,31 +131,32 @@
       <!-- Proposals and drivers -->
       <section class="card flex min-h-[420px] flex-col overflow-hidden" aria-label="הצעות ונהגים">
         @if (proposals().length) {
-          <div class="m-2.5 rounded-[20px] shadow-[inset_0_0_0_1.5px_var(--color-line)]">
-            <div class="m-2.5 mb-0 flex flex-wrap gap-1 rounded-[14px] bg-soft p-1">
+          <div class="m-2 shrink-0 rounded-[18px] shadow-[inset_0_0_0_1.5px_var(--color-line)]">
+            <div class="m-2 mb-0 flex flex-wrap gap-1 rounded-[12px] bg-soft p-1">
               @for (p of proposals(); track p.driverId; let i = $index) {
                 <button type="button" class="rounded-[10px] px-3 py-1.5 text-sm font-medium" [class]="i === propIdx() ? 'bg-ink text-white' : 'text-muted'"
                   (click)="propIdx.set(i)">{{ drivers().find(d => d.id === p.driverId)?.fullName }}</button>
               }
             </div>
             @if (propDriver(); as d) {
-              <div class="p-3">
-                <p class="mb-2 flex flex-wrap items-baseline gap-2"><b>הצעה ל{{ d.fullName }}</b>
+              <div class="px-3 pb-3 pt-2">
+                <p class="flex flex-wrap items-baseline gap-x-2"><b>הצעה ל{{ d.fullName }}</b>
                   <span class="text-sm text-muted">{{ d.status === 'Soon' ? 'מתפנה בעוד ' + (d.minutesToFree ?? 0) + " דק'" : 'פנוי' }}</span>
                   <span class="ms-auto text-sm text-muted">{{ propStops().length }} עצירות · {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span></p>
                 @if (trip(); as t) {
-                  <p class="mb-2 flex flex-wrap items-center gap-x-2 text-sm"><app-icon name="clock" [size]="16" class="text-muted" />
-                    <b class="tabular-nums">{{ t.km }} ק"מ · כ-{{ t.minutes }} דקות נסיעה</b>
-                    <span class="text-muted">{{ t.estimate ? '(הערכה בקו אווירי)' : 'על הכבישים' }}{{ d.location ? ', מהנהג עד הקלפי' : ', מהאיסוף הראשון עד הקלפי' }}</span></p>
+                  <p class="mb-1.5 flex items-center gap-1.5 text-sm" [title]="(t.estimate ? 'הערכה בקו אווירי' : 'על הכבישים') + (d.location ? ', מהנהג עד הקלפי' : ', מהאיסוף הראשון עד הקלפי')">
+                    <app-icon name="clock" [size]="15" class="text-muted" />
+                    <b class="tabular-nums">{{ t.km }} ק"מ · כ-{{ t.minutes }} דק' נסיעה</b>
+                    <span class="text-muted">{{ t.estimate ? '(הערכה)' : 'על הכבישים' }}</span></p>
                 }
                 @if (propStops().length) {
-                  <ol class="relative grid gap-2 border-s-4 border-action ps-4">
+                  <ol class="relative grid gap-1 border-s-4 border-action ps-4">
                     @for (r of propStops(); track r.id) {
                       <li class="flex flex-wrap items-center gap-2 text-sm">
                         <span class="-ms-[26px] size-3.5 shrink-0 rounded-full border-4 border-action bg-surface"></span>
                         <span><b>{{ r.passengers.map(p => p.fullName).join(', ') }}</b> · {{ r.street }} {{ r.buildingNumber }}</span>
                         @if (r.needsWheelchair) { <app-icon name="wc" [size]="14" /> }
-                        <button type="button" class="ms-auto h-8 rounded-lg bg-soft px-2.5 text-xs font-medium hover:text-bad" (click)="removeStop(r.id)">הסר</button>
+                        <button type="button" class="ms-auto h-7 rounded-lg bg-soft px-2 text-xs font-medium hover:text-bad" (click)="removeStop(r.id)">הסר</button>
                       </li>
                     }
                     <li class="flex flex-wrap items-center gap-2 text-sm">
@@ -163,19 +164,17 @@
                       <span>{{ cluster(propStops()[0].clusterIds[0])?.name }}</span>
                     </li>
                   </ol>
-                  @if (!d.hasSmartphone) {
-                    <div class="mt-3 rounded-2xl bg-soft text-sm">
-                      <button type="button" class="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-start font-semibold hover:bg-soft2"
-                        [attr.aria-expanded]="scriptOpen()" (click)="scriptOpen.set(!scriptOpen())">
-                        להקריא לנהג בטלפון
-                        <app-icon name="chevron" [size]="18" class="ms-auto text-muted transition-transform" [class.rotate-180]="scriptOpen()" />
+                  <div class="mt-2.5 flex gap-2">
+                    <button type="button" class="btn-primary h-11 flex-1" (click)="confirm()">{{ d.hasSmartphone ? 'שלח לנהג' : 'התקשרתי, הנהג אישר' }}</button>
+                    @if (!d.hasSmartphone) {
+                      <button type="button" class="btn-secondary h-11 px-3 text-sm" [attr.aria-expanded]="scriptOpen()" (click)="scriptOpen.set(!scriptOpen())">
+                        להקריא לנהג <app-icon name="chevron" [size]="16" class="text-muted transition-transform" [class.rotate-180]="scriptOpen()" />
                       </button>
-                      @if (scriptOpen()) {
-                        <div class="px-3 pb-3">@for (l of scriptLines(); track $index) { <p>{{ l }}</p> }</div>
-                      }
-                    </div>
+                    }
+                  </div>
+                  @if (!d.hasSmartphone && scriptOpen()) {
+                    <div class="mt-2 rounded-xl bg-soft px-3 py-2 text-sm">@for (l of scriptLines(); track $index) { <p>{{ l }}</p> }</div>
                   }
-                  <button type="button" class="btn-primary mt-3 w-full" (click)="confirm()">{{ d.hasSmartphone ? 'שלח לנהג' : 'התקשרתי, הנהג אישר' }}</button>
                 } @else {
                   <p class="text-sm text-muted">אין כרגע פנייה שמתאימה לרכב הזה.</p>
                 }
