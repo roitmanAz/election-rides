@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Eye } from '../shared/eye';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, errorMessage } from '../core/auth.service';
 
@@ -7,7 +8,7 @@ export const MIN_PASSWORD = 8;
 
 @Component({
   selector: 'app-set-password',
-  imports: [FormsModule],
+  imports: [FormsModule, Eye],
   template: `
     <main class="grid min-h-screen place-items-center p-4">
       <div class="card w-full max-w-md p-6 sm:p-8">
@@ -20,14 +21,20 @@ export const MIN_PASSWORD = 8;
           <form class="mt-6 grid gap-4" (ngSubmit)="submit()" novalidate>
             <div class="field">
               <label class="label" for="pw">מה הסיסמה החדשה?<span class="req">*</span></label>
-              <input id="pw" name="pw" type="password" class="input" dir="ltr" autocomplete="new-password"
-                [class.invalid]="pwError()" [(ngModel)]="pw" (blur)="checkPw()" />
+              <div class="relative">
+                <input id="pw" name="pw" [type]="eye1.shown() ? 'text' : 'password'" class="input pl-12" dir="ltr" autocomplete="new-password"
+                  [class.invalid]="pwError()" [(ngModel)]="pw" (blur)="checkPw()" />
+                <app-eye #eye1 />
+              </div>
               <div class="error-text">{{ pwError() }}</div>
             </div>
             <div class="field">
               <label class="label" for="pw2">אפשר להקליד אותה שוב?<span class="req">*</span></label>
-              <input id="pw2" name="pw2" type="password" class="input" dir="ltr" autocomplete="new-password"
-                [class.invalid]="pw2Error()" [(ngModel)]="pw2" (blur)="checkPw2()" />
+              <div class="relative">
+                <input id="pw2" name="pw2" [type]="eye2.shown() ? 'text' : 'password'" class="input pl-12" dir="ltr" autocomplete="new-password"
+                  [class.invalid]="pw2Error()" [(ngModel)]="pw2" (blur)="checkPw2()" />
+                <app-eye #eye2 />
+              </div>
               <div class="error-text">{{ pw2Error() }}</div>
             </div>
             @if (error()) {

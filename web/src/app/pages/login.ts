@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Eye } from '../shared/eye';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, errorMessage } from '../core/auth.service';
 
@@ -7,7 +8,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, Eye],
   template: `
     <main class="grid min-h-screen place-items-center p-4">
       <div class="card w-full max-w-md p-6 sm:p-8">
@@ -30,8 +31,11 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             </div>
             <div class="field">
               <label class="label" for="password">מה הסיסמה?<span class="req">*</span></label>
-              <input id="password" name="password" type="password" class="input" dir="ltr" autocomplete="current-password"
-                [class.invalid]="passwordError()" [(ngModel)]="password" (blur)="checkPassword()" />
+              <div class="relative">
+                <input id="password" name="password" [type]="eye.shown() ? 'text' : 'password'" class="input pl-12" dir="ltr" autocomplete="current-password"
+                  [class.invalid]="passwordError()" [(ngModel)]="password" (blur)="checkPassword()" />
+                <app-eye #eye />
+              </div>
               <div class="error-text">{{ passwordError() }}</div>
             </div>
             @if (error()) {
