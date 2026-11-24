@@ -100,7 +100,7 @@ export class CityMap implements AfterViewInit, OnDestroy {
         radius: sel ? 10 : 7, color: sel ? '#16a34a' : '#fff', weight: sel ? 4 : 2,
         fillColor: WAIT_COLORS[waitClass(q)], fillOpacity: 1, dashArray: q.approximateLocation ? '3 3' : undefined,
       })
-        .bindTooltip(`פנייה ${q.number}: ${q.passengers.map((p) => p.fullName).join(', ')}`)
+        .bindTooltip(`פנייה ${q.number}: ${q.passengers.map((p) => p.fullName).join(', ')}, ${q.street} ${q.buildingNumber}${q.entrance ? ', כניסה ' + q.entrance : ''}`)
         .on('click', () => this.picked.emit(q.id))
         .addTo(this.layer);
     }

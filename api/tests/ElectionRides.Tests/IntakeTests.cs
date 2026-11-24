@@ -35,10 +35,10 @@ public class IntakeTests(ApiFactory api)
     }
 
     static object Request(string phone, Guid street, Guid cluster, string idNumber = "000000018", string name = "יעקב פרידמן",
-        bool wheelchair = false, bool keep = false, bool ignoreDup = false, string timeMode = "Now", string? reason = null, string? other = null) => new
+        bool wheelchair = false, bool keep = false, bool ignoreDup = false, string timeMode = "Now", string? reason = null, string? other = null, string gender = "Male") => new
     {
         callerPhone = phone,
-        passengers = new[] { new { personId = (Guid?)null, fullName = name, idNumber, noId = false, gender = "Male", clusterId = (Guid?)cluster } },
+        passengers = new[] { new { personId = (Guid?)null, fullName = name, idNumber, noId = false, gender, clusterId = (Guid?)cluster } },
         streetId = street, buildingNumber = "112", entrance = "ב", driverNotes = "קומה 2",
         communityId = (Guid?)null, needsWheelchair = wheelchair, needsWalker = false, needsHelp = false,
         timeMode, windowFrom = (string?)null, windowTo = timeMode == "LeaveBy" ? "12:30" : null, urgencyReason = reason, urgencyOther = other,
@@ -105,6 +105,12 @@ public class IntakeTests(ApiFactory api)
 
         var edit = await op.PutAsJsonAsync($"/api/intake/requests/{id}", Request("0527000005", street, cluster, name: "מרים וייס", idNumber: "000000026", ignoreDup: true));
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+
+        // Changing a passenger from man to woman is saved.
+        Assert.Equal(HttpStatusCode.OK, (await op.PutAsJsonAsync($"/api/intake/requests/{id}",
+            Request("0527000005", street, cluster, name: "מרים וייס", idNumber: "000000026", ignoreDup: true, gender: "Female"))).StatusCode);
+        var saved = await Json(await op.GetAsync($"/api/intake/requests/{id}"));
+        Assert.Equal("Female", saved.GetProperty("passengers")[0].GetProperty("gender").GetString());
 
         Assert.Equal(HttpStatusCode.BadRequest, (await op.PostAsJsonAsync($"/api/intake/requests/{id}/cancel", new { reason = "אחר" })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await op.PostAsJsonAsync($"/api/intake/requests/{id}/cancel", new { reason = "הפונה ביטל" })).StatusCode);

@@ -10,6 +10,7 @@ import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { RoleSwitch } from '../shared/role-switch';
 import { Select, textOptions } from '../shared/select';
+import { Digits } from '../shared/digits';
 import {
   CANCEL_REASONS, ClusterRef, Gender, Passenger, ReturnMode, STATUS_NAMES, Status, TimeMode, URGENCY_REASONS,
   clusterLabel, formatPhone, idValid, isFamily, joinNames, phoneDigits, phoneError,
@@ -39,7 +40,7 @@ let keySeq = 0;
  */
 @Component({
   selector: 'app-operator',
-  imports: [FormsModule, Combo, Dialog, Icon, DatePipe, RoleSwitch, Select],
+  imports: [FormsModule, Combo, Dialog, Icon, DatePipe, RoleSwitch, Select, Digits],
   templateUrl: './operator.html',
 })
 export class OperatorPage implements OnInit {
@@ -224,6 +225,7 @@ export class OperatorPage implements OnInit {
 
   protected setPassengerCluster(p: Passenger, clusterId: string | null) {
     this.passengers.update((list) => list.map((x) => (x.key === p.key ? { ...x, clusterId: clusterId ?? '' } : x)));
+    if (clusterId) setTimeout(() => document.getElementById('comm')?.focus());
   }
 
   protected openNew() {
@@ -251,8 +253,12 @@ export class OperatorPage implements OnInit {
     return !e[field];
   }
 
-  /** The new passenger is added as soon as every field is valid, with no "add" button (spec 5.1). */
-  protected tryAddNew() {
+  /**
+   * The new passenger is added as soon as every field is valid, with no "add" button (spec 5.1).
+   * The section stays open and the cursor goes on to the community, then the needs (spec 5.1).
+   * keepFocus: a change that is not the last field (gender), so the cursor stays where it is.
+   */
+  protected tryAddNew(keepFocus = false) {
     const np = this.np;
     const ready = np.fullName.trim() && (np.noId || idValid(np.idNumber.trim())) && np.clusterId;
     if (!ready) return;
@@ -267,9 +273,18 @@ export class OperatorPage implements OnInit {
     this.passengers.update((list) => (existing ? list.map((x) => (x.key === key ? p : x)) : [...list, p]));
     this.newOpen.set(false);
     this.editingKey.set(null);
-    this.peopleCollapsed.set(true);
     this.duplicate.set(null);
-    setTimeout(() => document.getElementById('street')?.focus());
+    if (!keepFocus) setTimeout(() => document.getElementById('comm')?.focus());
+  }
+
+  /** One click on the closed summary opens it for editing; with one typed-in passenger, straight into that passenger. */
+  protected openPeople() {
+    this.peopleCollapsed.set(false);
+    const typed = this.selected().filter((p) => !p.fromPhone);
+    if (typed.length === 1 && this.selected().length === 1) {
+      this.editTyped(typed[0]);
+      setTimeout(() => document.getElementById('npName')?.focus());
+    }
   }
 
   protected removeTyped(p: Passenger) {
@@ -359,6 +374,8 @@ export class OperatorPage implements OnInit {
   }
 
   protected async save() {
+    // A passenger still open for editing is taken as it is now.
+    if (this.newOpen() && this.editingKey()) this.tryAddNew(true);
     if (this.missing().length || this.saving()) return;
     const body = {
       callerPhone: phoneDigits(this.phone),

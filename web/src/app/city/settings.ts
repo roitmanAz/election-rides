@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Digits } from '../shared/digits';
 import { Api } from '../core/api';
 import { errorMessage } from '../core/auth.service';
 
@@ -22,7 +23,7 @@ export function isValidPhone(v: string): boolean {
 /** City settings (spec 3.1): HQ phone (required), election day, opening hours, election type. */
 @Component({
   selector: 'app-city-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, Digits],
   template: `
     <section class="card max-w-2xl overflow-hidden">
       <div class="border-b border-line px-5 py-4"><h1 class="text-xl font-semibold">הגדרות העיר</h1></div>
@@ -30,7 +31,7 @@ export function isValidPhone(v: string): boolean {
         <form class="grid gap-4 p-5 sm:grid-cols-2" (ngSubmit)="save()" novalidate>
           <div class="field sm:col-span-2">
             <label class="label" for="hq">מה הטלפון של המטה?<span class="req">*</span></label>
-            <input id="hq" name="hq" class="input max-w-xs" type="tel" inputmode="numeric" dir="ltr" style="text-align: right"
+            <input id="hq" name="hq" class="input max-w-xs" type="tel" appDigits="phone" dir="ltr" style="text-align: right"
               [(ngModel)]="phone" [class.invalid]="phoneErr()" (blur)="checkPhone()" />
             <div class="error-text">{{ phoneErr() }}</div>
             <p class="text-sm text-muted">מוצג לנהגים בכפתור "התקשר למטה".</p>

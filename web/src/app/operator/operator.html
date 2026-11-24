@@ -1,6 +1,6 @@
 <div class="min-h-screen">
   <!-- Top bar: brand, my counts, status search, new request -->
-  <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
+  <header class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-surface px-4 py-3 sm:px-6">
     <span class="text-xl font-semibold">מטה רכב</span>
     <span class="text-muted">מוקדן · {{ auth.me()?.cityName }}</span>
     @if (mine(); as m) {
@@ -63,7 +63,7 @@
         <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">1</span>טלפון</h2>
         <div class="field max-w-xs">
           <label class="label" for="phone">מה מספר הטלפון שלך?<span class="req">*</span></label>
-          <input id="phone" name="phone" type="tel" inputmode="numeric" dir="ltr" class="input text-right text-lg" placeholder="05X-XXX-XXXX"
+          <input id="phone" name="phone" type="tel" appDigits="phone" dir="ltr" class="input text-right text-lg" placeholder="05X-XXX-XXXX"
             [(ngModel)]="phone" (ngModelChange)="onPhoneInput()" (blur)="onPhoneBlur()" [class.invalid]="phoneErr()" />
           <div class="error-text">{{ phoneErr() }}</div>
         </div>
@@ -78,7 +78,7 @@
         <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">2</span>נוסעים</h2>
 
         @if (peopleCollapsed() && selected().length) {
-          <button type="button" class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-soft px-4 py-3 text-start hover:bg-soft2" (click)="peopleCollapsed.set(false)">
+          <button type="button" class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-soft px-4 py-3 text-start hover:bg-soft2" (click)="openPeople()">
             <b>{{ selected().map(p => p.fullName).join(', ') }}</b>
             <span class="text-muted">אל {{ destText() }}</span>
             @if (needsText().length) { <span class="text-muted">· {{ needsText().join(', ') }}</span> }
@@ -131,7 +131,7 @@
               </div>
               <div class="field">
                 <label class="label" for="npId">מה מספר תעודת הזהות?<span class="req">*</span></label>
-                <input id="npId" name="npId" class="input text-right" inputmode="numeric" maxlength="9" dir="ltr" [disabled]="np.noId"
+                <input id="npId" name="npId" class="input text-right" appDigits="9" dir="ltr" [disabled]="np.noId"
                   [(ngModel)]="np.idNumber" (blur)="checkNp('id'); lookupId(); tryAddNew()" [class.invalid]="npErr().id" />
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="npNoId" class="size-4" [(ngModel)]="np.noId" (change)="np.idNumber = ''; checkNp('id'); tryAddNew()" /> לא מסר ת"ז</label>
                 <div class="error-text">{{ npErr().id }}</div>
@@ -140,8 +140,8 @@
               <fieldset class="field">
                 <legend class="label mb-1.5">גבר או אישה?<span class="req">*</span></legend>
                 <div class="flex w-max gap-1 rounded-xl bg-soft p-1">
-                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Male' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Male'">גבר</button>
-                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Female' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Female'">אישה</button>
+                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Male' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Male'; tryAddNew(true)">גבר</button>
+                  <button type="button" class="h-10 rounded-[10px] px-5 font-medium" [class]="np.gender === 'Female' ? 'bg-ink text-white' : ''" (click)="np.gender = 'Female'; tryAddNew(true)">אישה</button>
                 </div>
               </fieldset>
               <div class="field">
@@ -196,7 +196,7 @@
           </div>
           <div class="field">
             <label class="label" for="house">מה מספר הבניין?<span class="req">*</span></label>
-            <input id="house" name="house" class="input text-right" inputmode="numeric" maxlength="5" dir="ltr" [(ngModel)]="building" (blur)="checkBuilding()" [class.invalid]="buildingErr()" />
+            <input id="house" name="house" class="input text-right" appDigits="5" dir="ltr" [(ngModel)]="building" (blur)="checkBuilding()" [class.invalid]="buildingErr()" />
             <div class="error-text">{{ buildingErr() }}</div>
           </div>
           <div class="field">

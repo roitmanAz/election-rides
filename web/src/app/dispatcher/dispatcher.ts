@@ -8,6 +8,7 @@ import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { RoleSwitch } from '../shared/role-switch';
 import { Select, textOptions } from '../shared/select';
+import { Digits } from '../shared/digits';
 import { CANCEL_REASONS, formatPhone, phoneDigits, phoneError } from '../operator/intake.model';
 import { CityMap } from './city-map';
 import {
@@ -32,7 +33,7 @@ type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
 @Component({
   selector: 'app-dispatcher',
   host: { '(document:keydown.escape)': 'pinFor.set(null)' },
-  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch, Select],
+  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch, Select, Digits],
   templateUrl: './dispatcher.html',
 })
 export class DispatcherPage implements OnInit, OnDestroy {

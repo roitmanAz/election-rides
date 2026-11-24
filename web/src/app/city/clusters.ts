@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Digits } from '../shared/digits';
 import { Api } from '../core/api';
 import { errorMessage } from '../core/auth.service';
 import { Combo, ComboItem } from '../shared/combo';
@@ -48,7 +49,7 @@ export function boxesText(boxes: string[]): string {
 /** Clusters (spec 3.1): table with plate, name, address, boxes, accessibility and drop-off note; filter; edit dialog. */
 @Component({
   selector: 'app-clusters',
-  imports: [FormsModule, Dialog, Icon, Combo],
+  imports: [FormsModule, Dialog, Icon, Combo, Digits],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
@@ -108,7 +109,7 @@ export function boxesText(boxes: string[]): string {
         </div>
         <div class="field">
           <label class="label" for="cl-num">מה מספר האשכול?</label>
-          <input id="cl-num" name="number" class="input" inputmode="numeric" [(ngModel)]="form.number" [class.invalid]="err().number" (blur)="check('number')" />
+          <input id="cl-num" name="number" class="input" appDigits="4" [(ngModel)]="form.number" [class.invalid]="err().number" (blur)="check('number')" />
           <div class="error-text">{{ err().number }}</div>
         </div>
         <div class="field sm:col-span-2">

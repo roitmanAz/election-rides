@@ -10,6 +10,7 @@ import { Icon } from '../shared/icon';
 import { Select, SelectOption, dayText } from '../shared/select';
 import { filterRanked, markHtml } from '../shared/mark';
 import { RowMenu } from '../shared/row-menu';
+import { Digits } from '../shared/digits';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -467,7 +468,7 @@ interface PartySettings { partyName: string | null; privacyOfficerName: string |
 /** Privacy and party settings (spec 3.2): privacy officer, legal advisor, and the days until bases are deleted. */
 @Component({
   selector: 'app-party',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, Digits],
   template: `
     <section class="card max-w-2xl overflow-hidden">
       <div class="border-b border-line px-5 py-4"><h1 class="text-xl font-semibold">פרטיות והגדרות</h1></div>
@@ -479,7 +480,7 @@ interface PartySettings { partyName: string | null; privacyOfficerName: string |
             <span class="text-sm text-muted">לשם נשלחים אישורי המחיקה.</span></label>
           <label class="field sm:col-span-2"><span class="label">מה האימייל של היועץ המשפטי?</span><input class="input max-w-sm" type="email" dir="ltr" [(ngModel)]="p.legalAdvisorEmail" /></label>
           <label class="field sm:col-span-2"><span class="label">כמה ימים אחרי יום הבחירות נמחקים הבייסים?</span>
-            <input class="input w-32" type="number" min="1" max="365" [(ngModel)]="p.baseDeletionDays" />
+            <input class="input w-32" appDigits="3" dir="ltr" [(ngModel)]="p.baseDeletionDays" />
             <span class="text-sm text-muted">לפי היועץ המשפטי. @if (deletionDate()) { במבצע הפעיל: {{ deletionDate() | date: 'dd.MM.yyyy' }}. } @if (!p.baseDeletionDays) { כל עוד לא נקבע, אין מחיקה אוטומטית. }</span></label>
           @if (msg()) { <p class="notice sm:col-span-2" [class.bad]="bad()">{{ msg() }}</p> }
           <div class="sm:col-span-2"><button type="button" class="btn-primary" (click)="save()">שמירה</button></div>
@@ -506,7 +507,7 @@ export class PartyPage implements OnInit {
       return this.msg.set('אחד האימיילים לא תקין');
     }
     try {
-      await this.api.put('/api/admin/party', { ...p, baseDeletionDays: p.baseDeletionDays || null });
+      await this.api.put('/api/admin/party', { ...p, baseDeletionDays: p.baseDeletionDays ? +p.baseDeletionDays : null });
       const r = await this.api.get<{ deletionDate: string | null }>('/api/admin/party');
       this.deletionDate.set(r.deletionDate);
       this.bad.set(false);

@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Eye } from '../shared/eye';
+import { Digits } from '../shared/digits';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, errorMessage } from '../core/auth.service';
 
@@ -8,7 +9,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, Eye],
+  imports: [FormsModule, Eye, Digits],
   template: `
     <main class="grid min-h-screen place-items-center p-4">
       <div class="card w-full max-w-md p-6 sm:p-8">
@@ -53,7 +54,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             <div class="field">
               <label class="label" for="code">מה הקוד שקיבלת במייל?<span class="req">*</span></label>
               <input id="code" name="code" class="input text-center text-2xl tracking-[0.4em]" dir="ltr"
-                inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                appDigits="6" autocomplete="one-time-code"
                 [class.invalid]="codeError()" [(ngModel)]="code" (blur)="checkCode()" />
               <div class="error-text">{{ codeError() }}</div>
             </div>
