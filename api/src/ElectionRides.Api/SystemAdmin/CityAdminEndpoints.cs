@@ -10,6 +10,7 @@ namespace ElectionRides.Api.SystemAdmin;
 
 public record NewCityBody(int LocalityCode, string AdminName, string AdminEmail, Guid? CopyFromCityId);
 public record NewOperationBody(string Type, DateOnly? ElectionDay, List<Guid> CityIds);
+public record OperationCitiesBody(List<Guid> CityIds);
 
 /// <summary>
 /// The first part of the system admin screen (spec 3.2), built early so cities can be opened:
@@ -87,6 +88,37 @@ public static class CityAdminEndpoints
             Audit.Add(db, actor, "operation.open", $"{(type == ElectionType.Knesset ? "כנסת" : "רשויות")} {b.ElectionDay:dd.MM.yyyy}, {cities.Count} ערים");
             await db.SaveChangesAsync(ct);
             return Results.Ok(new { op.Id });
+        });
+
+        // Cities of the active operation can change after it opens. A city leaves only while it has
+        // no requests and no drivers in this operation, so nothing it did is cut off.
+        g.MapPut("/operations/{id:guid}/cities", async (Guid id, OperationCitiesBody b, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        {
+            var op = await db.Operations.Include(o => o.Cities).FirstOrDefaultAsync(o => o.Id == id, ct);
+            if (op is null) return Results.NotFound();
+            if (!op.IsActive) return Problems.Error("המבצע סגור, ואי אפשר לשנות בו ערים", 409);
+            if (b.CityIds is not { Count: > 0 }) return Problems.Error("צריך לבחור לפחות עיר אחת");
+            var wanted = await db.Cities.Where(c => b.CityIds.Contains(c.Id)).ToListAsync(ct);
+            var removed = op.Cities.Where(c => wanted.All(w => w.Id != c.Id)).ToList();
+            var added = wanted.Where(w => op.Cities.All(c => c.Id != w.Id)).ToList();
+            var removedIds = removed.Select(c => c.Id).ToList();
+            var busy = (await db.Requests.Where(r => r.OperationId == id && removedIds.Contains(r.CityId)).Select(r => r.CityId)
+                .Union(db.Drivers.Where(d => d.OperationId == id && removedIds.Contains(d.CityId)).Select(d => d.CityId))
+                .ToListAsync(ct)).ToHashSet();
+            if (busy.Count > 0)
+                return Problems.Error($"אי אפשר להוציא את {string.Join(", ", removed.Where(c => busy.Contains(c.Id)).Select(c => c.Name))}: כבר יש בה פניות או נהגים במבצע", 409);
+            foreach (var c in removed) op.Cities.Remove(c);
+            foreach (var c in added) op.Cities.Add(c);
+            if (added.Count + removed.Count > 0)
+            {
+                var actor = await db.Users.FirstAsync(u => u.Id == me.UserId(), ct);
+                var parts = new List<string>();
+                if (added.Count > 0) parts.Add("נוספו: " + string.Join(", ", added.Select(c => c.Name)));
+                if (removed.Count > 0) parts.Add("הוצאו: " + string.Join(", ", removed.Select(c => c.Name)));
+                Audit.Add(db, actor, "operation.cities", string.Join("; ", parts));
+                await db.SaveChangesAsync(ct);
+            }
+            return Results.NoContent();
         });
 
         g.MapPost("/cities", async (NewCityBody b, ClaimsPrincipal me, AppDbContext db, IGovData gov, Invitations inv, CancellationToken ct) =>

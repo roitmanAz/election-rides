@@ -56,7 +56,11 @@ public class SystemAdminTests(ApiFactory api)
         Assert.Equal(HttpStatusCode.NoContent, (await sys.PutAsJsonAsync("/api/admin/security",
             new { requireEmailCode = true, rememberDeviceHours = 24, idleTimeoutMinutes = 60, maxFailedLogins = 5, lockMinutes = 15 })).StatusCode);
         var log = await Json(await sys.GetAsync($"/api/admin/audit?q={Uri.EscapeDataString("ניתוק אחרי 60")}"));
-        Assert.True(log.GetArrayLength() >= 1);
+        Assert.True(log.GetProperty("rows").GetArrayLength() >= 1);
+        // The Hebrew action name is searchable too, even by one letter.
+        var byName = await Json(await sys.GetAsync($"/api/admin/audit?q={Uri.EscapeDataString("מדיניות")}"));
+        Assert.Contains(byName.GetProperty("rows").EnumerateArray(), r => r.GetProperty("action").GetString() == "מדיניות אבטחה");
+        Assert.True((await Json(await sys.GetAsync($"/api/admin/audit?q={Uri.EscapeDataString("מ")}"))).GetProperty("rows").GetArrayLength() >= 1);
         await sys.PutAsJsonAsync("/api/admin/security", new { requireEmailCode = true, rememberDeviceHours = 24, idleTimeoutMinutes = 30, maxFailedLogins = 5, lockMinutes = 15 });
     }
 
@@ -83,6 +87,20 @@ public class SystemAdminTests(ApiFactory api)
         Assert.Contains(report.GetProperty("cities").EnumerateArray(), c => c.GetProperty("city").GetString() == city.Name);
         var excel = await sys.GetAsync($"/api/admin/reports/{op.Id}/excel");
         Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excel.Content.Headers.ContentType?.MediaType);
+
+        // Cities of the active operation can change; a city with requests or drivers cannot leave.
+        City other;
+        await using (var db = api.NewDb())
+        {
+            other = new City { Name = "נוספת " + Guid.NewGuid().ToString("N")[..6] };
+            db.Cities.Add(other);
+            db.Drivers.Add(new Driver { CityId = city.Id, OperationId = op.Id, FullName = "נהג", Phone = "05" + Random.Shared.Next(10000000, 99999999), Seats = 4 });
+            await db.SaveChangesAsync();
+        }
+        var ids = (await Json(await sys.GetAsync("/api/admin/operations"))).EnumerateArray().First(o => o.GetProperty("id").GetGuid() == op.Id)
+            .GetProperty("cities").EnumerateArray().Select(c => c.GetProperty("id").GetGuid()).ToList();
+        Assert.Equal(HttpStatusCode.NoContent, (await sys.PutAsJsonAsync($"/api/admin/operations/{op.Id}/cities", new { cityIds = ids.Append(other.Id) })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await sys.PutAsJsonAsync($"/api/admin/operations/{op.Id}/cities", new { cityIds = new[] { other.Id } })).StatusCode);
 
         Assert.Equal(HttpStatusCode.NoContent, (await sys.PostAsync($"/api/admin/operations/{op.Id}/close", null)).StatusCode);
         var state = await Json(await admin.GetAsync("/api/city/settings"));

@@ -8,6 +8,7 @@ import { AuthService, errorMessage } from '../core/auth.service';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Select, SelectOption, dayText } from '../shared/select';
+import { markHtml } from '../shared/mark';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -221,7 +222,11 @@ export class CertificatesPage implements OnInit {
 
 // ---------------------------------------------------------------- Audit log
 interface AuditRow { id: number; at: string; userEmail: string | null; city: string | null; action: string; details: string | null }
-/** Audit log (spec 3.2): search and filter by city; entries cannot be deleted. */
+
+/**
+ * Audit log (spec 3.2): 100 rows at a time with "load more"; search over everything shown
+ * (action, details, email, city), with the searched text marked; filter by city. Entries cannot be deleted.
+ */
 @Component({
   selector: 'app-audit',
   imports: [FormsModule, DatePipe, Select],
@@ -230,18 +235,21 @@ interface AuditRow { id: number; at: string; userEmail: string | null; city: str
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
         <h1 class="text-xl font-semibold">יומן פעולות</h1>
         <app-select class="ms-auto w-48" ariaLabel="איזו עיר?" [options]="cityOptions()" [(ngModel)]="cityId" (ngModelChange)="load()" />
-        <input class="input w-64 max-w-full" placeholder="חיפוש בפעולות" aria-label="חיפוש" [(ngModel)]="q" (ngModelChange)="load()" />
+        <input class="input w-64 max-w-full" placeholder="חיפוש בפעולות" aria-label="חיפוש" [(ngModel)]="q" (ngModelChange)="typed()" />
       </div>
       <div class="p-3 text-sm">
         @for (a of rows(); track a.id) {
           <div class="grid gap-1 rounded-xl px-3 py-2 odd:bg-bg md:grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
             <span class="tabular-nums text-muted">{{ a.at | date: 'dd.MM HH:mm:ss' }}</span>
-            <span class="truncate" dir="ltr" style="text-align: right">{{ a.userEmail ?? 'המערכת' }}</span>
-            <span>{{ a.city ?? '-' }}</span>
-            <span><b>{{ actionName(a.action) }}</b>@if (a.details) { · {{ a.details }} }</span>
+            <span class="truncate" dir="ltr" style="text-align: right" [innerHTML]="mark(a.userEmail ?? 'המערכת')"></span>
+            <span [innerHTML]="mark(a.city ?? '-')"></span>
+            <span><b [innerHTML]="mark(a.action)"></b>@if (a.details) { · <span [innerHTML]="mark(a.details)"></span> }</span>
           </div>
-        } @empty { <p class="p-3 text-muted">אין רשומות.</p> }
-        <p class="px-3 pt-2 text-muted">מוצגות 300 הרשומות האחרונות. אי אפשר למחוק רשומות מהיומן.</p>
+        } @empty { <p class="p-3 text-muted">{{ loading() ? 'טוען...' : 'אין רשומות.' }}</p> }
+        <div class="flex flex-wrap items-center gap-3 px-3 pt-3">
+          @if (more()) { <button type="button" class="btn-secondary" [disabled]="loading()" (click)="loadMore()">טעינת עוד 100</button> }
+          <span class="text-muted">מוצגות {{ rows().length }} רשומות. אי אפשר למחוק רשומות מהיומן.</span>
+        </div>
       </div>
     </section>
   `,
@@ -249,33 +257,62 @@ interface AuditRow { id: number; at: string; userEmail: string | null; city: str
 export class AuditPage implements OnInit {
   private readonly api = inject(Api);
   protected readonly rows = signal<AuditRow[]>([]);
+  protected readonly more = signal(false);
+  protected readonly loading = signal(false);
   protected readonly cities = signal<{ id: string; name: string }[]>([]);
   protected readonly cityOptions = computed<SelectOption[]>(() => [{ value: null, label: 'כל הערים' }, ...this.cities().map((c) => ({ value: c.id, label: c.name }))]);
   protected cityId: string | null = null;
   protected q = '';
+  /** The search the shown rows belong to; the marks follow it, not the box while a new search loads. */
+  private readonly shownQ = signal('');
   private seq = 0;
-  private static readonly NAMES: Record<string, string> = {
-    'user.login': 'כניסה', 'user.locked': 'נעילה', 'user.password-set': 'קביעת סיסמה', 'user.add': 'הוספת משתמש', 'user.remove': 'הסרת משתמש',
-    'user.unlock': 'שחרור נעילה', 'user.bootstrap': 'מנהל מערכת ראשון', 'city.add': 'פתיחת עיר', 'city.settings': 'הגדרות עיר',
-    'city.admin-add': 'הוספת מנהל עיר', 'city.admin-remove': 'הסרת מנהל עיר', 'city.admin-invite': 'הזמנה חוזרת למנהל עיר', 'city.enable': 'הפעלת עיר', 'city.disable': 'השבתת עיר',
-    'operation.open': 'פתיחת מבצע', 'operation.close': 'סגירת מבצע', 'streets.import': 'ייבוא רחובות', 'base.import': 'טעינת בייס',
-    'base.delete': 'מחיקת בייס', 'request.cancel': 'ביטול פנייה', 'sysadmin.add': 'הוספת מנהל מערכת', 'sysadmin.remove': 'הסרת מנהל מערכת',
-    'security.policy': 'מדיניות אבטחה', 'party.settings': 'פרטיות והגדרות',
-  };
-  protected actionName(a: string) {
-    return AuditPage.NAMES[a] ?? a;
-  }
+  private timer?: ReturnType<typeof setTimeout>;
+
   async ngOnInit() {
     this.cities.set(await this.api.get<{ id: string; name: string }[]>('/api/admin/cities'));
     await this.load();
   }
-  protected async load() {
-    const seq = ++this.seq;
+  protected mark(text: string) {
+    return markHtml(text, this.shownQ());
+  }
+  /** Waits a moment after typing, so each letter does not send its own search. */
+  protected typed() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.load(), 250);
+  }
+  private async fetch(before: number | null) {
     const params = new URLSearchParams();
     if (this.cityId) params.set('cityId', this.cityId);
     if (this.q.trim()) params.set('q', this.q.trim());
-    const r = await this.api.get<AuditRow[]>(`/api/admin/audit?${params}`);
-    if (seq === this.seq) this.rows.set(r);
+    if (before !== null) params.set('before', String(before));
+    return this.api.get<{ rows: AuditRow[]; more: boolean }>(`/api/admin/audit?${params}`);
+  }
+  protected async load() {
+    const seq = ++this.seq;
+    this.loading.set(true);
+    try {
+      const r = await this.fetch(null);
+      if (seq !== this.seq) return;
+      this.shownQ.set(this.q.trim());
+      this.rows.set(r.rows);
+      this.more.set(r.more);
+    } finally {
+      if (seq === this.seq) this.loading.set(false);
+    }
+  }
+  protected async loadMore() {
+    const last = this.rows().at(-1);
+    if (!last) return;
+    const seq = this.seq;
+    this.loading.set(true);
+    try {
+      const r = await this.fetch(last.id);
+      if (seq !== this.seq) return;
+      this.rows.update((x) => [...x, ...r.rows]);
+      this.more.set(r.more);
+    } finally {
+      this.loading.set(false);
+    }
   }
 }
 

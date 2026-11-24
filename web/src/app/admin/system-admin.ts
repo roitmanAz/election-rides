@@ -344,7 +344,7 @@ interface Operation {
 /** Election operations (spec 3.2): one active at a time; open a new one with type, day and cities; close the active one. */
 @Component({
   selector: 'app-operations',
-  imports: [FormsModule, Dialog, Icon, DatePipe],
+  imports: [FormsModule, Dialog, Icon, DatePipe, RowMenu],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
@@ -355,20 +355,41 @@ interface Operation {
       <div class="grid gap-3 p-3 sm:p-5">
         @for (o of ops(); track o.id) {
           <article class="grid gap-1 rounded-2xl bg-bg p-4">
+            <div class="flex items-start gap-2">
             <h2 class="flex flex-wrap items-center gap-2 text-lg font-semibold">
               {{ o.type === 'Knesset' ? 'בחירות לכנסת' : 'בחירות לרשויות המקומיות' }} · {{ o.electionDay | date: 'dd.MM.yyyy' }}
               @if (o.isActive) { <span class="rounded-full bg-action-soft px-2.5 py-0.5 text-sm font-medium">פעיל</span> }
               @else { <span class="rounded-full bg-surface px-2.5 py-0.5 text-sm text-muted">נסגר</span> }
             </h2>
+            @if (o.isActive) {
+              <app-row-menu class="ms-auto" label="פעולות למבצע">
+                <button type="button" (click)="openCities(o)">עריכת ערים</button>
+                <button type="button" class="text-bad" (click)="openClose(o)">סגירת המבצע</button>
+              </app-row-menu>
+            }
+            </div>
             <p class="text-muted">{{ o.cities.length }} ערים: {{ cityNames(o) }}</p>
-            @if (o.isActive) { <div><button type="button" class="btn-secondary mt-1 h-9 px-3 text-sm text-bad" (click)="openClose(o)">סגירת המבצע</button></div> }
-            @else if (o.closedAt) { <p class="text-sm text-muted">נסגר {{ o.closedAt | date: 'dd.MM.yyyy HH:mm' }}</p> }
+            @if (!o.isActive && o.closedAt) { <p class="text-sm text-muted">נסגר {{ o.closedAt | date: 'dd.MM.yyyy HH:mm' }}</p> }
           </article>
         } @empty {
           <p class="px-3 py-6 text-center text-muted">עוד אין מבצעים. ערים מקבלות פניות רק בתוך מבצע פעיל.</p>
         }
       </div>
     </section>
+
+    <app-dialog [open]="!!editing()" title="אילו ערים משתתפות במבצע?" [width]="520" (closed)="editing.set(null)">
+      <div class="grid gap-1.5 sm:grid-cols-2">
+        @for (c of cities(); track c.id) {
+          <label class="flex items-center gap-2"><input type="checkbox" class="size-4" [checked]="editChosen.has(c.id)" (change)="toggleIn(editChosen, c.id)" /> {{ c.name }}</label>
+        }
+      </div>
+      <p class="mt-3 text-sm text-muted">אפשר להוסיף עיר בכל זמן. עיר שכבר יש בה פניות או נהגים במבצע לא יוצאת ממנו.</p>
+      @if (citiesError()) { <p class="notice bad mt-3" role="alert">{{ citiesError() }}</p> }
+      <div class="mt-5 flex gap-2">
+        <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCities()">שמירה</button>
+        <button type="button" class="btn-secondary" (click)="editing.set(null)">ביטול</button>
+      </div>
+    </app-dialog>
 
     <app-dialog [open]="!!toClose()" title="סגירת המבצע" [width]="480" (closed)="toClose.set(null)">
       <p>אחרי הסגירה הערים לא יקבלו פניות חדשות, ואי אפשר לפתוח את המבצע מחדש.</p>
@@ -418,6 +439,33 @@ export class OperationsPage implements OnInit {
   protected day = '';
   protected chosen = new Set<string>();
   protected readonly toClose = signal<Operation | null>(null);
+  protected readonly editing = signal<Operation | null>(null);
+  protected readonly citiesError = signal('');
+  protected editChosen = new Set<string>();
+
+  protected openCities(o: Operation) {
+    this.editChosen = new Set(o.cities.map((c) => c.id));
+    this.citiesError.set('');
+    this.editing.set(o);
+  }
+
+  protected toggleIn(set: Set<string>, id: string) {
+    set.has(id) ? set.delete(id) : set.add(id);
+  }
+
+  protected async saveCities() {
+    if (!this.editChosen.size) return this.citiesError.set('צריך לבחור לפחות עיר אחת');
+    this.busy.set(true);
+    try {
+      await this.api.put(`/api/admin/operations/${this.editing()!.id}/cities`, { cityIds: [...this.editChosen] });
+      this.editing.set(null);
+      await this.load();
+    } catch (e) {
+      this.citiesError.set(errorMessage(e));
+    } finally {
+      this.busy.set(false);
+    }
+  }
   protected readonly closeError = signal('');
   protected readonly deletionText = signal('');
 

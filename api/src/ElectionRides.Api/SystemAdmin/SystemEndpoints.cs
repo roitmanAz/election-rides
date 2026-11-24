@@ -199,15 +199,35 @@ public static class SystemEndpoints
             await db.DeletionCertificates.FirstOrDefaultAsync(c => c.Id == id, ct) is { } c ? Results.Ok(c) : Results.NotFound());
 
         // ---------- Audit log: search and filter by city; nothing can be deleted ----------
-        g.MapGet("/audit", async (Guid? cityId, string? q, AppDbContext db, CancellationToken ct) =>
+        // Search covers what the screen shows: the Hebrew action name, the details, the email and the city.
+        // 100 rows at a time, newest first; "before" continues from the last row shown.
+        g.MapGet("/audit", async (Guid? cityId, string? q, long? before, AppDbContext db, CancellationToken ct) =>
         {
+            const int page = 100;
             var query = db.Audit.AsQueryable();
             if (cityId is { } c) query = query.Where(a => a.CityId == c);
-            var text = Rules.NormalizeName(q);
-            if (text.Length > 0) query = query.Where(a => a.Action.Contains(text) || (a.Details != null && a.Details.Contains(text)) || (a.UserEmail != null && a.UserEmail.Contains(text.ToLowerInvariant())));
-            var rows = await query.OrderByDescending(a => a.Id).Take(300).ToListAsync(ct);
+            if (before is { } b) query = query.Where(a => a.Id < b);
             var cities = await db.Cities.ToDictionaryAsync(x => x.Id, x => x.Name, ct);
-            return Results.Ok(rows.Select(a => new { a.Id, a.At, a.UserEmail, city = a.CityId is { } id ? cities.GetValueOrDefault(id) : null, a.Action, a.Details }));
+            var text = Rules.NormalizeName(q);
+            if (text.Length > 0)
+            {
+                var lower = text.ToLowerInvariant();
+                var like = "%" + text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+                var actions = ActionNames.Where(n => n.Key.Contains(lower) || n.Value.Contains(text)).Select(n => n.Key).ToList();
+                var cityIds = cities.Where(x => x.Value.Contains(text)).Select(x => (Guid?)x.Key).ToList();
+                query = query.Where(a => actions.Contains(a.Action) || cityIds.Contains(a.CityId)
+                    || (a.Details != null && EF.Functions.ILike(a.Details, like)) || (a.UserEmail != null && EF.Functions.ILike(a.UserEmail, like)));
+            }
+            var rows = await query.OrderByDescending(a => a.Id).Take(page + 1).ToListAsync(ct);
+            return Results.Ok(new
+            {
+                rows = rows.Take(page).Select(a => new
+                {
+                    a.Id, a.At, a.UserEmail, city = a.CityId is { } id ? cities.GetValueOrDefault(id) : null,
+                    action = ActionNames.GetValueOrDefault(a.Action, a.Action), a.Details,
+                }),
+                more = rows.Count > page,
+            });
         });
 
         // ---------- System admins: you cannot remove yourself, and one always remains ----------
@@ -292,6 +312,18 @@ public static class SystemEndpoints
             return Results.NoContent();
         });
     }
+
+    /// <summary>The Hebrew name of each audit action, as shown and searched in the audit log.</summary>
+    public static readonly Dictionary<string, string> ActionNames = new()
+    {
+        ["user.login"] = "כניסה", ["user.locked"] = "נעילה", ["user.password-set"] = "קביעת סיסמה", ["user.add"] = "הוספת משתמש",
+        ["user.remove"] = "הסרת משתמש", ["user.unlock"] = "שחרור נעילה", ["user.roles"] = "שינוי תפקידים", ["user.bootstrap"] = "מנהל מערכת ראשון",
+        ["city.add"] = "פתיחת עיר", ["city.settings"] = "הגדרות עיר", ["city.admin-add"] = "הוספת מנהל עיר", ["city.admin-remove"] = "הסרת מנהל עיר",
+        ["city.admin-invite"] = "הזמנה חוזרת למנהל עיר", ["city.enable"] = "הפעלת עיר", ["city.disable"] = "השבתת עיר",
+        ["operation.open"] = "פתיחת מבצע", ["operation.close"] = "סגירת מבצע", ["operation.cities"] = "שינוי ערים במבצע",
+        ["streets.import"] = "ייבוא רחובות", ["base.import"] = "טעינת בייס", ["base.delete"] = "מחיקת בייס", ["request.cancel"] = "ביטול פנייה",
+        ["sysadmin.add"] = "הוספת מנהל מערכת", ["sysadmin.remove"] = "הסרת מנהל מערכת", ["security.policy"] = "מדיניות אבטחה", ["party.settings"] = "פרטיות והגדרות",
+    };
 
     static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : Rules.NormalizeName(s);
 

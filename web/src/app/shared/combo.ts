@@ -1,4 +1,5 @@
 import { Component, computed, input, model, output, signal } from '@angular/core';
+import { markHtml } from './mark';
 
 export interface ComboItem {
   id: string;
@@ -97,11 +98,7 @@ export class Combo {
   }
 
   protected mark(label: string): string {
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-    const q = (this.query() ?? '').trim();
-    if (!q) return esc(label);
-    const i = label.indexOf(q);
-    if (i < 0) return esc(label);
-    return esc(label.slice(0, i)) + '<mark class="rounded-sm bg-mark px-px font-bold text-ink">' + esc(q) + '</mark>' + esc(label.slice(i + q.length));
+    return markHtml(label, this.query());
   }
+
 }
