@@ -54,4 +54,17 @@ describe('pick-from-list field', () => {
     expect(f.componentInstance.value()).toBeNull();
     expect(input.value).toBe('');
   });
+
+  it('shows nothing until something is typed', () => {
+    const f = TestBed.createComponent(Host);
+    f.detectChanges();
+    const input = f.nativeElement.querySelector('#c') as HTMLInputElement;
+    input.dispatchEvent(new Event('focus'));
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[role=listbox]')).toBeNull();
+    input.value = 'ע';
+    input.dispatchEvent(new Event('input'));
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[role=listbox]')).not.toBeNull();
+  });
 });

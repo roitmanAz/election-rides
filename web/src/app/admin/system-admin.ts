@@ -131,7 +131,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         <div class="field">
           <label class="label" for="loc">איזו עיר?<span class="req">*</span></label>
           <app-combo inputId="loc" [items]="localities()" [(value)]="localityCode" [invalid]="!!locErr()"
-            placeholder="מקלידים לפחות 2 אותיות" emptyText="לא נמצא ברשימת היישובים" (typed)="searchLocalities($event)" (left)="checkLoc()" />
+            placeholder="מקלידים לפחות 2 אותיות" [minChars]="2" emptyText="לא נמצא ברשימת היישובים" (typed)="searchLocalities($event)" (left)="checkLoc()" />
           <div class="error-text">{{ locErr() }}</div>
         </div>
         <div class="field">

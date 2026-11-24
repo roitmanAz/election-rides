@@ -1,10 +1,10 @@
 /* ירוק (בהשראת Wavespace): לבן ואפור-ירקרק, כרטיסים לבנים מעוגלים שצפים בצל רך, כפתורים גדולים ועגולים, ירוק אחד לפעולה. Rubik לכל הטקסט. מחליף רק מראה, לא תוכן. */
 :root {
-  --page: #e8ede9; --page-muted: #5f6b63; --page-line: #d6ded8;
-  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #5f6b63; --line: #e6ebe7; --line2: #d3dbd5;
+  --page: #e8ede9; --page-muted: #4b5650; --page-line: #d6ded8;
+  --bg: #f2f5f3; --surface: #ffffff; --ink: #121a14; --muted: #4b5650; --line: #dce3de; --line2: #b9c4bc;
   --plate: #121a14; --plate2: #25302a; --action: #16a34a; --action-soft: #e8f7ee;
   --ok: #1f7a3a; --ok-soft: #e4f3e8; --warn: #a15f00; --warn-soft: #fdf0d8; --bad: #c92a2a; --bad-soft: #fde8e8;
-  --soft: #eef2ef; --soft2: #e3e9e5;
+  --soft: #e9eeea; --soft2: #d9e1db;
   --shadow: 0 8px 30px rgba(15, 30, 20, .08);
   --shadow-pop: 0 18px 48px rgba(15, 30, 20, .22);
   --display: "Rubik", "Noto Sans Hebrew", Arial, sans-serif;

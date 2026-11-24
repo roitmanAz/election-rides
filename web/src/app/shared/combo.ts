@@ -8,7 +8,7 @@ export interface ComboItem {
 
 /**
  * Pick-from-list field (spec, intake rules): substring filter, the matched text is marked,
- * and only an item from the list can be chosen, never free text.
+ * and only an item from the list can be chosen, never free text. Nothing opens until something is typed.
  */
 @Component({
   selector: 'app-combo',
@@ -16,14 +16,14 @@ export interface ComboItem {
     <div class="relative">
       <input [id]="inputId()" class="input" autocomplete="off" role="combobox" [attr.aria-expanded]="openList()"
         [class.invalid]="invalid()" [placeholder]="placeholder()" [value]="text()"
-        (input)="onType($any($event.target).value)" (focus)="openList.set(true)" (blur)="onBlur()"
+        (input)="onType($any($event.target).value)" (blur)="onBlur()"
         (keydown.arrowdown)="move(1, $event)" (keydown.arrowup)="move(-1, $event)" (keydown.enter)="pickActive($event)"
         (keydown.escape)="openList.set(false)" />
-      @if (openList()) {
+      @if (showList()) {
         <ul class="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-2xl bg-surface p-1.5 shadow-[var(--shadow-pop)]" role="listbox">
           @for (it of filtered(); track it.id; let i = $index) {
             <li role="option" [attr.aria-selected]="i === active()"
-              class="cursor-pointer rounded-xl px-3 py-2" [class.bg-soft]="i === active()"
+              class="cursor-pointer rounded-xl px-3 py-2" [class.bg-soft2]="i === active()"
               (mousedown)="$event.preventDefault(); pick(it)" (mouseenter)="active.set(i)">
               <span [innerHTML]="mark(it.label)"></span>
               @if (it.sub) { <small class="ms-2 text-muted">{{ it.sub }}</small> }
@@ -42,6 +42,8 @@ export class Combo {
   readonly placeholder = input('');
   readonly emptyText = input('לא נמצא ברשימה');
   readonly invalid = input(false);
+  /** How many letters before the list opens (e.g. 2 for a search on the server). */
+  readonly minChars = input(1);
   /** The chosen item id, or null. */
   readonly value = model<string | null>(null);
   readonly typed = output<string>();
@@ -51,6 +53,7 @@ export class Combo {
   protected readonly openList = signal(false);
   protected readonly active = signal(0);
 
+  protected readonly showList = computed(() => this.openList() && (this.query() ?? '').trim().length >= this.minChars());
   protected readonly text = computed(() => this.query() ?? this.items().find((i) => i.id === this.value())?.label ?? '');
   protected readonly filtered = computed(() => {
     const q = (this.query() ?? '').trim();
@@ -68,14 +71,13 @@ export class Combo {
 
   protected move(step: number, e: Event) {
     e.preventDefault();
-    this.openList.set(true);
     const n = this.filtered().length;
     if (n) this.active.set((this.active() + step + n) % n);
   }
 
   protected pickActive(e: Event) {
     const it = this.filtered()[this.active()];
-    if (this.openList() && it) {
+    if (this.showList() && it) {
       e.preventDefault();
       this.pick(it);
     }
@@ -100,6 +102,6 @@ export class Combo {
     if (!q) return esc(label);
     const i = label.indexOf(q);
     if (i < 0) return esc(label);
-    return esc(label.slice(0, i)) + '<mark class="rounded bg-action-soft text-ink">' + esc(q) + '</mark>' + esc(label.slice(i + q.length));
+    return esc(label.slice(0, i)) + '<mark class="rounded-sm bg-mark px-px font-bold text-ink">' + esc(q) + '</mark>' + esc(label.slice(i + q.length));
   }
 }

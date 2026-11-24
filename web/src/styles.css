@@ -8,15 +8,17 @@
   --color-bg: #f2f5f3;
   --color-surface: #ffffff;
   --color-ink: #121a14;
-  --color-muted: #5f6b63;
-  --color-line: #e6ebe7;
-  --color-line2: #d3dbd5;
-  --color-soft: #eef2ef;
-  --color-soft2: #e3e9e5;
+  --color-muted: #4b5650;
+  --color-line: #dce3de;
+  --color-line2: #b9c4bc;
+  --color-soft: #e9eeea;
+  --color-soft2: #d9e1db;
 
   --color-action: #16a34a;
   --color-action-hover: #12913f;
   --color-action-soft: #e8f7ee;
+  /* The typed letters inside a list item. */
+  --color-mark: #b5ebc6;
 
   /* Wait scale: used only for waiting times, never for anything else. */
   --color-ok: #1f7a3a;
@@ -75,7 +77,7 @@
     @apply ms-0.5 font-bold text-bad;
   }
   .input {
-    @apply h-12 w-full rounded-xl border-[1.5px] border-line2 bg-white px-3.5 text-base text-ink
+    @apply h-12 w-full rounded-xl border-[1.5px] border-line2 bg-white px-3.5 text-base text-ink placeholder:text-[#6b766f]
       focus:border-action focus:shadow-[0_0_0_3px_var(--color-action-soft)] focus:outline-none;
   }
   .input.invalid {
