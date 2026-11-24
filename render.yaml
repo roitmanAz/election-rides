@@ -5,6 +5,8 @@ services:
     name: election-rides
     runtime: docker
     plan: free
+    # Next to the database (Neon, Frankfurt) and the closest region to Israel.
+    region: frankfurt
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: false
