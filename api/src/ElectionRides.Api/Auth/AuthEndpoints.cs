@@ -1,3 +1,4 @@
+using ElectionRides.Api.Common;
 using System.Security.Claims;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Domain;
@@ -36,7 +37,7 @@ public static class AuthEndpoints
 
         g.MapPost("/login", async (LoginRequest req, AppDbContext db, IEmailSender mail, HttpContext http, CancellationToken ct) =>
         {
-            var email = (req.Email ?? "").Trim().ToLowerInvariant();
+            var email = Rules.NormalizeEmail(req.Email);
             var user = await db.Users.Include(u => u.City).FirstOrDefaultAsync(u => u.Email == email && u.IsActive, ct);
             if (user?.PasswordHash is null)
             {

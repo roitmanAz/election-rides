@@ -69,6 +69,9 @@ public static partial class Rules
     [GeneratedRegex(@"^\d{1,4}(\.\d{1,2})?$")]
     private static partial Regex SinglePattern();
 
+    /// <summary>Emails are kept and compared in lowercase only (the database refuses anything else).</summary>
+    public static string NormalizeEmail(string? s) => (s ?? "").Trim().ToLowerInvariant();
+
     public static string NormalizeName(string? s) => string.Join(' ', (s ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries));
 }
 

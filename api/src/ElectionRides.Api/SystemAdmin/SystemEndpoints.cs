@@ -193,7 +193,7 @@ public static class SystemEndpoints
             var query = db.Audit.AsQueryable();
             if (cityId is { } c) query = query.Where(a => a.CityId == c);
             var text = Rules.NormalizeName(q);
-            if (text.Length > 0) query = query.Where(a => a.Action.Contains(text) || (a.Details != null && a.Details.Contains(text)) || (a.UserEmail != null && a.UserEmail.Contains(text)));
+            if (text.Length > 0) query = query.Where(a => a.Action.Contains(text) || (a.Details != null && a.Details.Contains(text)) || (a.UserEmail != null && a.UserEmail.Contains(text.ToLowerInvariant())));
             var rows = await query.OrderByDescending(a => a.Id).Take(300).ToListAsync(ct);
             var cities = await db.Cities.ToDictionaryAsync(x => x.Id, x => x.Name, ct);
             return Results.Ok(rows.Select(a => new { a.Id, a.At, a.UserEmail, city = a.CityId is { } id ? cities.GetValueOrDefault(id) : null, a.Action, a.Details }));
@@ -288,7 +288,7 @@ public static class SystemEndpoints
 
     static async Task<(string email, string name, IResult? error)> CheckNewUser(AppDbContext db, AdminBody b, CancellationToken ct)
     {
-        var email = (b.Email ?? "").Trim().ToLowerInvariant();
+        var email = Rules.NormalizeEmail(b.Email);
         var name = Rules.NormalizeName(b.FullName);
         if (name.Length == 0) return (email, name, Problems.Error("צריך למלא שם"));
         if (!System.Net.Mail.MailAddress.TryCreate(email, out _) || !email.Contains('.')) return (email, name, Problems.Error("האימייל לא תקין"));

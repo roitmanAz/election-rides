@@ -91,7 +91,7 @@ public static class CityAdminEndpoints
 
         g.MapPost("/cities", async (NewCityBody b, ClaimsPrincipal me, AppDbContext db, IGovData gov, Invitations inv, CancellationToken ct) =>
         {
-            var email = (b.AdminEmail ?? "").Trim().ToLowerInvariant();
+            var email = Rules.NormalizeEmail(b.AdminEmail);
             var adminName = Rules.NormalizeName(b.AdminName);
             if (adminName.Length == 0) return Problems.Error("צריך למלא את שם מנהל העיר");
             if (!System.Net.Mail.MailAddress.TryCreate(email, out _) || !email.Contains('.')) return Problems.Error("האימייל של מנהל העיר לא תקין");

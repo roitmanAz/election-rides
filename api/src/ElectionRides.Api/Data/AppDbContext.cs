@@ -58,6 +58,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             // A system admin has no city; every other role must have one.
             e.ToTable(t => t.HasCheckConstraint("CK_User_CityByRole",
                 $"(\"Role\" = {(int)UserRole.SystemAdmin} AND \"CityId\" IS NULL) OR (\"Role\" <> {(int)UserRole.SystemAdmin} AND \"CityId\" IS NOT NULL)"));
+            // Emails are stored in lowercase only, so "Moshe@Gmail.com" and "moshe@gmail.com" are the same user.
+            e.ToTable(t => t.HasCheckConstraint("CK_User_EmailLower", "\"Email\" = lower(\"Email\")"));
         });
 
         b.Entity<PartySettings>(e =>

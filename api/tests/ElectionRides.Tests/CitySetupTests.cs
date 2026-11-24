@@ -169,6 +169,29 @@ public class CitySetupTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Emails_are_kept_in_lowercase_and_sign_in_ignores_capitals()
+    {
+        var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);
+        var id = Guid.NewGuid().ToString("N")[..8];
+        await admin.PostAsJsonAsync("/api/city/users", new { email = $"  Moshe.{id}@Gmail.COM ", fullName = "משה", roles = new[] { "Operator" } });
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PostAsJsonAsync("/api/city/users", new { email = $"moshe.{id}@gmail.com", fullName = "שוב", roles = new[] { "Operator" } })).StatusCode);
+
+        await using var db = api.NewDb();
+        var user = await db.Users.SingleAsync(u => u.Email == $"moshe.{id}@gmail.com");
+        user.PasswordHash = new Microsoft.AspNetCore.Identity.PasswordHasher<AppUser>().HashPassword(user, TestUsers.Password);
+        await db.SaveChangesAsync();
+        var login = await api.CreateClient().PostAsJsonAsync("/api/auth/login", new { email = $"MOSHE.{id}@GMAIL.com", password = TestUsers.Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        // The database itself refuses capitals.
+        await Assert.ThrowsAsync<DbUpdateException>(async () =>
+        {
+            db.Users.Add(new AppUser { Email = $"Big.{id}@test.local", FullName = "x", Role = UserRole.Operator, CityId = user.CityId });
+            await db.SaveChangesAsync();
+        });
+    }
+
+    [Fact]
     public async Task City_admin_cannot_create_a_system_admin()
     {
         var (admin, _, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);

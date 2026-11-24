@@ -7,6 +7,7 @@ import { Combo, ComboItem } from '../shared/combo';
 import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Shell, ShellTab } from '../shared/shell';
+import { RowMenu } from '../shared/row-menu';
 
 /** System admin screen (spec 3.2). Opens on the live status. */
 @Component({
@@ -49,7 +50,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Cities (spec 3.2): setup progress out of 6 steps, city admins, and a new city with its first admin. */
 @Component({
   selector: 'app-cities',
-  imports: [FormsModule, Dialog, Icon, Combo, DatePipe],
+  imports: [FormsModule, Dialog, Icon, Combo, DatePipe, RowMenu],
   template: `
     <section class="card overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
@@ -59,20 +60,23 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       @if (notice()) { <p class="notice mx-5 mt-4" role="status">{{ notice() }}</p> }
       <div class="grid gap-3 p-3 sm:p-5">
         @for (c of cities(); track c.id) {
-          <article class="grid gap-3 rounded-2xl bg-bg p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-            <div>
-              <div class="flex items-start gap-2">
-                <h2 class="text-lg font-semibold">{{ c.name }} @if (!c.isActive) { <span class="text-sm font-normal text-muted">(מושבתת)</span> }</h2>
-                <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="manage(c)">ניהול</button>
-              </div>
-              @for (a of c.admins; track a.email) {
-                <p class="text-sm">{{ a.fullName }} <span class="text-muted" dir="ltr">{{ a.email }}</span>
-                  @if (a.invited) { <span class="text-warn">· הוזמן, עוד לא נכנס</span> }
-                  @else if (a.lastLoginAt) { <span class="text-muted">· נכנס {{ a.lastLoginAt | date: 'dd.MM.yy HH:mm' }}</span> }
-                </p>
+          <article class="grid gap-3 rounded-2xl bg-bg p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]" [class.opacity-70]="!c.isActive">
+            <div class="flex items-start gap-2 md:contents">
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold">{{ c.name }} @if (!c.isActive) { <span class="text-sm font-normal text-bad">(מושבתת)</span> }</h2>
+                @for (a of c.admins; track a.email) {
+                  <p class="flex flex-wrap gap-x-2 text-sm"><span>{{ a.fullName }}</span><span class="text-muted" dir="ltr">{{ a.email }}</span>
+                    @if (a.invited) { <span class="text-warn">הוזמן, עוד לא נכנס</span> }
+                    @else if (a.lastLoginAt) { <span class="text-muted">נכנס {{ a.lastLoginAt | date: 'dd.MM.yy HH:mm' }}</span> }
+                  </p>
               } @empty {
-                <p class="inline-flex items-center gap-1 text-sm font-medium text-bad"><app-icon name="warn" [size]="16" /> אין מנהל עיר</p>
-              }
+                  <p class="inline-flex items-center gap-1 text-sm font-medium text-bad"><app-icon name="warn" [size]="16" /> אין מנהל עיר</p>
+                }
+              </div>
+              <app-row-menu class="ms-auto md:order-last md:self-start" [label]="'פעולות ל' + c.name">
+                <button type="button" (click)="manage(c)">ניהול</button>
+                <button type="button" [class.text-bad]="c.isActive" (click)="toToggle.set(c)">{{ c.isActive ? 'השבתה' : 'הפעלה' }}</button>
+              </app-row-menu>
             </div>
             <div>
               <p class="mb-1.5 text-sm text-muted">הקמה: {{ done(c) }} מתוך 6 שלבים</p>
@@ -116,12 +120,18 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               <button type="button" class="btn-primary" (click)="addAdmin()">הזמנה</button>
             </div>
           </section>
-          <section class="border-t border-line pt-4">
-            <h3 class="mb-1 font-semibold">{{ m.isActive ? 'השבתת העיר' : 'הפעלת העיר' }}</h3>
-            <p class="mb-2 text-sm text-muted">{{ m.isActive ? 'הנתונים נשמרים, אבל משתמשי העיר לא יוכלו להיכנס.' : 'משתמשי העיר יוכלו להיכנס שוב.' }}</p>
-            <button type="button" class="btn-secondary" [class.text-bad]="m.isActive" (click)="setActive(!m.isActive)">{{ m.isActive ? 'השבתה' : 'הפעלה' }}</button>
-          </section>
           @if (manageMsg()) { <p class="notice" [class.bad]="manageBad()" role="status">{{ manageMsg() }}</p> }
+        </div>
+      }
+    </app-dialog>
+
+    <app-dialog [open]="!!toToggle()" [title]="(toToggle()?.isActive ? 'השבתת ' : 'הפעלת ') + (toToggle()?.name ?? '')" [width]="460" (closed)="toToggle.set(null)">
+      @if (toToggle(); as t) {
+        <p>{{ t.isActive ? 'הנתונים נשמרים, אבל משתמשי העיר לא יוכלו להיכנס עד שהעיר תופעל שוב.' : 'משתמשי העיר יוכלו להיכנס שוב.' }}</p>
+        @if (toggleError()) { <p class="notice bad mt-3" role="alert">{{ toggleError() }}</p> }
+        <div class="mt-5 flex gap-2">
+          <button type="button" class="btn-primary" [class.!bg-bad]="t.isActive" (click)="setActive(t, !t.isActive)">{{ t.isActive ? 'השבתה' : 'הפעלה' }}</button>
+          <button type="button" class="btn-secondary" (click)="toToggle.set(null)">ביטול</button>
         </div>
       }
     </app-dialog>
@@ -227,12 +237,18 @@ export class CitiesPage implements OnInit {
     }
   }
 
-  protected async setActive(active: boolean) {
+  protected readonly toToggle = signal<CityRow | null>(null);
+  protected readonly toggleError = signal('');
+
+  protected async setActive(c: CityRow, active: boolean) {
+    this.toggleError.set('');
     try {
-      await this.api.post(`/api/admin/cities/${this.managed()!.id}/active`, { active });
-      await this.afterManage(active ? 'העיר הופעלה' : 'העיר הושבתה');
+      await this.api.post(`/api/admin/cities/${c.id}/active`, { active });
+      this.toToggle.set(null);
+      this.notice.set(active ? `העיר ${c.name} הופעלה` : `העיר ${c.name} הושבתה`);
+      await this.load();
     } catch (e) {
-      await this.afterManage(errorMessage(e), true);
+      this.toggleError.set(errorMessage(e));
     }
   }
 

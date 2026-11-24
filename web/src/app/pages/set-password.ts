@@ -29,7 +29,7 @@ export const MIN_PASSWORD = 8;
               <div class="error-text">{{ pwError() }}</div>
             </div>
             <div class="field">
-              <label class="label" for="pw2">אפשר להקליד אותה שוב?<span class="req">*</span></label>
+              <label class="label" for="pw2">תקליד אותה שוב בבקשה<span class="req">*</span></label>
               <div class="relative">
                 <input id="pw2" name="pw2" [type]="eye2.shown() ? 'text' : 'password'" class="input pl-12" dir="ltr" autocomplete="new-password"
                   [class.invalid]="pw2Error()" [(ngModel)]="pw2" (blur)="checkPw2()" />

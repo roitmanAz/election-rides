@@ -1,3 +1,4 @@
+using ElectionRides.Api.Common;
 using ElectionRides.Api.Data;
 using ElectionRides.Api.Domain;
 using ElectionRides.Api.Email;
@@ -37,7 +38,7 @@ public class Invitations(AppDbContext db, IEmailSender mail, IConfiguration conf
     {
         using var scope = sp.CreateScope();
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        var email = config["Bootstrap:AdminEmail"]?.Trim().ToLowerInvariant();
+        var email = Rules.NormalizeEmail(config["Bootstrap:AdminEmail"]);
         if (string.IsNullOrEmpty(email)) return;
 
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

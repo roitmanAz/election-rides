@@ -116,6 +116,8 @@ namespace ElectionRides.Api.Data.Migrations
                     b.ToTable("Users", t =>
                         {
                             t.HasCheckConstraint("CK_User_CityByRole", "(\"Role\" = 4 AND \"CityId\" IS NULL) OR (\"Role\" <> 4 AND \"CityId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_User_EmailLower", "\"Email\" = lower(\"Email\")");
                         });
                 });
 

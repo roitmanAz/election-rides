@@ -54,7 +54,7 @@ public static class UserEndpoints
 
         g.MapPost("", async (NewUserBody b, ClaimsPrincipal me, AppDbContext db, Invitations inv, CancellationToken ct) =>
         {
-            var email = (b.Email ?? "").Trim().ToLowerInvariant();
+            var email = Rules.NormalizeEmail(b.Email);
             var name = Rules.NormalizeName(b.FullName);
             if (!System.Net.Mail.MailAddress.TryCreate(email, out _) || !email.Contains('.')) return Problems.Error("האימייל לא תקין");
             if (name.Length == 0) return Problems.Error("צריך למלא שם");
