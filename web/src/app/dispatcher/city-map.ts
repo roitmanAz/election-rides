@@ -1,7 +1,6 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, effect, inject, input, output, signal, viewChild } from '@angular/core';
-import { Api } from '../core/api';
+import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, viewChild } from '@angular/core';
 import * as L from 'leaflet';
-import { ClusterRow, DriverRow, LatLon, QueueRow, waitClass } from './dispatch.model';
+import { ClusterRow, DriverRow, LatLon, QueueRow, RoadRoute, waitClass } from './dispatch.model';
 
 const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
 
@@ -33,33 +32,13 @@ export class CityMap implements AfterViewInit, OnDestroy {
   private map?: L.Map;
   private layer = L.layerGroup();
   private fitted = false;
-  private readonly api = inject(Api);
-  /** The road route for the current points, once the server answered. */
-  private readonly road = signal<{ key: string; points: LatLon[]; km: number; minutes: number } | null>(null);
-  private roadSeq = 0;
+  /** The road route of the selected proposal, when the screen has it. */
+  readonly road = input<RoadRoute | null>(null);
 
   constructor() {
     effect(() => {
       this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
     });
-    effect(() => this.loadRoad(this.route()));
-  }
-
-  private static key(route: LatLon[]) {
-    return route.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(';');
-  }
-
-  private async loadRoad(route: LatLon[]) {
-    const seq = ++this.roadSeq;
-    if (route.length < 2) return;
-    const key = CityMap.key(route);
-    if (this.road()?.key === key) return;
-    try {
-      const r = await this.api.get<{ points: LatLon[]; km: number; minutes: number } | null>(`/api/route?points=${encodeURIComponent(key)}`);
-      if (seq === this.roadSeq && r?.points?.length) this.road.set({ key, ...r });
-    } catch {
-      // No route: the straight line stays.
-    }
   }
 
   ngAfterViewInit() {
@@ -94,7 +73,7 @@ export class CityMap implements AfterViewInit, OnDestroy {
   }
 
   private draw(queue: QueueRow[], drivers: DriverRow[], clusters: ClusterRow[], selected: string | null, route: LatLon[],
-    road: { key: string; points: LatLon[]; km: number; minutes: number } | null) {
+    road: RoadRoute | null) {
     if (!this.map) return;
     this.layer.clearLayers();
     for (const c of clusters) {
@@ -106,7 +85,7 @@ export class CityMap implements AfterViewInit, OnDestroy {
       }).addTo(this.layer);
     }
     if (route.length > 1) {
-      if (road && road.key === CityMap.key(route))
+      if (road)
         L.polyline(road.points.map((p) => [p.lat, p.lon] as L.LatLngTuple), { color: '#16a34a', weight: 5, opacity: 0.9 })
           .bindTooltip(`${road.km} ק"מ על הכבישים, כ-${road.minutes} דקות נסיעה`, { sticky: true })
           .addTo(this.layer);

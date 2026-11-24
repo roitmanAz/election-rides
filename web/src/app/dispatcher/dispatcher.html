@@ -121,7 +121,7 @@
           <div class="min-h-0 flex-1">
             @if (!mapBig()) {
               @if (pinFor()) { <p class="border-b border-line bg-warn-soft px-4 py-2 text-sm font-medium text-warn">לחיצה על המפה קובעת את מקום האיסוף. Esc מבטל.</p> }
-              <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()"
+              <app-city-map #map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" [road]="road()"
                 [pickPoint]="!!pinFor()" (pointPicked)="setPin($event)" (picked)="pinFor() ? null : selectedId.set($event)" />
             }
           </div>
@@ -143,6 +143,11 @@
                 <p class="mb-2 flex flex-wrap items-baseline gap-2"><b>הצעה ל{{ d.fullName }}</b>
                   <span class="text-sm text-muted">{{ d.status === 'Soon' ? 'מתפנה בעוד ' + (d.minutesToFree ?? 0) + " דק'" : 'פנוי' }}</span>
                   <span class="ms-auto text-sm text-muted">{{ propStops().length }} עצירות · {{ d.seats }} מקומות@if (d.wheelchairCar) { · נגיש }</span></p>
+                @if (trip(); as t) {
+                  <p class="mb-2 flex flex-wrap items-center gap-x-2 text-sm"><app-icon name="clock" [size]="16" class="text-muted" />
+                    <b class="tabular-nums">{{ t.km }} ק"מ · כ-{{ t.minutes }} דקות נסיעה</b>
+                    <span class="text-muted">{{ t.estimate ? '(הערכה בקו אווירי)' : 'על הכבישים' }}{{ d.location ? ', מהנהג עד הקלפי' : ', מהאיסוף הראשון עד הקלפי' }}</span></p>
+                }
                 @if (propStops().length) {
                   <ol class="relative grid gap-2 border-s-4 border-action ps-4">
                     @for (r of propStops(); track r.id) {
@@ -240,7 +245,7 @@
 <app-dialog [open]="mapBig()" title="מפה" [width]="1400" (closed)="mapBig.set(false)">
   <div class="h-[75vh]">
     @if (mapBig()) {
-      <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" (picked)="selectedId.set($event); mapBig.set(false)" />
+      <app-city-map [queue]="queue()" [drivers]="drivers()" [clusters]="clusters()" [selectedId]="selectedId()" [route]="route()" [road]="road()" (picked)="selectedId.set($event); mapBig.set(false)" />
     }
   </div>
 </app-dialog>

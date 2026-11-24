@@ -3,6 +3,30 @@
 export type Kind = 'Men' | 'Women' | 'Family';
 export type DriverStatus = 'Free' | 'Soon' | 'OnTrip' | 'Break' | 'Finished';
 
+/** A route along the roads from our server (OSRM). */
+export interface RoadRoute {
+  points: LatLon[];
+  km: number;
+  minutes: number;
+}
+
+/** Straight-line estimate when no road route is available: distance x1.3 for the streets, at 25 km/h in town. */
+export function straightEstimate(route: LatLon[]): { km: number; minutes: number } | null {
+  if (route.length < 2) return null;
+  const R = 6371;
+  let km = 0;
+  for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1];
+    const b = route[i];
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLon = ((b.lon - a.lon) * Math.PI) / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    km += 2 * R * Math.asin(Math.sqrt(h));
+  }
+  km *= 1.3;
+  return { km: Math.round(km * 10) / 10, minutes: Math.max(1, Math.ceil((km / 25) * 60)) };
+}
+
 export interface LatLon {
   lat: number;
   lon: number;

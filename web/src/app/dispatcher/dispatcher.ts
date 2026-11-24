@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
@@ -11,7 +11,7 @@ import { Select, textOptions } from '../shared/select';
 import { CANCEL_REASONS, formatPhone, phoneDigits, phoneError } from '../operator/intake.model';
 import { CityMap } from './city-map';
 import {
-  ClusterRow, DRIVER_STATUS, DriverRow, KIND_NAMES, LatLon, QueueRow, kindOf, script, waitClass, whyNot,
+  ClusterRow, DRIVER_STATUS, DriverRow, KIND_NAMES, LatLon, QueueRow, RoadRoute, kindOf, script, straightEstimate, waitClass, whyNot,
 } from './dispatch.model';
 
 interface Proposal {
@@ -20,6 +20,8 @@ interface Proposal {
   /** The dispatcher changed this proposal; it is kept when the automatic proposals refresh. */
   manual: boolean;
 }
+
+const routeKey = (route: LatLon[]) => route.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(';');
 
 type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
 
@@ -99,6 +101,34 @@ export class DispatcherPage implements OnInit, OnDestroy {
     const start = this.propDriver()?.location;
     return [...(start ? [start] : []), ...pts, ...dests];
   });
+
+  /** The selected proposal's route along the roads, fetched once for the map and the proposal header. */
+  private readonly roadFor = signal<{ key: string; road: RoadRoute } | null>(null);
+  protected readonly road = computed(() => {
+    const r = this.roadFor();
+    return r && r.key === routeKey(this.route()) ? r.road : null;
+  });
+  /** Distance and driving time of the proposal: along the roads, or a straight-line estimate meanwhile. */
+  protected readonly trip = computed(() => {
+    const road = this.road();
+    if (road) return { km: road.km, minutes: road.minutes, estimate: false };
+    const s = straightEstimate(this.route());
+    return s ? { ...s, estimate: true } : null;
+  });
+  private roadSeq = 0;
+  private readonly roadLoader = effect(() => this.loadRoad(this.route()));
+
+  private async loadRoad(route: LatLon[]) {
+    const seq = ++this.roadSeq;
+    const key = routeKey(route);
+    if (route.length < 2 || this.roadFor()?.key === key) return;
+    try {
+      const r = await this.api.get<RoadRoute | null>(`/api/route?points=${encodeURIComponent(key)}`);
+      if (seq === this.roadSeq && r?.points?.length) this.roadFor.set({ key, road: r });
+    } catch {
+      // No route: the straight-line estimate stays.
+    }
+  }
 
   private hub?: HubConnection;
   private reloadTimer?: ReturnType<typeof setTimeout>;
