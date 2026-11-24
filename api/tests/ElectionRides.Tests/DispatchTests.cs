@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ElectionRides.Api.CityScreens;
 using ElectionRides.Api.Dispatch;
 using ElectionRides.Api.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -188,6 +189,23 @@ public class DispatchTests(ApiFactory api)
     {
         var (op, _, _, _) = await Setup();
         Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/dispatch/state")).StatusCode);
+    }
+
+    [Fact]
+    public void Average_wait_counts_every_request_of_the_day_until_it_was_assigned()
+    {
+        var now = new DateTimeOffset(2026, 12, 15, 12, 0, 0, TimeSpan.Zero);
+        DashboardEndpoints.WaitItem Item(int savedAgo, int? assignedAgo, RequestStatus status) =>
+            new(now.AddMinutes(-savedAgo), TimeMode.Now, null, assignedAgo is { } a ? now.AddMinutes(-a) : null, status);
+        var items = new[]
+        {
+            Item(60, 50, RequestStatus.Arrived),   // waited 10
+            Item(40, 20, RequestStatus.Assigned),  // waited 20
+            Item(30, null, RequestStatus.Queued),  // waiting 30 so far
+            Item(90, null, RequestStatus.Cancelled), // left out
+        };
+        Assert.Equal(20, DashboardEndpoints.AverageWait(now, items));
+        Assert.Equal(0, DashboardEndpoints.AverageWait(now, []));
     }
 
     [Fact]

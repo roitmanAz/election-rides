@@ -136,7 +136,7 @@ export class DashboardPage implements OnInit, OnDestroy {
     return [
       { label: 'פניות היום', value: v.requestsToday, unit: '', alert: false },
       { label: 'ממתינים בתור', value: v.queued, unit: '', alert: false },
-      { label: 'המתנה ממוצעת', value: v.averageWait, unit: 'דקות', alert: false },
+      { label: 'המתנה ממוצעת עד שיבוץ', value: v.averageWait, unit: 'דקות', alert: false },
       { label: 'ההמתנה הארוכה', value: v.longestWait, unit: 'דקות', alert: v.longestWait > 30 },
       { label: 'הגיעו לקלפי', value: v.arrived, unit: '', alert: false },
       { label: 'בוטלו', value: v.cancelled, unit: '', alert: false },

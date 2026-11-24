@@ -15,6 +15,24 @@ public static class DashboardEndpoints
 {
     static readonly TimeZoneInfo Israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
 
+    public record WaitItem(DateTimeOffset CreatedAt, TimeMode Mode, TimeOnly? WindowFrom, DateTimeOffset? AssignedAt, RequestStatus Status);
+
+    /// <summary>
+    /// Average wait of the day's requests, in whole minutes: from when the wait starts (saving, or the start of a
+    /// pickup window) until a driver was assigned; requests still in the queue count until now. Cancelled requests,
+    /// and windows that have not started yet, are left out.
+    /// </summary>
+    public static int AverageWait(DateTimeOffset now, IEnumerable<WaitItem> items)
+    {
+        var waits = items.Where(r => r.Status != RequestStatus.Cancelled)
+            .Select(r => (since: Waiting.Since(r.CreatedAt, r.Mode, r.WindowFrom),
+                          end: r.AssignedAt ?? (r.Status == RequestStatus.Queued ? now : (DateTimeOffset?)null)))
+            .Where(x => x.end is { } e && x.since <= now)
+            .Select(x => Math.Max(0, (x.end!.Value - x.since).TotalMinutes))
+            .ToList();
+        return waits.Count == 0 ? 0 : (int)Math.Round(waits.Average());
+    }
+
     public static void MapDashboard(this WebApplication app) =>
         app.MapGet("/api/city/dashboard", async (ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
         {
@@ -26,7 +44,7 @@ public static class DashboardEndpoints
             var dayStart = new DateTimeOffset(local.Date, local.Offset).ToUniversalTime();
 
             var today = await db.Requests.Where(r => r.CityId == city && r.OperationId == op.Id && r.CreatedAt >= dayStart)
-                .Select(r => new { r.CreatedAt, r.Status, r.CancelReason, r.TakenById }).ToListAsync(ct);
+                .Select(r => new { r.CreatedAt, r.Status, r.CancelReason, r.TakenById, r.TimeMode, r.WindowFrom, r.AssignedAt }).ToListAsync(ct);
             var waiting = await db.Requests.Where(r => r.CityId == city && r.OperationId == op.Id && r.Status == RequestStatus.Queued)
                 .Select(r => new { r.CreatedAt, r.TimeMode, r.WindowFrom }).ToListAsync(ct);
             var waits = waiting.Select(c => Waiting.Minutes(now, c.CreatedAt, c.TimeMode, c.WindowFrom)).ToList();
@@ -62,7 +80,7 @@ public static class DashboardEndpoints
                 active = true,
                 requestsToday = today.Count,
                 queued = waiting.Count,
-                averageWait = waits.Count == 0 ? 0 : (int)Math.Round(waits.Average()),
+                averageWait = AverageWait(now, today.Select(r => new WaitItem(r.CreatedAt, r.TimeMode, r.WindowFrom, r.AssignedAt, r.Status))),
                 longestWait = waits.Count == 0 ? 0 : (int)Math.Floor(waits.Max()),
                 arrived = today.Count(r => r.Status is RequestStatus.Arrived or RequestStatus.Done),
                 cancelled = today.Count(r => r.Status == RequestStatus.Cancelled),
