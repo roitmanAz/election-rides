@@ -73,7 +73,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                   <p class="inline-flex items-center gap-1 text-sm font-medium text-bad"><app-icon name="warn" [size]="16" /> אין מנהל עיר</p>
                 }
               </div>
-              <app-row-menu class="ms-auto md:order-last md:self-start" [label]="'פעולות ל' + c.name">
+              <app-row-menu class="relative ms-auto md:order-last md:self-start" [label]="'פעולות ל' + c.name">
                 <button type="button" (click)="manage(c)">ניהול</button>
                 <button type="button" [class.text-bad]="c.isActive" (click)="toToggle.set(c)">{{ c.isActive ? 'השבתה' : 'הפעלה' }}</button>
               </app-row-menu>
