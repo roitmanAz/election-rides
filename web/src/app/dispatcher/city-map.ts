@@ -16,7 +16,7 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
 @Component({
   selector: 'app-city-map',
   // Its own stacking layer: Leaflet's high z-index values stay inside the map, so dialogs cover it.
-  host: { class: 'relative isolate z-0 block h-full w-full' },
+  host: { class: 'relative isolate z-0 block h-full w-full', '(document:click)': 'outside($event)' },
   imports: [Icon],
   template: `
     <div #box class="h-full min-h-[280px] w-full" [class.cursor-crosshair]="pickPoint()" [class.map-far]="far()" role="img" aria-label="מפת העיר"></div>
@@ -28,7 +28,7 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
     </div>
     <div class="absolute bottom-2.5 left-2.5 z-[1001] flex flex-col items-start gap-1.5">
       @if (legendOpen()) {
-        <div class="w-56 rounded-2xl bg-surface p-3 text-xs shadow-[var(--shadow-pop)]" role="region" aria-label="מקרא למפה">
+        <div #legend class="w-56 rounded-2xl bg-surface p-3 text-xs shadow-[var(--shadow-pop)]" role="region" aria-label="מקרא למפה">
           <p class="mb-1.5 font-semibold">פניות (לפי זמן המתנה)</p>
           <ul class="grid gap-1">
             <li class="flex items-center gap-2"><span class="legend-pin" style="background:#1f7a3a"></span>עד 15 דקות</li>
@@ -39,16 +39,17 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
           </ul>
           <p class="mb-1.5 mt-2.5 font-semibold">נהגים ומקומות</p>
           <ul class="grid gap-1">
-            <li class="flex items-center gap-2"><span class="map-car !transform-none">יכ</span>נהג פנוי</li>
-            <li class="flex items-center gap-2"><span class="map-car map-car-Soon !transform-none">יכ</span>מתפנה בקרוב</li>
-            <li class="flex items-center gap-2"><span class="map-car map-car-OnTrip !transform-none">יכ</span>בנסיעה או בהפסקה</li>
+            <li class="flex items-center gap-2"><span class="map-car !transform-none"></span>נהג פנוי</li>
+            <li class="flex items-center gap-2"><span class="map-car map-car-Soon !transform-none"></span>מתפנה בקרוב</li>
+            <li class="flex items-center gap-2"><span class="map-car map-car-OnTrip !transform-none"></span>בנסיעה או בהפסקה</li>
+            <li class="text-muted">על המפה, בתוך הריבוע של הנהג: ראשי התיבות של שמו (למשל "יכ" ליוסף כהן).</li>
             <li class="flex items-center gap-2"><span class="map-plate !transform-none">12</span>אשכול קלפיות (מספר או שם)</li>
             <li class="flex items-center gap-2"><span class="inline-block h-1 w-6 rounded bg-action"></span>מסלול ההצעה על הכבישים</li>
             <li class="flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-action"></span>מסלול משוער (קו אווירי)</li>
           </ul>
         </div>
       }
-      <button type="button" data-legend class="map-btn" [class.!bg-ink]="legendOpen()" [class.!text-white]="legendOpen()"
+      <button #legendBtn type="button" data-legend class="map-btn" [class.!bg-ink]="legendOpen()" [class.!text-white]="legendOpen()"
         title="מקרא" aria-label="מקרא למפה" [attr.aria-expanded]="legendOpen()" (click)="legendOpen.set(!legendOpen())"><app-icon name="info" [size]="18" /></button>
     </div>
   `,
@@ -73,6 +74,8 @@ export class CityMap implements AfterViewInit, OnDestroy {
   private zoom = 13;
 
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
+  private readonly legendEl = viewChild<ElementRef<HTMLElement>>('legend');
+  private readonly legendBtn = viewChild<ElementRef<HTMLElement>>('legendBtn');
   private map?: L.Map;
   private layer = L.layerGroup();
   private fitted = false;
@@ -106,6 +109,14 @@ export class CityMap implements AfterViewInit, OnDestroy {
     this.draw(this.queue(), this.drivers(), this.clusters(), this.selectedId(), this.route(), this.road());
     // The box can change size with the layout; let the map follow.
     new ResizeObserver(() => this.map?.invalidateSize()).observe(this.box().nativeElement);
+  }
+
+  /** A click outside the legend (and not on its button) closes it. */
+  protected outside(e: MouseEvent) {
+    if (!this.legendOpen()) return;
+    const t = e.target as Node;
+    if (this.legendEl()?.nativeElement.contains(t) || this.legendBtn()?.nativeElement.contains(t)) return;
+    this.legendOpen.set(false);
   }
 
   ngOnDestroy() {

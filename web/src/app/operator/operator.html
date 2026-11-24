@@ -15,7 +15,10 @@
       @if (hits(); as list) {
         <div class="absolute end-0 top-full z-30 mt-2 max-h-[440px] w-[min(560px,calc(100vw-32px))] overflow-y-auto rounded-2xl bg-surface p-2 shadow-[var(--shadow-pop)]">
           @for (h of list; track h.id) {
-            <div class="grid gap-1 rounded-xl p-3 hover:bg-soft">
+            <div class="grid gap-1 rounded-xl p-3" [class]="editable.includes(h.status) ? 'cursor-pointer hover:bg-soft' : ''"
+              [attr.role]="editable.includes(h.status) ? 'button' : null" [attr.tabindex]="editable.includes(h.status) ? 0 : null"
+              [title]="editable.includes(h.status) ? 'לחיצה פותחת את הפנייה לעריכה' : ''"
+              (click)="editable.includes(h.status) && openForEdit(h.id)" (keydown.enter)="editable.includes(h.status) && openForEdit(h.id)">
               <div class="flex flex-wrap items-baseline gap-2">
                 <span class="text-sm text-muted">פנייה מס' {{ h.number }}</span>
                 <b>{{ hitNames(h) }}</b>
@@ -33,8 +36,8 @@
               </div>
               @if (editable.includes(h.status)) {
                 <div class="mt-1 flex gap-2">
-                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="openForEdit(h.id)"><app-icon name="edit" [size]="16" /> ערוך</button>
-                  <button type="button" class="btn-secondary h-9 px-3 text-sm text-bad" (click)="openCancel(h)">בטל פנייה</button>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm" (click)="$event.stopPropagation(); openForEdit(h.id)"><app-icon name="edit" [size]="16" /> ערוך</button>
+                  <button type="button" class="btn-secondary h-9 px-3 text-sm text-bad" (click)="$event.stopPropagation(); openCancel(h)" (keydown.enter)="$event.stopPropagation()">בטל פנייה</button>
                 </div>
               }
             </div>
@@ -77,14 +80,6 @@
       <section class="border-b border-line p-5" [class.opacity-40]="!phoneOk()" [attr.inert]="phoneOk() ? null : ''">
         <h2 class="mb-3 flex items-center gap-2.5 text-lg font-semibold"><span class="grid size-7 place-items-center rounded-full bg-action text-sm text-white">2</span>נוסעים</h2>
 
-        @if (peopleCollapsed() && selected().length) {
-          <button type="button" class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-soft px-4 py-3 text-start hover:bg-soft2" (click)="openPeople()">
-            <b>{{ selected().map(p => p.fullName).join(', ') }}</b>
-            <span class="text-muted">אל {{ destText() }}</span>
-            @if (needsText().length) { <span class="text-muted">· {{ needsText().join(', ') }}</span> }
-            <span class="ms-auto flex items-center gap-1 text-sm font-medium text-action">עריכה <app-icon name="chevron" [size]="16" /></span>
-          </button>
-        } @else {
           <p class="label mb-2">מי צריך הסעה?<span class="req">*</span></p>
           <div class="grid gap-2">
             @for (p of passengers(); track p.key) {
@@ -182,7 +177,6 @@
               }
             </div>
           }
-        }
       </section>
 
       <!-- 3. Pickup address -->

@@ -72,7 +72,6 @@ export class OperatorPage implements OnInit {
 
   // Step 2: passengers
   protected readonly passengers = signal<Passenger[]>([]);
-  protected readonly peopleCollapsed = signal(false);
   protected readonly newOpen = signal(false);
   protected np = { fullName: '', idNumber: '', noId: false, gender: 'Male' as Gender, clusterId: null as string | null };
   protected readonly npErr = signal<{ name?: string; id?: string; cluster?: string }>({});
@@ -168,7 +167,6 @@ export class OperatorPage implements OnInit {
       }));
     this.passengers.set([...known, ...typed]);
     this.newOpen.set(known.length === 0 && typed.length === 0);
-    this.peopleCollapsed.set(false);
     this.moveOnFromPhone();
   }
 
@@ -233,7 +231,6 @@ export class OperatorPage implements OnInit {
     this.npErr.set({});
     this.editingKey.set(null);
     this.newOpen.set(true);
-    this.peopleCollapsed.set(false);
     setTimeout(() => document.getElementById('npName')?.focus());
   }
 
@@ -275,16 +272,6 @@ export class OperatorPage implements OnInit {
     this.editingKey.set(null);
     this.duplicate.set(null);
     if (!keepFocus) setTimeout(() => document.getElementById('comm')?.focus());
-  }
-
-  /** One click on the closed summary opens it for editing; with one typed-in passenger, straight into that passenger. */
-  protected openPeople() {
-    this.peopleCollapsed.set(false);
-    const typed = this.selected().filter((p) => !p.fromPhone);
-    if (typed.length === 1 && this.selected().length === 1) {
-      this.editTyped(typed[0]);
-      setTimeout(() => document.getElementById('npName')?.focus());
-    }
   }
 
   protected removeTyped(p: Passenger) {
@@ -418,7 +405,6 @@ export class OperatorPage implements OnInit {
     this.phoneChecked.set('');
     this.openOnPhone.set([]);
     this.passengers.set([]);
-    this.peopleCollapsed.set(false);
     this.newOpen.set(false);
     this.editingKey.set(null);
     this.communityId = null;
@@ -461,7 +447,8 @@ export class OperatorPage implements OnInit {
       key: 'e' + ++keySeq, personId: p.personId, fullName: p.fullName, idNumber: p.idNumber ?? '', noId: p.noId,
       gender: p.gender, clusterId: p.clusterId, selected: true, fromPhone: false,
     })));
-    this.peopleCollapsed.set(true);
+    // The passengers open straight for editing, with no closed summary first (spec 5.1).
+    if (r.passengers.length === 1) this.editTyped(this.passengers()[0]);
     this.streetId = r.streetId;
     this.building = r.buildingNumber;
     this.entrance = r.entrance ?? '';
