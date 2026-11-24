@@ -9,6 +9,7 @@ import { Dialog } from '../shared/dialog';
 import { Icon } from '../shared/icon';
 import { Select, SelectOption, dayText } from '../shared/select';
 import { markHtml } from '../shared/mark';
+import { RowMenu } from '../shared/row-menu';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -527,7 +528,7 @@ interface RenameRequest { id: string; catalogId: number; oldName: string; newNam
  */
 @Component({
   selector: 'app-catalog',
-  imports: [FormsModule, Icon, DatePipe],
+  imports: [FormsModule, Icon, DatePipe, Dialog, RowMenu],
   template: `
     @if (requests().length) {
       <section class="card mb-4 overflow-hidden">
@@ -569,7 +570,7 @@ interface RenameRequest { id: string; catalogId: number; oldName: string; newNam
       <p class="px-5 pt-4 text-sm text-muted">מוצגות {{ shown().length }} מתוך {{ items().length }}. שינוי שם כאן חל מיד על כל הערים.</p>
       <div class="grid gap-x-3 gap-y-1 p-3 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
         @for (c of shown(); track c.id) {
-          <div class="relative rounded-lg px-2 py-2 pe-9 odd:bg-bg">
+          <div class="relative rounded-lg px-2 py-2 pe-12 odd:bg-bg">
             @if (editingId() === c.id) {
               <div class="grid gap-1">
                 <input class="input h-10" maxlength="60" [attr.aria-label]="'שם חדש ל' + c.name" [(ngModel)]="editName" (input)="editError.set('')"
@@ -583,13 +584,30 @@ interface RenameRequest { id: string; catalogId: number; oldName: string; newNam
             } @else {
               <span class="font-medium" [innerHTML]="mark(c.name)"></span>
               <span class="block text-xs text-muted">{{ c.cities ? 'נבחרה ב-' + c.cities + (c.cities === 1 ? ' עיר' : ' ערים') : 'לא נבחרה עדיין' }}</span>
-              <button type="button" class="absolute end-1 top-1 grid size-7 place-items-center rounded-md text-muted hover:bg-soft2 hover:text-ink"
-                [attr.aria-label]="'שינוי השם של ' + c.name" (click)="startEdit(c)"><app-icon name="edit" [size]="15" /></button>
+              <app-row-menu class="absolute end-1 top-1" [label]="'פעולות ל' + c.name">
+                <button type="button" (click)="startEdit(c)">עריכה</button>
+                <button type="button" class="text-bad" (click)="toDelete.set(c)">מחיקה</button>
+              </app-row-menu>
             }
           </div>
         }
       </div>
     </section>
+
+    <app-dialog [open]="!!toDelete()" title="מחיקה מהרשימה הכללית" [width]="480" (closed)="toDelete.set(null)">
+      @if (toDelete(); as d) {
+        <p>למחוק את "{{ d.name }}" מהרשימה הכללית?</p>
+        <p class="mt-2 text-sm text-muted">
+          @if (d.cities) { היא נבחרה ב-{{ d.cities }} {{ d.cities === 1 ? 'עיר' : 'ערים' }}, ותצא גם מהרשימה שלהן. עיר שכבר יש בה פניות עם הקהילה הזאת תשאיר אותה כקהילה ידנית, כדי שההיסטוריה לא תאבד. }
+          @else { אף עיר לא בחרה בה עדיין. }
+        </p>
+        @if (deleteError()) { <p class="notice bad mt-3" role="alert">{{ deleteError() }}</p> }
+        <div class="mt-5 flex gap-2">
+          <button type="button" class="btn-primary !bg-bad" (click)="remove(d)">מחיקה</button>
+          <button type="button" class="btn-secondary" (click)="toDelete.set(null)">ביטול</button>
+        </div>
+      }
+    </app-dialog>
   `,
 })
 export class CatalogPage implements OnInit {
@@ -601,10 +619,24 @@ export class CatalogPage implements OnInit {
   protected readonly addError = signal('');
   protected readonly editError = signal('');
   protected readonly editingId = signal<number | null>(null);
+  protected readonly toDelete = signal<CatalogRow | null>(null);
+  protected readonly deleteError = signal('');
   protected readonly shown = computed(() => {
     const q = this.q().trim();
     return q ? this.items().filter((c) => c.name.includes(q)) : this.items();
   });
+
+  protected async remove(c: CatalogRow) {
+    this.deleteError.set('');
+    try {
+      await this.api.delete(`/api/admin/catalog/${c.id}`);
+      this.toDelete.set(null);
+      this.notice.set(`"${c.name}" נמחקה מהרשימה הכללית`);
+      await this.load();
+    } catch (e) {
+      this.deleteError.set(errorMessage(e));
+    }
+  }
   protected newName = '';
   protected editName = '';
 

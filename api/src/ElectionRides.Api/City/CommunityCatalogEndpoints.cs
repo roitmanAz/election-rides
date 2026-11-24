@@ -111,6 +111,28 @@ public static class CommunityCatalogEndpoints
             return Results.NoContent();
         });
 
+        // Deleting leaves every city's list too (like unticking); where requests already used the
+        // community, that city keeps it as its own hand-added one, so past requests keep their community.
+        sys.MapDelete("/{id:int}", async (int id, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
+        {
+            var item = await db.CommunityCatalog.FirstOrDefaultAsync(c => c.Id == id, ct);
+            if (item is null) return Results.NotFound();
+            var linked = await db.Communities.Where(c => c.CatalogId == id).ToListAsync(ct);
+            var linkedIds = linked.Select(c => c.Id).ToList();
+            var used = (await db.Requests.Where(r => r.CommunityId != null && linkedIds.Contains(r.CommunityId.Value))
+                .Select(r => r.CommunityId!.Value).Distinct().ToListAsync(ct)).ToHashSet();
+            foreach (var c in linked)
+            {
+                if (used.Contains(c.Id)) c.CatalogId = null;
+                else db.Communities.Remove(c);
+            }
+            db.CommunityCatalog.Remove(item);
+            Audit.Add(db, await Actor(db, me, ct), "catalog.delete",
+                $"{item.Name}, הוסרה מ-{linked.Count - used.Count} ערים" + (used.Count > 0 ? $", נשארה ידנית ב-{used.Count} שכבר יש בהן פניות איתה" : ""));
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        });
+
         sys.MapPost("/requests/{id:guid}/{decision}", async (Guid id, string decision, ClaimsPrincipal me, AppDbContext db, CancellationToken ct) =>
         {
             var r = await db.CommunityRenames.FirstOrDefaultAsync(x => x.Id == id && x.Status == RenameStatus.Pending, ct);

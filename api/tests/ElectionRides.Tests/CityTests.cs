@@ -159,5 +159,10 @@ public class CityTests(ApiFactory api)
         // A system admin renames directly; a city admin cannot use the system admin's route.
         Assert.Equal(HttpStatusCode.NoContent, (await sys.PutAsJsonAsync($"/api/admin/catalog/{id}", new { name = name + " ב" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PutAsJsonAsync($"/api/admin/catalog/{id}", new { name = "x" })).StatusCode);
+
+        // Deleting removes it from the shared list and from the city's list (no requests used it).
+        Assert.Equal(HttpStatusCode.NoContent, (await sys.DeleteAsync($"/api/admin/catalog/{id}")).StatusCode);
+        Assert.DoesNotContain((await Json(await admin.GetAsync("/api/city/communities"))).EnumerateArray(), c => c.GetProperty("name").GetString()!.StartsWith(name));
+        Assert.DoesNotContain((await Json(await admin.GetAsync("/api/city/communities/catalog"))).EnumerateArray(), c => c.GetProperty("id").GetInt32() == id);
     }
 }

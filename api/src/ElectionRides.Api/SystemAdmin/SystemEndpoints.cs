@@ -323,7 +323,7 @@ public static class SystemEndpoints
         ["operation.open"] = "פתיחת מבצע", ["operation.close"] = "סגירת מבצע", ["operation.cities"] = "שינוי ערים במבצע",
         ["streets.import"] = "ייבוא רחובות", ["base.import"] = "טעינת בייס", ["base.delete"] = "מחיקת בייס", ["request.cancel"] = "ביטול פנייה",
         ["sysadmin.add"] = "הוספת מנהל מערכת", ["sysadmin.remove"] = "הסרת מנהל מערכת", ["catalog.add"] = "קהילה חדשה ברשימה הכללית", ["catalog.rename"] = "שינוי שם קהילה", ["catalog.rename-request"] = "בקשה לשינוי שם קהילה",
-        ["catalog.rename-reject"] = "דחיית שינוי שם קהילה", ["security.policy"] = "מדיניות אבטחה", ["party.settings"] = "פרטיות והגדרות",
+        ["catalog.rename-reject"] = "דחיית שינוי שם קהילה", ["catalog.delete"] = "מחיקת קהילה מהרשימה הכללית", ["security.policy"] = "מדיניות אבטחה", ["party.settings"] = "פרטיות והגדרות",
     };
 
     static string? Clean(string? s) => string.IsNullOrWhiteSpace(s) ? null : Rules.NormalizeName(s);
