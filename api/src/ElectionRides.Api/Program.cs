@@ -173,8 +173,9 @@ app.MapIntake();
 app.MapDispatch();
 app.MapDriverApp();
 app.MapHub<CityHub>("/hubs/city");
-// Any other address is a screen of the app (it handles its own routes); unknown /api addresses stay 404.
-app.MapFallbackToFile("{*path:regex(^(?!api/|hubs/).*$)}", "index.html");
+// Any other address is a screen of the app (it handles its own routes). Unknown /api addresses stay 404, and
+// so do file names (with a dot), so the screens' code and images are served as files, not as the page.
+app.MapFallbackToFile("{*path:regex(^(?!api/|hubs/).*$):nonfile}", "index.html");
 
 try
 {
