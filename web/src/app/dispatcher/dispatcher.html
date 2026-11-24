@@ -1,4 +1,4 @@
-<div class="min-h-screen">
+<div class="min-h-screen print:hidden">
   <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
     <span class="text-xl font-semibold">מטה רכב</span>
     <span class="text-muted">משבץ · {{ auth.me()?.cityName }}</span>
@@ -221,6 +221,9 @@
                   @if (d.lastDecline && !d.trip) {
                     <p class="rounded-xl bg-warn-soft px-3 py-2 text-warn">לא יכול לקחת: {{ d.lastDecline }}</p>
                   }
+                  @if (d.trip) {
+                    <button type="button" class="h-8 w-max rounded-lg bg-surface px-2.5 text-xs font-medium" (click)="printTrip(d)">הדפס דף לנהג</button>
+                  }
                   @if (d.trip?.status === 'Offered') {
                     <div class="flex flex-wrap items-center gap-2">
                       <span [class.text-bad]="offerLate(d)">{{ offerLate(d) ? 'הנהג לא אישר תוך 2 דקות.' : 'ההצעה נשלחה, ממתין לאישור הנהג.' }}</span>
@@ -249,6 +252,42 @@
     </div>
   }
 </div>
+
+<!-- The sheet printed for a driver: only this shows on paper. -->
+@if (printFor(); as d) {
+  <div class="hidden text-black print:block" dir="rtl">
+    <h1 class="text-2xl font-bold">נסיעה ל{{ d.fullName }}</h1>
+    <p class="mb-4 text-sm">מטה רכב · {{ auth.me()?.cityName }} · הודפס ב-{{ printedAt() }}</p>
+    <table class="w-full border-collapse text-[15px]">
+      <thead>
+        <tr class="border-b-2 border-black text-start">
+          <th class="py-2 pe-2 text-start">#</th><th class="py-2 pe-2 text-start">כתובת</th><th class="py-2 pe-2 text-start">נוסעים</th>
+          <th class="py-2 pe-2 text-start">טלפון</th><th class="py-2 pe-2 text-start">הערות</th><th class="py-2 text-start">נאסף</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of riders(d); track $index; let i = $index) {
+          <tr class="border-b border-gray-400 align-top">
+            <td class="py-2 pe-2 font-semibold">{{ i + 1 }}</td>
+            <td class="py-2 pe-2 font-semibold">{{ s.address }}</td>
+            <td class="py-2 pe-2">{{ s.names?.join(', ') }}</td>
+            <td class="py-2 pe-4 text-right whitespace-nowrap"><span dir="ltr">{{ formatPhone(s.phone ?? '') }}</span></td>
+            <td class="py-2 pe-2">{{ s.notes }}@if (s.returnsWithDriver) { <span>{{ s.notes ? '. ' : '' }}חוזר איתך הביתה</span> }</td>
+            <td class="py-2"><span class="inline-block size-5 border-2 border-black"></span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+    <h2 class="mb-1 mt-5 text-lg font-bold">לאן</h2>
+    @for (s of d.trip?.stops ?? []; track $index) {
+      @if (s.kind === 'DropOff' && s.clusterId) {
+        @if (cluster(s.clusterId!); as c) {
+          <p class="text-[15px]"><b>{{ c.number != null ? 'אשכול ' + c.number + ': ' : '' }}{{ c.name }}</b> · {{ c.street }} {{ c.buildingNumber }}</p>
+        }
+      }
+    }
+  </div>
+}
 
 <app-dialog [open]="mapBig()" title="מפה" [width]="1400" (closed)="mapBig.set(false)">
   <div class="h-[75vh]">

@@ -68,6 +68,12 @@ public static class DispatchEndpoints
                                     names = r?.Passengers.Select(p => p.Person!.FullName).ToList(),
                                     address = r is null ? null : $"{r.Street?.Name} {r.BuildingNumber}{(r.Entrance is null ? "" : " כניסה " + r.Entrance)}",
                                     phone = r?.CallerPhone, status = r?.Status.ToString(),
+                                    notes = r is null ? null : string.Join(", ", new[]
+                                    {
+                                        r.NeedsWheelchair ? "כיסא גלגלים" : null, r.NeedsWalker ? "הליכון" : null, r.NeedsHelp ? "צריך עזרה" : null,
+                                        r.DriverNotes,
+                                    }.Where(x => !string.IsNullOrWhiteSpace(x))),
+                                    returnsWithDriver = r?.ReturnMode == ReturnMode.DriverWaits,
                                 };
                             }),
                         },

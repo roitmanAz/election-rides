@@ -26,9 +26,9 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
         <button type="button" class="map-btn" title="הגדל מפה" aria-label="הגדל מפה" (click)="expand.emit()"><app-icon name="expand" [size]="18" /></button>
       }
     </div>
-    <div class="absolute bottom-2.5 left-2.5 z-[1001] flex flex-col items-start gap-1.5">
+    <div class="absolute bottom-2.5 left-2.5 z-[1001] flex flex-col items-end gap-1.5" dir="ltr">
       @if (legendOpen()) {
-        <div #legend class="w-56 rounded-2xl bg-surface p-3 text-xs shadow-[var(--shadow-pop)]" role="region" aria-label="מקרא למפה">
+        <div #legend dir="rtl" class="w-56 rounded-2xl bg-surface p-3 text-xs shadow-[var(--shadow-pop)]" role="region" aria-label="מקרא למפה">
           <p class="mb-1.5 font-semibold">פניות (לפי זמן המתנה)</p>
           <ul class="grid gap-1">
             <li class="flex items-center gap-2"><span class="legend-pin" style="background:#1f7a3a"></span>עד 15 דקות</li>
@@ -42,7 +42,6 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
             <li class="flex items-center gap-2"><span class="map-car !transform-none"></span>נהג פנוי</li>
             <li class="flex items-center gap-2"><span class="map-car map-car-Soon !transform-none"></span>מתפנה בקרוב</li>
             <li class="flex items-center gap-2"><span class="map-car map-car-OnTrip !transform-none"></span>בנסיעה או בהפסקה</li>
-            <li class="text-muted">על המפה, בתוך הריבוע של הנהג: ראשי התיבות של שמו (למשל "יכ" ליוסף כהן).</li>
             <li class="flex items-center gap-2"><span class="map-plate !transform-none">12</span>אשכול קלפיות (מספר או שם)</li>
             <li class="flex items-center gap-2"><span class="inline-block h-1 w-6 rounded bg-action"></span>מסלול ההצעה על הכבישים</li>
             <li class="flex items-center gap-2"><span class="inline-block w-6 border-t-2 border-dashed border-action"></span>מסלול משוער (קו אווירי)</li>

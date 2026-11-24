@@ -51,19 +51,30 @@ interface Dashboard {
                 <tbody>@for (b of v.perHalfHour; track b.from) { <tr class="border-t border-line"><td class="py-1 tabular-nums">{{ b.from }}</td><td class="py-1 tabular-nums">{{ b.count }}</td></tr> }</tbody></table></div>
             } @else {
               <!-- Time runs left to right, so the chart is laid out left to right even on a right-to-left page. -->
-              <div dir="ltr" class="relative">
-                <div class="flex h-48 items-end gap-1 border-b border-line">
+              <div dir="ltr" class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2">
+                <!-- Scale: a line and a number every step (5, or more when there are many requests). -->
+                <div class="relative h-48 w-7 text-[11px] tabular-nums text-muted">
+                  @for (t of ticks(); track t) {
+                    <span class="absolute right-0 translate-y-1/2 leading-none" [style.bottom.%]="(t / scaleMax()) * 100">{{ t }}</span>
+                  }
+                </div>
+                <div class="relative flex h-48 items-end gap-1 border-b border-line">
+                  @for (t of ticks(); track t) {
+                    @if (t > 0) { <span class="pointer-events-none absolute inset-x-0 border-t border-line" [style.bottom.%]="(t / scaleMax()) * 100"></span> }
+                  }
                   @for (b of v.perHalfHour; track b.from; let i = $index) {
-                    <button type="button" class="group relative flex h-full min-w-0 flex-1 items-end focus:outline-none"
+                    <button type="button" class="relative flex h-full min-w-0 flex-1 items-end focus:outline-none"
                       [attr.aria-label]="b.from + ': ' + b.count + ' פניות'" (mouseenter)="hover.set(i)" (mouseleave)="hover.set(null)" (focus)="hover.set(i)" (blur)="hover.set(null)">
-                      <span class="block w-full rounded-t-[4px] bg-action transition-opacity" [style.height.%]="max() ? (b.count / max()) * 100 : 0"
-                        [class.opacity-70]="hover() !== null && hover() !== i"></span>
-                      @if (hover() === i) {
-                        <span class="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg bg-ink px-2 py-1 text-xs text-white" dir="rtl">{{ b.from }} · {{ b.count }} פניות</span>
-                      }
+                      <span class="relative mx-auto block w-full max-w-12 rounded-t-[4px] bg-action transition-opacity" [style.height.%]="(b.count / scaleMax()) * 100"
+                        [class.opacity-70]="hover() !== null && hover() !== i">
+                        @if (hover() === i) {
+                          <span class="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-lg bg-ink px-2 py-1 text-xs text-white" dir="rtl">{{ b.from }} · {{ b.count === 1 ? 'פנייה אחת' : b.count + ' פניות' }}</span>
+                        }
+                      </span>
                     </button>
                   }
                 </div>
+                <span></span>
                 <div class="mt-1 flex gap-1 text-[11px] tabular-nums text-muted">
                   @for (b of v.perHalfHour; track b.from; let i = $index) {
                     <span class="min-w-0 flex-1 text-center">{{ i % labelEvery() === 0 ? b.from : '' }}</span>
@@ -91,7 +102,7 @@ interface Dashboard {
               } @empty { <p class="text-muted">אין ביטולים היום.</p> }
             </section>
             <section class="card p-5">
-              <h2 class="mb-3 text-lg font-semibold">עומס על מוקדנים</h2>
+              <h2 class="mb-3 text-lg font-semibold">פניות שקלט כל מוקדן היום</h2>
               @for (o of v.operators; track o.name) {
                 <div class="flex justify-between border-t border-line py-1.5 first:border-0"><span>{{ o.name }}</span><b class="tabular-nums">{{ o.count }}</b></div>
               } @empty { <p class="text-muted">עוד לא נקלטו פניות היום.</p> }
@@ -110,6 +121,11 @@ export class DashboardPage implements OnInit, OnDestroy {
   private timer?: ReturnType<typeof setInterval>;
 
   protected readonly max = computed(() => Math.max(0, ...(this.d()?.perHalfHour ?? []).map((b) => b.count)));
+  /** Step of the scale: 5, or bigger so there are at most 6 lines. */
+  protected readonly step = computed(() => [5, 10, 25, 50, 100, 250, 500].find((s) => Math.ceil(this.max() / s) <= 6) ?? 1000);
+  /** Top of the scale: at least two steps, so one request is not half the chart. */
+  protected readonly scaleMax = computed(() => Math.max(this.step() * 2, Math.ceil(this.max() / this.step()) * this.step()));
+  protected readonly ticks = computed(() => Array.from({ length: this.scaleMax() / this.step() + 1 }, (_, i) => i * this.step()));
   protected readonly labelEvery = computed(() => Math.max(1, Math.ceil((this.d()?.perHalfHour.length ?? 0) / 12)));
   protected readonly tiles = computed(() => {
     const v = this.d();

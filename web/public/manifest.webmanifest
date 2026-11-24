@@ -1,9 +1,9 @@
 {
-  "name": "מטה רכב: נהג",
+  "name": "מטה רכב",
   "short_name": "מטה רכב",
   "lang": "he",
   "dir": "rtl",
-  "start_url": "/driver",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f2f5f3",

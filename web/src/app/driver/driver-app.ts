@@ -75,6 +75,8 @@ export class DriverAppPage implements OnInit, OnDestroy {
   protected readonly trip = computed(() => (this.me()?.trip?.status === 'Active' ? this.me()!.trip : null));
 
   async ngOnInit() {
+    // Installing from here gives the driver's app, which opens on the driver screen (staff get the general one).
+    document.querySelector('link[rel="manifest"]')?.setAttribute('href', 'driver.webmanifest');
     const token = this.route.snapshot.paramMap.get('token');
     if (token) {
       try {

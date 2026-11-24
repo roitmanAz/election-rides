@@ -70,6 +70,9 @@ export interface TripStop {
   address: string | null;
   phone: string | null;
   status: string | null;
+  /** Needs and the note for the driver, for the printed sheet. */
+  notes?: string | null;
+  returnsWithDriver?: boolean;
 }
 
 export interface DriverRow {

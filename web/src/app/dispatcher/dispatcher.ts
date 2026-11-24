@@ -69,6 +69,9 @@ export class DispatcherPage implements OnInit, OnDestroy {
   protected readonly notice = signal('');
   protected readonly toast = signal('');
   protected readonly mapBig = signal(false);
+  /** The driver whose ride sheet is being printed. */
+  protected readonly printFor = signal<DriverRow | null>(null);
+  protected readonly printedAt = signal('');
   private readonly map = viewChild<CityMap>('map');
 
   /** Queue order (spec 6): "leave by" within 30 minutes first, nearest first; then the longest wait. */
@@ -352,6 +355,16 @@ export class DispatcherPage implements OnInit, OnDestroy {
     } catch {
       (document.getElementById('linkText') as HTMLInputElement | null)?.select();
     }
+  }
+
+  /** Prints the driver's ride on one page: pickups in order with phones and notes, then where to. */
+  protected printTrip(d: DriverRow) {
+    this.printFor.set(d);
+    this.printedAt.set(new Date().toLocaleString('he-IL', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' }));
+    setTimeout(() => {
+      window.print();
+      this.printFor.set(null);
+    }, 50);
   }
 
   protected riders(d: DriverRow) {
