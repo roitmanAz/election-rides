@@ -14,7 +14,7 @@ public record DriverIn(string Phone, string FullName, int Seats, bool Wheelchair
 public record SuspendIn(bool Suspend);
 public record TripIn(Guid DriverId, List<Guid> RequestIds);
 public record JoinIn(Guid RequestId);
-public record DriverActionIn(string Action);
+public record DriverActionIn(string Action, string? Reason = null);
 public record LocationIn(double Lat, double Lon);
 
 /// <summary>Dispatcher screen (spec 5.3 to 5.7): queue, drivers, proposals, trips and driver statuses.</summary>
@@ -170,7 +170,7 @@ public static class DispatchEndpoints
         g.MapPost("/drivers/{id:guid}/action", async (Guid id, DriverActionIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
         {
             var city = me.CityId();
-            var error = await DriverAction(db, city, id, b.Action, ct);
+            var error = await DriverAction(db, city, id, b.Action, ct, b.Reason);
             if (error is not null) return error;
             await events.Changed(city);
             return Results.NoContent();
@@ -298,7 +298,8 @@ public static class DispatchEndpoints
             }
             var order = 0;
             foreach (var s in done.Concat(ordered).Concat(drops.Where(s => s.DoneAt == null))) s.Order = ++order;
-            trip.Stops.Add(newStop);
+            // Added explicitly: its id is already set, so through the trip's list it would look like an existing row.
+            db.TripStops.Add(newStop);
             await db.Requests.Where(x => x.Id == r.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, RequestStatus.Assigned).SetProperty(x => x.UpdatedAt, now).SetProperty(x => x.AssignedAt, now), ct);
             await db.SaveChangesAsync(ct);
@@ -395,7 +396,7 @@ public static class DispatchEndpoints
         return null;
     }
 
-    internal static async Task<IResult?> DriverAction(AppDbContext db, Guid city, Guid id, string action, CancellationToken ct)
+    internal static async Task<IResult?> DriverAction(AppDbContext db, Guid city, Guid id, string action, CancellationToken ct, string? reason = null)
     {
         var d = await db.Drivers.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city, ct);
         if (d is null) return Results.NotFound();
@@ -454,6 +455,17 @@ public static class DispatchEndpoints
             case "BackFromBreak":
                 if (d.Status != DriverStatus.Break) return Problems.Error("הנהג לא בהפסקה");
                 SetStatus(DriverStatus.Free);
+                break;
+            // The driver cannot do a ride he took (spec 5.4): before any pickup only. Its requests go back to
+            // the queue as they were (keeping their waiting time), and the driver is free (or on a break).
+            case "CancelTrip":
+                if (trip is null) return Problems.Error("לנהג אין נסיעה פעילה");
+                if (trip.Stops.Any(s => s.Kind == StopKind.Pickup && s.DoneAt != null))
+                    return Problems.Error("הנוסעים כבר ברכב. אפשר לבטל נסיעה רק לפני האיסוף.");
+                if (string.IsNullOrWhiteSpace(reason)) return Problems.Error("צריך לבחור סיבה");
+                await CancelOffer(db, trip, reason.Trim(), ct);
+                SetStatus(reason == "צריך הפסקה" ? DriverStatus.Break : DriverStatus.Free);
+                d.BreakAfterTrip = false;
                 break;
             case "Finish":
                 if (trip is not null) return Problems.Error("אי אפשר לסיים לעבוד באמצע נסיעה");

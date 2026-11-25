@@ -125,8 +125,30 @@ public static class IntakeEndpoints
             r.UpdatedAt = DateTimeOffset.UtcNow;
             var user = await db.Users.FirstAsync(u => u.Id == me.UserId(), ct);
             Audit.Add(db, user, "request.cancel", $"פנייה {r.Number}: {r.CancelReason}");
-            // A request already in a trip leaves the trip.
+            // A request already in a trip leaves the trip. A ride left with no one ends, and its driver is free again;
+            // a cluster nobody goes to any more leaves the ride.
+            var tripIds = await db.TripStops.Where(s => s.RequestId == r.Id).Select(s => s.TripId).ToListAsync(ct);
             await db.TripStops.Where(s => s.RequestId == r.Id).ExecuteDeleteAsync(ct);
+            foreach (var trip in await db.Trips.Include(t => t.Stops).Include(t => t.Driver)
+                .Where(t => tripIds.Contains(t.Id) && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered)).ToListAsync(ct))
+            {
+                var left = trip.Stops.Where(s => s.Kind == StopKind.Pickup && s.RequestId != null && s.RequestId != r.Id).Select(s => s.RequestId!.Value).ToList();
+                if (left.Count == 0)
+                {
+                    trip.Status = TripStatus.Cancelled;
+                    if (trip.Driver is { Status: DriverStatus.OnTrip or DriverStatus.Soon } drv)
+                    {
+                        drv.Status = drv.BreakAfterTrip ? DriverStatus.Break : DriverStatus.Free;
+                        drv.StatusSince = DateTimeOffset.UtcNow;
+                        drv.FreeAt = null;
+                        drv.BreakAfterTrip = false;
+                    }
+                    continue;
+                }
+                var stillGoing = await db.Passengers.Where(p => left.Contains(p.RequestId)).Select(p => p.ClusterId).Distinct().ToListAsync(ct);
+                foreach (var drop in trip.Stops.Where(s => s.Kind == StopKind.DropOff && s.ClusterId is { } c && !stillGoing.Contains(c)).ToList())
+                    db.TripStops.Remove(drop);
+            }
             await db.SaveChangesAsync(ct);
             await events.Changed(r.CityId);
             return Results.NoContent();

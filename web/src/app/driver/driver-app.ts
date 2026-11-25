@@ -178,7 +178,11 @@ export class DriverAppPage implements OnInit, OnDestroy {
     }
   }
 
-  protected openDecline() {
+  /** The same reasons for an offer ("can't take") and for a ride already taken ("can't do it", before pickup). */
+  protected readonly declineTrip = signal(false);
+
+  protected openDecline(trip = false) {
+    this.declineTrip.set(trip);
     this.declineReason = this.declineOther = '';
     this.declineErr.set('');
     this.declineOpen.set(true);
@@ -187,7 +191,8 @@ export class DriverAppPage implements OnInit, OnDestroy {
   protected async sendDecline() {
     if (!this.declineReason) return this.declineErr.set('צריך לבחור סיבה');
     if (this.declineReason === 'אחר' && !this.declineOther.trim()) return this.declineErr.set('צריך לכתוב בקצרה למה');
-    if (await this.act('Decline', { reason: this.declineReason, other: this.declineOther })) this.declineOpen.set(false);
+    const action = this.declineTrip() ? 'CancelTrip' : 'Decline';
+    if (await this.act(action, { reason: this.declineReason, other: this.declineOther })) this.declineOpen.set(false);
   }
 
   protected waze(s: Stop) {

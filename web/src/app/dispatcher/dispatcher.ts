@@ -301,6 +301,16 @@ export class DispatcherPage implements OnInit, OnDestroy {
       const key = `late:${d.trip?.id}`;
       if (d.trip && this.offerLate(d) && !this.seenNotices.has(key)) fresh.push({ key, driverId: d.id, text: `${d.fullName} לא אישר את ההצעה תוך 2 דקות.` });
     }
+    for (const d of this.drivers()) {
+      const key = `decline:${d.id}:${d.lastDecline}`;
+      if (d.lastDecline && !this.seenNotices.has(key))
+        fresh.push({ key, driverId: d.id, text: `${d.fullName} לא יכול לקחת את הנסיעה: ${d.lastDecline}. הפניות חזרו לתור.` });
+    }
+    for (const r of this.queue()) {
+      const key = `suspended-hour:${r.id}`;
+      if (r.suspended && r.waitMinutes >= 60 && !this.seenNotices.has(key))
+        fresh.push({ key, requestId: r.id, text: `פנייה מס' ${r.number} מושהית (אזור רחוק) ומחכה כבר שעה.` });
+    }
     for (const n of fresh) {
       this.seenNotices.add(n.key);
       setTimeout(() => this.closeNotice(n.key), 60_000);
@@ -473,6 +483,35 @@ export class DispatcherPage implements OnInit, OnDestroy {
 
   protected riders(d: DriverRow) {
     return (d.trip?.stops ?? []).filter((s) => s.kind === 'Pickup');
+  }
+
+  // Cancel a ride the driver cannot do (before pickup): its requests go back to the queue.
+  protected readonly tripCancelFor = signal<DriverRow | null>(null);
+  protected readonly tripCancelOpts = textOptions(['רחוק מדי', 'אין מספיק מקום ברכב', 'תקלה ברכב', 'צריך הפסקה', 'אחר']);
+  protected tripCancelReason = '';
+  protected tripCancelOther = '';
+  protected readonly tripCancelErr = signal('');
+
+  protected openTripCancel(d: DriverRow) {
+    this.tripCancelReason = this.tripCancelOther = '';
+    this.tripCancelErr.set('');
+    this.tripCancelFor.set(d);
+  }
+
+  protected async confirmTripCancel() {
+    const d = this.tripCancelFor();
+    if (!d) return;
+    if (!this.tripCancelReason) return this.tripCancelErr.set('צריך לבחור סיבה');
+    if (this.tripCancelReason === 'אחר' && !this.tripCancelOther.trim()) return this.tripCancelErr.set('צריך לכתוב בקצרה למה');
+    const reason = this.tripCancelReason === 'אחר' ? `אחר: ${this.tripCancelOther.trim()}` : this.tripCancelReason;
+    try {
+      await this.api.post(`/api/dispatch/drivers/${d.id}/action`, { action: 'CancelTrip', reason });
+      this.tripCancelFor.set(null);
+      this.showToast(`הנסיעה של ${d.fullName} בוטלה. הפניות חזרו לתור.`);
+      await this.reload();
+    } catch (e) {
+      this.tripCancelErr.set(errorMessage(e));
+    }
   }
 
   protected async action(d: DriverRow, action: string) {

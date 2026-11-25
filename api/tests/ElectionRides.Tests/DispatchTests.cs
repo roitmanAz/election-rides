@@ -325,6 +325,42 @@ public class DispatchTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task A_ride_is_cancelled_only_before_pickup_and_its_requests_go_back_to_the_queue()
+    {
+        var (op, disp, street, cluster) = await Setup();
+        var req = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527999991", "משה קליין", "000000133", "Male", street, cluster)))).GetProperty("id").GetGuid();
+        var drv = (await Json(await disp.PostAsJsonAsync("/api/dispatch/drivers", new { phone = "0548000801", fullName = "דן רוט", seats = 4, wheelchairCar = false, hasSmartphone = false }))).GetProperty("id").GetGuid();
+        await disp.PostAsJsonAsync("/api/dispatch/trips", new { driverId = drv, requestIds = new[] { req } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await disp.PostAsJsonAsync($"/api/dispatch/drivers/{drv}/action", new { action = "CancelTrip" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await disp.PostAsJsonAsync($"/api/dispatch/drivers/{drv}/action", new { action = "CancelTrip", reason = "תקלה ברכב" })).StatusCode);
+        await using (var db = api.NewDb())
+        {
+            Assert.Equal(RequestStatus.Queued, (await db.Requests.FirstAsync(r => r.Id == req)).Status);
+            Assert.Equal(DriverStatus.Free, (await db.Drivers.FirstAsync(d => d.Id == drv)).Status);
+        }
+
+        // After pickup it cannot be cancelled.
+        await disp.PostAsJsonAsync("/api/dispatch/trips", new { driverId = drv, requestIds = new[] { req } });
+        await disp.PostAsJsonAsync($"/api/dispatch/drivers/{drv}/action", new { action = "PickedUp" });
+        Assert.Equal(HttpStatusCode.BadRequest, (await disp.PostAsJsonAsync($"/api/dispatch/drivers/{drv}/action", new { action = "CancelTrip", reason = "תקלה ברכב" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancelling_the_only_request_of_a_ride_ends_the_ride_and_frees_the_driver()
+    {
+        var (op, disp, street, cluster) = await Setup();
+        var req = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527999992", "שרה קליין", "000000141", "Female", street, cluster)))).GetProperty("id").GetGuid();
+        var drv = (await Json(await disp.PostAsJsonAsync("/api/dispatch/drivers", new { phone = "0548000802", fullName = "גד רוט", seats = 4, wheelchairCar = false, hasSmartphone = false }))).GetProperty("id").GetGuid();
+        var trip = (await Json(await disp.PostAsJsonAsync("/api/dispatch/trips", new { driverId = drv, requestIds = new[] { req } }))).GetProperty("id").GetGuid();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await op.PostAsJsonAsync($"/api/intake/requests/{req}/cancel", new { reason = "הפונה ביטל", other = (string?)null })).StatusCode);
+        await using var db = api.NewDb();
+        Assert.Equal(TripStatus.Cancelled, (await db.Trips.FirstAsync(t => t.Id == trip)).Status);
+        Assert.Equal(DriverStatus.Free, (await db.Drivers.FirstAsync(d => d.Id == drv)).Status);
+    }
+
+    [Fact]
     public async Task Dashboard_counts_today_and_drivers_and_only_the_city_admin_sees_it()
     {
         var (admin, city, _) = await TestUsers.SignedIn(api, UserRole.CityAdmin);

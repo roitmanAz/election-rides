@@ -235,6 +235,7 @@
                       <b class="text-muted">לוקח עכשיו:</b>
                       <ul class="mt-1 grid gap-0.5">@for (s of riders(d); track $index) { <li>{{ s.names?.join(', ') }} · {{ s.address }} · <span dir="ltr">{{ formatPhone(s.phone ?? '') }}</span></li> }</ul>
                     </div>
+                    <button type="button" class="h-8 w-max rounded-lg bg-surface px-2.5 text-xs font-medium text-bad" (click)="openTripCancel(d)">ביטול הנסיעה (הנהג לא יכול)</button>
                     <div class="grid grid-cols-4 gap-1.5">
                       <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'PickedUp')">נאסף</button>
                       <button type="button" class="h-10 rounded-[10px] bg-surface text-xs font-medium" (click)="action(d, 'DroppedOff')">הורד בקלפי</button>
@@ -307,6 +308,20 @@
       <button type="button" class="btn-secondary" (click)="linkFor.set(null)">סגירה</button>
     </div>
   }
+</app-dialog>
+
+<app-dialog [open]="!!tripCancelFor()" [title]="'ביטול הנסיעה של ' + (tripCancelFor()?.fullName ?? '')" [width]="460" (closed)="tripCancelFor.set(null)">
+  <p class="mb-3 text-sm text-muted">אפשר רק לפני האיסוף. הפניות חוזרות לתור עם זמן ההמתנה שלהן, והנהג חוזר להיות פנוי.</p>
+  <label class="field"><span class="label">למה הנהג לא יכול?<span class="req">*</span></span>
+    <app-select placeholder="בחר סיבה" [options]="tripCancelOpts" [(ngModel)]="tripCancelReason" (ngModelChange)="tripCancelErr.set('')" /></label>
+  @if (tripCancelReason === 'אחר') {
+    <label class="field mt-3"><span class="label">פרט בקצרה<span class="req">*</span></span><input class="input" maxlength="100" [(ngModel)]="tripCancelOther" /></label>
+  }
+  @if (tripCancelErr()) { <p class="error-text mt-2">{{ tripCancelErr() }}</p> }
+  <div class="mt-5 flex gap-2">
+    <button type="button" class="btn-primary !bg-bad" (click)="confirmTripCancel()">בטל את הנסיעה</button>
+    <button type="button" class="btn-secondary" (click)="tripCancelFor.set(null)">חזרה</button>
+  </div>
 </app-dialog>
 
 <app-dialog [open]="cancelOpen()" title="ביטול פנייה" [width]="460" (closed)="cancelOpen.set(false)">

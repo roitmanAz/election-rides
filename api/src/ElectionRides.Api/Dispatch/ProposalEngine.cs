@@ -172,7 +172,7 @@ public static class ProposalEngine
         if (!ride.Clusters.ToHashSet().SetEquals(r.Clusters)) return "לאשכול אחר";
         var why = WhyNot(ride.Driver, ride.InCar, r);
         if (why != "") return why;
-        if (r.Pickup is null || ride.Destination is null) return "אין מיקום";
+        if (r.Pickup is null) return "אין מיקום";
         var start = ride.Position ?? ride.Ahead.FirstOrDefault(x => x.Pickup is not null)?.Pickup ?? r.Pickup;
         double Route(List<QueueItem> pickups)
         {
@@ -186,7 +186,8 @@ public static class ProposalEngine
                 cur = next.Pickup!;
                 left.Remove(next);
             }
-            return total + t(cur, ride.Destination);
+            // Without the cluster's point on the map, only the pickups are compared.
+            return total + (ride.Destination is { } dest ? t(cur, dest) : 0);
         }
         return Route([.. ride.Ahead, r]) - Route(ride.Ahead) <= OnRouteMinutes ? "" : "לא על הדרך";
     }

@@ -125,6 +125,7 @@
       @if (m.status !== 'Finished' && m.status !== 'Break') {
         @if (trip()) {
           @if (!m.breakAfterTrip) { <button type="button" class="h-14 rounded-[18px] bg-soft text-lg font-medium" (click)="act('Break')">אחרי הנסיעה הזאת אני יוצא להפסקה</button> }
+          <button type="button" class="h-14 rounded-[18px] bg-soft text-lg font-medium text-bad" (click)="openDecline(true)">לא יכול לבצע את הנסיעה</button>
         } @else {
           <button type="button" class="h-14 rounded-[18px] bg-soft text-lg font-medium" (click)="act('Break')">יוצא להפסקה קצרה</button>
         }
@@ -136,7 +137,7 @@
   }
 </app-dialog>
 
-<app-dialog [open]="declineOpen()" title="למה אתה לא יכול לקחת?" [width]="420" (closed)="declineOpen.set(false)">
+<app-dialog [open]="declineOpen()" [title]="declineTrip() ? 'למה אתה לא יכול לבצע את הנסיעה?' : 'למה אתה לא יכול לקחת?'" [width]="420" (closed)="declineOpen.set(false)">
   <div class="grid gap-2">
     @for (r of reasons; track r) {
       <label class="flex h-14 cursor-pointer items-center gap-3 rounded-2xl border-[1.5px] px-4 text-lg" [class]="declineReason === r ? 'border-action bg-action-soft' : 'border-line'">

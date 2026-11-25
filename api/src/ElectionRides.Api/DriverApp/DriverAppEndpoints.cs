@@ -95,6 +95,12 @@ public static class DriverAppEndpoints
                         d.StatusSince = now;
                     }
                     break;
+                case "CancelTrip":
+                    if (!DeclineReasons.Contains(b.Reason)) return Problems.Error("צריך לבחור סיבה");
+                    if (b.Reason == "אחר" && string.IsNullOrWhiteSpace(b.Other)) return Problems.Error("צריך לכתוב בקצרה למה");
+                    error = await DispatchEndpoints.DriverAction(db, d.CityId, d.Id, "CancelTrip", ct,
+                        b.Reason == "אחר" ? $"אחר: {b.Other!.Trim()}" : b.Reason);
+                    break;
                 case "BackToWork":
                     if (d.Status != DriverStatus.Finished) return Problems.Error("אתה כבר ברשימה");
                     var op = await IntakeEndpoints.ActiveOperation(db, d.CityId, ct);
