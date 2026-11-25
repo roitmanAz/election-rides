@@ -137,6 +137,8 @@ export class DispatcherPage implements OnInit, OnDestroy {
   private hub?: HubConnection;
   private reloadTimer?: ReturnType<typeof setTimeout>;
   private clock?: ReturnType<typeof setInterval>;
+  /** Requests whose pickup window has not started yet: not in the queue, only counted. */
+  protected readonly later = signal(0);
 
   async ngOnInit() {
     this.clusters.set(await this.api.get<ClusterRow[]>('/api/city/clusters'));
@@ -166,10 +168,11 @@ export class DispatcherPage implements OnInit, OnDestroy {
 
   /** background: an automatic refresh (live update or timer), which is not the user's activity. */
   protected async reload(background = false) {
-    const s = await this.api.get<{ active: boolean; queue?: QueueRow[]; drivers?: DriverRow[] }>('/api/dispatch/state', background);
+    const s = await this.api.get<{ active: boolean; queue?: QueueRow[]; drivers?: DriverRow[]; later?: number }>('/api/dispatch/state', background);
     this.active.set(s.active);
     if (!s.active) return;
     this.queue.set(s.queue ?? []);
+    this.later.set(s.later ?? 0);
     this.drivers.set(s.drivers ?? []);
     if (this.selectedId() && !this.queue().some((r) => r.id === this.selectedId())) this.selectedId.set(null);
     await this.reloadProposals(background);

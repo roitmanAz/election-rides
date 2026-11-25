@@ -45,7 +45,9 @@ public static class DispatchEndpoints
             return Results.Ok(new
             {
                 active = true,
-                queue = queue.Select(q => q.dto),
+                queue = queue.Where(q => !q.item.NotYet).Select(q => q.dto),
+                // Requests for a later pickup window: shown only as a count until their window starts.
+                later = queue.Count(q => q.item.NotYet),
                 drivers = drivers.Select(d =>
                 {
                     var trip = trips.FirstOrDefault(t => t.DriverId == d.Id);
@@ -421,8 +423,8 @@ public static class DispatchEndpoints
             var clusterIds = r.Passengers.Select(p => p.ClusterId).Distinct().ToList();
             var dest = clusters.GetValueOrDefault(clusterIds[0]) is { Location: { } loc } ? new GeoPoint(loc.Y, loc.X) : null;
             double? toDeadline = r.TimeMode == TimeMode.LeaveBy && r.WindowTo is { } to ? (At(to) - now).TotalMinutes : null;
-            // A pickup window that starts more than 30 minutes from now is not offered to drivers yet.
-            var notYet = r.TimeMode == TimeMode.Between && r.WindowFrom is { } from && (At(from) - now).TotalMinutes > ProposalEngine.DeadlineMinutes;
+            // A pickup window that has not started yet stays out of the queue and the proposals until it starts.
+            var notYet = r.TimeMode == TimeMode.Between && r.WindowFrom is { } from && At(from) > now;
             var wait = Waiting.Minutes(now, r.CreatedAt, r.TimeMode, r.WindowFrom);
             var item = new QueueItem(r.Id, kind, r.Passengers.Count, r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet);
             object dto = new

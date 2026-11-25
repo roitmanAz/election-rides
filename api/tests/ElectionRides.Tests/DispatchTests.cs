@@ -299,6 +299,32 @@ public class DispatchTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task A_pickup_window_that_has_not_started_stays_out_of_the_queue()
+    {
+        var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
+        var local = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, israel);
+        if (local.Hour >= 22) return; // the window must start later today
+        var (op, disp, street, cluster) = await Setup();
+        var from = new TimeOnly(local.Hour + 1, 0);
+        var body = new
+        {
+            callerPhone = "0527444441",
+            passengers = new[] { new { personId = (Guid?)null, fullName = "חנה ברגר", idNumber = "000000091", noId = false, gender = "Female", clusterId = (Guid?)cluster } },
+            streetId = street, buildingNumber = "41", entrance = "", driverNotes = "", communityId = (Guid?)null,
+            needsWheelchair = false, needsWalker = false, needsHelp = false, timeMode = "Between",
+            windowFrom = from.ToString("HH:mm"), windowTo = from.AddHours(1).ToString("HH:mm"),
+            urgencyReason = (string?)null, urgencyOther = (string?)null, returnMode = "DriverWaits", keepNonAccessible = false, ignoreDuplicate = false,
+        };
+        var saved = await op.PostAsJsonAsync("/api/intake/requests", body);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        var id = (await Json(saved)).GetProperty("id").GetGuid();
+
+        var state = await Json(await disp.GetAsync("/api/dispatch/state"));
+        Assert.DoesNotContain(state.GetProperty("queue").EnumerateArray(), q => q.GetProperty("id").GetGuid() == id);
+        Assert.True(state.GetProperty("later").GetInt32() >= 1);
+    }
+
+    [Fact]
     public void A_pickup_window_starts_waiting_at_its_start_not_when_saved()
     {
         var israel = TimeZoneInfo.FindSystemTimeZoneById("Asia/Jerusalem");
