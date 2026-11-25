@@ -163,7 +163,9 @@ app.Use(async (ctx, next) =>
     h["Referrer-Policy"] = "same-origin";
     h["Content-Security-Policy"] =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://server.arcgisonline.com; " +
+        // Images (only) may come from any HTTPS host, so the map's tile provider is configurable; images cannot
+        // execute, so this does not weaken the script/connect protections.
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
         "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
     if (ctx.Request.IsHttps) h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
     await next();
@@ -190,6 +192,13 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
     return Results.Json(new { status = dbOk ? "ok" : "degraded", database = dbOk },
         statusCode: dbOk ? 200 : 503);
 });
+// Public front-end settings. The map's tile source can be changed per deployment (Map:TileUrl / Map:TileAttribution)
+// without rebuilding: OpenStreetMap by default, another provider when OSM blocks the server.
+app.MapGet("/api/config", (IConfiguration cfg) => Results.Ok(new
+{
+    tileUrl = cfg["Map:TileUrl"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    tileAttribution = cfg["Map:TileAttribution"] ?? "© OpenStreetMap",
+}));
 app.MapAuth();
 app.MapCityLists();
 app.MapCommunityCatalog();

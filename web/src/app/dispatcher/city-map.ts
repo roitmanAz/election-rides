@@ -8,7 +8,7 @@ const WAIT_COLORS = { ok: '#1f7a3a', warn: '#c98a00', bad: '#c92a2a' } as const;
 /**
  * The dispatcher's map (spec 10): requests colored by wait, drivers, cluster plates, and the selected
  * proposal's route along the roads (from our server's routing; a dashed straight line until it arrives or if
- * it is not available). Esri world street map during development (keyless); Google or self-hosted tiles before going live.
+ * it is not available). OpenStreetMap by default; the tile source is a server config value, so it can be switched when a provider blocks.
  * Zoom and pan with the mouse or the buttons. A request is a pin whose tip is on the address, so the house
  * number on the map stays readable; marks get smaller when the map is zoomed out. Buttons sit on the map
  * itself (fit, enlarge) and a legend opens from the bottom corner.
@@ -87,13 +87,14 @@ export class CityMap implements AfterViewInit, OnDestroy {
     });
   }
 
-  ngAfterViewInit() {
+  async ngAfterViewInit() {
     this.map = L.map(this.box().nativeElement, { zoomControl: true, attributionControl: true }).setView([31.778, 35.216], 13);
-    // Esri's world street map: works without an API key for light use (OpenStreetMap and CARTO now block or key
-    // their tiles). Google or a self-hosted set replaces it before going live. Note the {z}/{y}/{x} order.
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    // The tile source (the map background) comes from the server config, so it can be switched without a code
+    // change: OpenStreetMap by default (clear, with house numbers), another provider when OSM blocks the server.
+    const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => null);
+    L.tileLayer(cfg?.tileUrl ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '© Esri',
+      attribution: cfg?.tileAttribution ?? '© OpenStreetMap',
     }).addTo(this.map);
     this.layer.addTo(this.map);
     // Marks follow the zoom: smaller when zoomed out.
