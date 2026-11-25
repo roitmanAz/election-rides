@@ -79,6 +79,8 @@ export class OperatorPage implements OnInit {
   protected communityId: string | null = null;
   protected needsWheelchair = false;
   protected needsWalker = false;
+  /** Comes with an escort: one more seat. */
+  protected withEscort = false;
   protected needsHelp = false;
   protected accAnswer: 'stay' | 'move' | null = null;
   protected accMoveTo: string | null = null;
@@ -293,7 +295,8 @@ export class OperatorPage implements OnInit {
   }
 
   protected needsText(): string[] {
-    return [this.needsWheelchair && 'כיסא גלגלים', this.needsWalker && 'הליכון', this.needsHelp && 'צריך עזרה'].filter(Boolean) as string[];
+    return [this.needsWheelchair && 'כיסא גלגלים', this.needsWalker && 'הליכון', this.needsHelp && 'צריך עזרה', this.withEscort && 'עם מלווה']
+      .filter(Boolean) as string[];
   }
 
   /** The destination after the accessibility answer: moving replaces non-accessible clusters with the chosen one. */
@@ -374,7 +377,7 @@ export class OperatorPage implements OnInit {
         personId: p.personId, fullName: p.fullName, idNumber: p.noId ? null : p.idNumber, noId: p.noId, gender: p.gender, clusterId: this.finalCluster(p),
       })),
       streetId: this.streetId, buildingNumber: this.building.trim(), entrance: this.entrance, driverNotes: this.notes,
-      communityId: this.communityId, needsWheelchair: this.needsWheelchair, needsWalker: this.needsWalker, needsHelp: this.needsHelp,
+      communityId: this.communityId, needsWheelchair: this.needsWheelchair, needsWalker: this.needsWalker, needsHelp: this.needsHelp, withEscort: this.withEscort,
       timeMode: this.timeMode,
       windowFrom: this.timeMode === 'Between' ? this.windowFrom : null,
       windowTo: this.timeMode === 'Between' ? this.windowTo : this.timeMode === 'LeaveBy' ? this.leaveBy : null,
@@ -414,7 +417,7 @@ export class OperatorPage implements OnInit {
     this.newOpen.set(false);
     this.editingKey.set(null);
     this.communityId = null;
-    this.needsWheelchair = this.needsWalker = this.needsHelp = false;
+    this.needsWheelchair = this.needsWalker = this.needsHelp = this.withEscort = false;
     this.accAnswer = this.accMoveTo = null;
     this.streetId = null;
     this.building = this.entrance = this.notes = '';
@@ -439,7 +442,7 @@ export class OperatorPage implements OnInit {
     const r = await this.api.get<{
       id: string; number: number; callerPhone: string; status: Status; streetId: string; buildingNumber: string;
       entrance: string | null; driverNotes: string | null; communityId: string | null;
-      needsWheelchair: boolean; needsWalker: boolean; needsHelp: boolean;
+      needsWheelchair: boolean; needsWalker: boolean; needsHelp: boolean; withEscort: boolean;
       timeMode: TimeMode; windowFrom: string | null; windowTo: string | null; urgencyReason: string | null; returnMode: ReturnMode;
       passengers: { personId: string; fullName: string; idNumber: string | null; noId: boolean; gender: Gender; clusterId: string }[];
     }>(`/api/intake/requests/${id}`);
@@ -462,6 +465,7 @@ export class OperatorPage implements OnInit {
     this.communityId = r.communityId;
     this.needsWheelchair = r.needsWheelchair;
     this.needsWalker = r.needsWalker;
+    this.withEscort = r.withEscort;
     this.needsHelp = r.needsHelp;
     if (r.needsWheelchair && this.notAccessible().length) this.accAnswer = 'stay';
     this.timeMode = r.timeMode;

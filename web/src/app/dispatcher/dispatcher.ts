@@ -14,7 +14,7 @@ import { Digits } from '../shared/digits';
 import { CANCEL_REASONS, formatPhone, phoneDigits, phoneError } from '../operator/intake.model';
 import { CityMap } from './city-map';
 import {
-  ClusterRow, DRIVER_STATUS, DriverRow, KIND_NAMES, LatLon, QueueRow, RoadRoute, kindOf, script, straightEstimate, waitClass, whyNot,
+  ClusterRow, DRIVER_STATUS, DriverRow, JoinOption, Notice, KIND_NAMES, LatLon, QueueRow, RoadRoute, kindOf, script, straightEstimate, waitClass, whyNot,
 } from './dispatch.model';
 
 interface Proposal {
@@ -70,6 +70,16 @@ export class DispatcherPage implements OnInit, OnDestroy {
   protected readonly openDriverId = signal<string | null>(null);
   protected readonly notice = signal('');
   protected readonly toast = signal('');
+  /** Waiting requests that can join a ride already sent, right on the way: request id to the ride. */
+  protected readonly joins = signal(new Map<string, JoinOption>());
+  /**
+   * Notices for what must not be missed even in a long queue (a request right on the way of a sent ride, a driver
+   * who did not take an offer in 2 minutes). Each closes with its X, or by itself after a minute.
+   */
+  protected readonly notices = signal<Notice[]>([]);
+  private readonly seenNotices = new Set<string>();
+  /** The text to read to a driver without the app after a request joined the ride. */
+  protected readonly joinScript = signal<{ driver: string; lines: string[] } | null>(null);
   protected readonly mapBig = signal(false);
   /** The driver whose ride sheet is being printed. */
   protected readonly printFor = signal<DriverRow | null>(null);
@@ -178,12 +188,17 @@ export class DispatcherPage implements OnInit, OnDestroy {
 
   /** background: an automatic refresh (live update or timer), which is not the user's activity. */
   protected async reload(background = false) {
-    const s = await this.api.get<{ active: boolean; queue?: QueueRow[]; drivers?: DriverRow[]; later?: number }>('/api/dispatch/state', background);
+    const s = await this.api.get<{
+      active: boolean; queue?: QueueRow[]; drivers?: DriverRow[]; later?: number;
+      joins?: { requestId: string; join: JoinOption }[];
+    }>('/api/dispatch/state', background);
     this.active.set(s.active);
     if (!s.active) return;
     this.queue.set(s.queue ?? []);
     this.later.set(s.later ?? 0);
     this.drivers.set(s.drivers ?? []);
+    this.joins.set(new Map((s.joins ?? []).map((j) => [j.requestId, j.join])));
+    this.raiseNotices();
     if (this.selectedId() && !this.queue().some((r) => r.id === this.selectedId())) this.selectedId.set(null);
     await this.reloadProposals(background);
   }
@@ -273,6 +288,50 @@ export class DispatcherPage implements OnInit, OnDestroy {
     // Show the updated route at once: close the request card so the map gets its room, then zoom to the route.
     this.selectedId.set(null);
     setTimeout(() => this.map()?.fitTo(this.route()), 200);
+  }
+
+  private raiseNotices() {
+    const fresh: Notice[] = [];
+    for (const [requestId, j] of this.joins()) {
+      const r = this.queue().find((x) => x.id === requestId);
+      const key = `join:${requestId}:${j.tripId}`;
+      if (r && !this.seenNotices.has(key)) fresh.push({ key, requestId, text: `פנייה מס' ${r.number} על הדרך של ${j.driverName}. אפשר לצרף לנסיעה שלו.` });
+    }
+    for (const d of this.drivers()) {
+      const key = `late:${d.trip?.id}`;
+      if (d.trip && this.offerLate(d) && !this.seenNotices.has(key)) fresh.push({ key, driverId: d.id, text: `${d.fullName} לא אישר את ההצעה תוך 2 דקות.` });
+    }
+    for (const n of fresh) {
+      this.seenNotices.add(n.key);
+      setTimeout(() => this.closeNotice(n.key), 60_000);
+    }
+    if (fresh.length) this.notices.update((list) => [...list, ...fresh].slice(-5));
+  }
+
+  protected closeNotice(key: string) {
+    this.notices.update((list) => list.filter((n) => n.key !== key));
+  }
+
+  protected openNotice(n: Notice) {
+    if (n.requestId) this.selectedId.set(n.requestId);
+    if (n.driverId) this.openDriverId.set(n.driverId);
+    this.closeNotice(n.key);
+  }
+
+  /** "Join the ride of ...": the request becomes a stop of a ride already sent (spec 7). */
+  protected async joinRide(r: QueueRow) {
+    const j = this.joins().get(r.id);
+    if (!j) return;
+    try {
+      await this.api.post(`/api/dispatch/trips/${j.tripId}/join`, { requestId: r.id });
+    } catch (e) {
+      this.showToast(errorMessage(e));
+      return;
+    }
+    const d = this.drivers().find((x) => x.id === j.driverId);
+    if (d && !d.hasSmartphone) this.joinScript.set({ driver: d.fullName, lines: ['עוד איסוף בדרך:', ...script([r], (id) => this.cluster(id)?.name ?? '').slice(0, -1)] });
+    else this.showToast(`פנייה מס' ${r.number} צורפה לנסיעה של ${j.driverName}. המסך שלו עודכן.`);
+    await this.reload();
   }
 
   protected removeStop(id: string) {

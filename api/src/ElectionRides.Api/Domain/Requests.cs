@@ -78,6 +78,8 @@ public class RideRequest
     public bool NeedsWheelchair { get; set; }
     public bool NeedsWalker { get; set; }
     public bool NeedsHelp { get; set; }
+    /// <summary>Comes with an escort (spec 5.1): one more seat in the car. Not a family ride (open question).</summary>
+    public bool WithEscort { get; set; }
 
     public TimeMode TimeMode { get; set; }
     public TimeOnly? WindowFrom { get; set; }

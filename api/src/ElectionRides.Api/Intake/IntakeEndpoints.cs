@@ -14,7 +14,7 @@ public record RequestIn(
     Guid? StreetId, string BuildingNumber, string? Entrance, string? DriverNotes, Guid? CommunityId,
     bool NeedsWheelchair, bool NeedsWalker, bool NeedsHelp,
     string TimeMode, TimeOnly? WindowFrom, TimeOnly? WindowTo, string? UrgencyReason, string? UrgencyOther,
-    string ReturnMode, bool KeepNonAccessible, bool IgnoreDuplicate, int? IntakeSeconds = null);
+    string ReturnMode, bool KeepNonAccessible, bool IgnoreDuplicate, int? IntakeSeconds = null, bool WithEscort = false);
 public record CancelIn(string Reason, string? Other);
 
 /// <summary>Operator intake (spec 5.1): who is on a phone, new request, edit, cancel, and status search.</summary>
@@ -294,6 +294,7 @@ public static class IntakeEndpoints
         r.CommunityId = b.CommunityId;
         r.NeedsWheelchair = b.NeedsWheelchair;
         r.NeedsWalker = b.NeedsWalker;
+        r.WithEscort = b.WithEscort;
         r.NeedsHelp = b.NeedsHelp;
         r.TimeMode = timeMode;
         r.WindowFrom = timeMode == TimeMode.Between ? b.WindowFrom : null;
@@ -329,7 +330,7 @@ public static class IntakeEndpoints
     {
         r.Id, r.Number, r.CallerPhone, status = r.Status.ToString(), r.CreatedAt,
         r.StreetId, r.BuildingNumber, r.Entrance, r.DriverNotes, r.ApproximateLocation, r.CommunityId,
-        r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp,
+        r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp, r.WithEscort,
         timeMode = r.TimeMode.ToString(), r.WindowFrom, r.WindowTo, r.UrgencyReason,
         returnMode = r.ReturnMode.ToString(),
         passengers = r.Passengers.Select(p => new

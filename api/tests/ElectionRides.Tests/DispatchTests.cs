@@ -137,6 +137,22 @@ public class ProposalEngineTests
     }
 
     [Fact]
+    public void A_request_joins_a_sent_ride_only_right_on_the_way_and_never_a_family()
+    {
+        ProposalEngine.TravelMinutes t = (a, b) => (Math.Abs(a.Lat - b.Lat) + Math.Abs(a.Lon - b.Lon)) * 1000;
+        var cluster = Guid.NewGuid();
+        QueueItem At(double lat, RideKind kind = RideKind.Men) => new(Guid.NewGuid(), kind, 1, false, new GeoPoint(lat, 35.2), [cluster], null, 5, null, false);
+        var first = At(31.780);
+        var driver = new DriverItem(Guid.NewGuid(), "נהג", 4, false, false, null, null);
+        ProposalEngine.SentRide Ride(QueueItem inCar) => new(Guid.NewGuid(), driver, new GeoPoint(31.779, 35.2), [inCar], [inCar], [cluster], new GeoPoint(31.790, 35.2), false);
+        Assert.Equal("", ProposalEngine.WhyNotJoin(Ride(first), At(31.785), t));            // between the pickup and the cluster
+        Assert.Equal("לא על הדרך", ProposalEngine.WhyNotJoin(Ride(first), At(31.776), t)); // 3 minutes back
+        Assert.Equal("משפחה נוסעת לבד", ProposalEngine.WhyNotJoin(Ride(first), At(31.785, RideKind.Family), t));
+        Assert.Equal("משפחה נוסעת לבד", ProposalEngine.WhyNotJoin(Ride(At(31.780, RideKind.Family)), At(31.785), t));
+        Assert.Equal("ברכב גברים", ProposalEngine.WhyNotJoin(Ride(first), At(31.785, RideKind.Women), t));
+    }
+
+    [Fact]
     public void Free_drivers_get_proposals_before_soon_free_drivers()
     {
         var soon = D(soon: true, inMin: 5);
@@ -284,6 +300,28 @@ public class DispatchTests(ApiFactory api)
         Assert.DoesNotContain("מרים ויס", text);
         Assert.DoesNotContain("0527666661", text);
         Assert.Equal(HttpStatusCode.Forbidden, (await op.GetAsync("/api/city/analytics")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Dispatcher_joins_a_waiting_request_to_a_sent_ride_on_the_way()
+    {
+        var (op, disp, street, cluster) = await Setup();
+        var first = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527888881", "אברהם לוי", "000000117", "Male", street, cluster)))).GetProperty("id").GetGuid();
+        await disp.PostAsJsonAsync($"/api/dispatch/requests/{first}/location", new { lat = 31.7800, lon = 35.2000 });
+        var drv = (await Json(await disp.PostAsJsonAsync("/api/dispatch/drivers", new { phone = "0548000791", fullName = "יוסף שור", seats = 4, wheelchairCar = false, hasSmartphone = false }))).GetProperty("id").GetGuid();
+        var trip = (await Json(await disp.PostAsJsonAsync("/api/dispatch/trips", new { driverId = drv, requestIds = new[] { first } }))).GetProperty("id").GetGuid();
+
+        // A new request at the same building: right on the way.
+        var second = (await Json(await op.PostAsJsonAsync("/api/intake/requests", Req("0527888882", "יצחק לוי", "000000125", "Male", street, cluster)))).GetProperty("id").GetGuid();
+        await disp.PostAsJsonAsync($"/api/dispatch/requests/{second}/location", new { lat = 31.7800, lon = 35.2000 });
+        var state = await Json(await disp.GetAsync("/api/dispatch/state"));
+        var join = state.GetProperty("joins").EnumerateArray().Single(j => j.GetProperty("requestId").GetGuid() == second).GetProperty("join");
+        Assert.Equal(trip, join.GetProperty("tripId").GetGuid());
+
+        Assert.Equal(HttpStatusCode.NoContent, (await disp.PostAsJsonAsync($"/api/dispatch/trips/{trip}/join", new { requestId = second })).StatusCode);
+        await using var db = api.NewDb();
+        Assert.Equal(RequestStatus.Assigned, (await db.Requests.FirstAsync(r => r.Id == second)).Status);
+        Assert.Equal(2, await db.TripStops.CountAsync(s => s.TripId == trip && s.Kind == StopKind.Pickup));
     }
 
     [Fact]

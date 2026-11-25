@@ -77,10 +77,11 @@
               @if (r.returnMode !== 'DriverWaits') {
                 <dt class="text-muted">חזרה</dt><dd>{{ r.returnMode === 'CallsSeparately' ? 'בנפרד, יתקשרו' : 'הלוך בלבד' }}</dd>
               }
-              @if (r.needsWheelchair || r.needsWalker || r.needsHelp) {
+              @if (r.needsWheelchair || r.needsWalker || r.needsHelp || r.withEscort) {
                 <dt class="text-muted">צרכים</dt>
                 <dd class="flex flex-wrap items-center gap-2">@if (r.needsWheelchair) { <span class="inline-flex items-center gap-1"><app-icon name="wc" [size]="16" /> כיסא גלגלים</span> }
-                  @if (r.needsWalker) { <span>הליכון</span> } @if (r.needsHelp) { <span>צריך עזרה</span> }</dd>
+                  @if (r.needsWalker) { <span>הליכון</span> } @if (r.needsHelp) { <span>צריך עזרה</span> }
+                  @if (r.withEscort) { <span>עם מלווה (מקום נוסף)</span> }</dd>
               }
               @if (r.driverNotes) { <dt class="text-muted">הערות</dt><dd>{{ r.driverNotes }}</dd> }
               @if (r.pending) {
@@ -90,6 +91,9 @@
               }
             </dl>
             <div class="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
+              @if (joins().get(r.id); as j) {
+                <button type="button" class="btn-primary h-9 px-3 text-sm" (click)="joinRide(r)">צרף לנסיעה של {{ j.driverName }} (על הדרך)</button>
+              }
               @if (propDriver(); as d) {
                 @if (joinReason()) {
                   <span class="text-sm font-medium text-bad">לא ניתן לצרף ל{{ d.fullName }}: {{ joinReason() }}</span>
@@ -382,6 +386,26 @@
   </div>
 </app-dialog>
 
+<!-- Notices: the few things that must not be missed. -->
+@if (notices().length) {
+  <div class="fixed left-4 top-20 z-40 grid w-[min(360px,calc(100vw-32px))] gap-2" role="region" aria-label="התראות" aria-live="polite">
+    @for (n of notices(); track n.key) {
+      <div class="flex items-start gap-2 rounded-2xl border-s-4 border-action bg-surface p-3 text-sm shadow-[var(--shadow-pop)]">
+        <p class="min-w-0 flex-1">{{ n.text }}</p>
+        <button type="button" class="h-8 shrink-0 rounded-lg bg-action-soft px-2.5 text-xs font-semibold hover:bg-action hover:text-white" (click)="openNotice(n)">הצג</button>
+        <button type="button" class="grid size-8 shrink-0 place-items-center rounded-full bg-soft hover:bg-bad-soft" aria-label="סגירה" (click)="closeNotice(n.key)"><app-icon name="x" [size]="16" /></button>
+      </div>
+    }
+  </div>
+}
+
+<app-dialog [open]="!!joinScript()" [title]="'להקריא ל' + (joinScript()?.driver ?? '')" [width]="520" (closed)="joinScript.set(null)">
+  @if (joinScript(); as s) {
+    <div class="grid gap-1 rounded-xl bg-soft p-3">@for (l of s.lines; track $index) { <p>{{ l }}</p> }</div>
+    <button type="button" class="btn-primary mt-4" (click)="joinScript.set(null)">הקראתי לנהג</button>
+  }
+</app-dialog>
+
 @if (toast()) {
   <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-3 font-medium text-white shadow-[var(--shadow-pop)]" role="status">{{ toast() }}</div>
 }
@@ -398,6 +422,7 @@
       <span class="flex flex-wrap items-center gap-1 text-xs text-muted">{{ kindOf(r) }}
         @if (r.needsWheelchair) { <span class="inline-flex text-ink" title="כיסא גלגלים"><app-icon name="wc" [size]="14" /></span> }
         @if (r.pending) { <span class="rounded-full bg-warn-soft px-1.5 text-warn">ממתין לאימות</span> }
+        @if (joins().get(r.id); as j) { <span class="rounded-full bg-action px-1.5 font-medium text-white">על הדרך של {{ j.driverName }}</span> }
         @if (!r.location) { <span class="rounded-full bg-bad-soft px-1.5 text-bad">לא נמצא מיקום</span> } @else if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
       </span>
     </span>

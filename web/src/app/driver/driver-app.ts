@@ -19,6 +19,7 @@ interface Stop {
   names?: string[];
   needsWheelchair?: boolean;
   needsWalker?: boolean;
+  withEscort?: boolean;
   needsHelp?: boolean;
   phone?: string;
   comesBack?: boolean;

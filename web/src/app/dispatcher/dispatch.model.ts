@@ -54,6 +54,8 @@ export interface QueueRow {
   clusterIds: string[];
   needsWheelchair: boolean;
   needsWalker: boolean;
+  /** Comes with an escort: one more seat. */
+  withEscort: boolean;
   needsHelp: boolean;
   timeMode: 'Now' | 'Between' | 'LeaveBy';
   windowFrom: string | null;
@@ -75,6 +77,21 @@ export interface TripStop {
   /** Needs and the note for the driver, for the printed sheet. */
   notes?: string | null;
   returnsWithDriver?: boolean;
+}
+
+/** A waiting request that can join a ride already sent, right on the way (spec 7). */
+export interface JoinOption {
+  tripId: string;
+  driverId: string;
+  driverName: string;
+}
+
+/** A notice in the corner of the dispatcher's screen, for the few things that must not be missed. */
+export interface Notice {
+  key: string;
+  text: string;
+  requestId?: string;
+  driverId?: string;
 }
 
 export interface DriverRow {
@@ -134,10 +151,15 @@ export function kindOf(r: QueueRow): string {
 }
 
 /** Why a request cannot join the car; empty when it can (same words as the server). */
+/** Seats a request takes: its passengers, and one more for an escort. */
+export function seatsOf(r: Pick<QueueRow, 'passengers' | 'withEscort'>): number {
+  return r.passengers.length + (r.withEscort ? 1 : 0);
+}
+
 export function whyNot(d: Pick<DriverRow, 'seats' | 'wheelchairCar'>, inCar: QueueRow[], r: QueueRow): string {
   if (inCar.some((x) => x.id === r.id)) return 'כבר בהצעה';
   if (r.needsWheelchair && !d.wheelchairCar) return 'הרכב לא נגיש';
-  if (inCar.reduce((s, x) => s + x.passengers.length, 0) + r.passengers.length > d.seats) return 'אין מקום ברכב';
+  if (inCar.reduce((s, x) => s + seatsOf(x), 0) + seatsOf(r) > d.seats) return 'אין מקום ברכב';
   if (inCar.length) {
     if (r.kind === 'Family' || inCar[0].kind === 'Family') return 'משפחה נוסעת לבד';
     if (r.kind !== inCar[0].kind) return inCar[0].kind === 'Men' ? 'ברכב גברים' : 'ברכב נשים';
@@ -159,7 +181,7 @@ export function script(stops: QueueRow[], clusterName: (id: string) => string): 
   const lines = stops.map((r, i) => {
     const addr = `${r.street} ${r.buildingNumber}${r.entrance ? ' כניסה ' + r.entrance : ''}`;
     const names = r.passengers.map((p) => p.fullName).join(' ו');
-    const notes = [r.needsWheelchair && 'כיסא גלגלים', r.needsWalker && 'הליכון', r.needsHelp && 'צריך עזרה', r.driverNotes]
+    const notes = [r.needsWheelchair && 'כיסא גלגלים', r.needsWalker && 'הליכון', r.needsHelp && 'צריך עזרה', r.withEscort && 'עם מלווה', r.driverNotes]
       .filter(Boolean)
       .join(', ');
     return `${i + 1}. ${addr}: ${names}, טלפון ${r.callerPhone}${notes ? '. ' + notes : ''}.`;

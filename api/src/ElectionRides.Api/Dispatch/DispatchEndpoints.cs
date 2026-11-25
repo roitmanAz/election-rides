@@ -13,6 +13,7 @@ public record DriverIn(string Phone, string FullName, int Seats, bool Wheelchair
     Guid? AreaStreetId = null, string? AreaBuilding = null);
 public record SuspendIn(bool Suspend);
 public record TripIn(Guid DriverId, List<Guid> RequestIds);
+public record JoinIn(Guid RequestId);
 public record DriverActionIn(string Action);
 public record LocationIn(double Lat, double Lon);
 
@@ -33,6 +34,11 @@ public static class DispatchEndpoints
             if (op is null) return Results.Ok(new { active = false });
             var now = DateTimeOffset.UtcNow;
             var queue = await QueueItems(db, city, op.Id, now, ct);
+            var rides = await SentRides(db, city, op.Id, ct);
+            object? JoinFor(QueueItem r) => rides
+                .Where(x => ProposalEngine.WhyNotJoin(x, r) == "")
+                .Select(x => new { tripId = x.TripId, driverId = x.Driver.Id, driverName = x.Driver.Name })
+                .FirstOrDefault();
             var drivers = await db.Drivers.Where(d => d.CityId == city && d.OperationId == op.Id && d.Status != DriverStatus.Finished)
                 .OrderBy(d => d.FullName).ToListAsync(ct);
             var trips = await db.Trips.Where(t => t.CityId == city && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered)).Include(t => t.Stops).ToListAsync(ct);
@@ -48,6 +54,9 @@ public static class DispatchEndpoints
             {
                 active = true,
                 queue = queue.Where(q => !q.item.NotYet).Select(q => q.dto),
+                // Waiting requests that can join a ride already sent, right on the way (spec 7).
+                joins = queue.Where(q => !q.item.NotYet).Select(q => (id: q.item.Id, join: JoinFor(q.item))).Where(x => x.join is not null)
+                    .Select(x => new { requestId = x.id, x.join }),
                 // Requests for a later pickup window: shown only as a count until their window starts.
                 later = queue.Count(q => q.item.NotYet),
                 drivers = drivers.Select(d =>
@@ -77,6 +86,7 @@ public static class DispatchEndpoints
                                     notes = r is null ? null : string.Join(", ", new[]
                                     {
                                         r.NeedsWheelchair ? "כיסא גלגלים" : null, r.NeedsWalker ? "הליכון" : null, r.NeedsHelp ? "צריך עזרה" : null,
+                                        r.WithEscort ? "עם מלווה" : null,
                                         r.DriverNotes,
                                     }.Where(x => !string.IsNullOrWhiteSpace(x))),
                                     returnsWithDriver = r?.ReturnMode == ReturnMode.DriverWaits,
@@ -250,6 +260,47 @@ public static class DispatchEndpoints
             if (r is null) return Problems.Error("הפנייה כבר לא בתור", 409);
             r.SuspendedAt = b.Suspend ? DateTimeOffset.UtcNow : null;
             r.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+            await events.Changed(city);
+            return Results.NoContent();
+        });
+
+        // "Join a ride already sent" (spec 7): a waiting request right on the way of a ride with a free seat.
+        g.MapPost("/trips/{id:guid}/join", async (Guid id, JoinIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        {
+            var city = me.CityId();
+            var op = await IntakeEndpoints.ActiveOperation(db, city, ct);
+            if (op is null) return Problems.Error("אין מבצע פעיל", 409);
+            var now = DateTimeOffset.UtcNow;
+            var ride = (await SentRides(db, city, op.Id, ct)).FirstOrDefault(x => x.TripId == id);
+            if (ride is null) return Problems.Error("הנסיעה כבר הסתיימה", 409);
+            var r = (await QueueItems(db, city, op.Id, now, ct)).Select(q => q.item).FirstOrDefault(q => q.Id == b.RequestId);
+            if (r is null) return Problems.Error("הפנייה כבר לא בתור", 409);
+            var why = ProposalEngine.WhyNotJoin(ride, r);
+            if (why != "") return Problems.Error($"לא ניתן לצרף לנסיעה של {ride.Driver.Name}: {why}");
+
+            // The new pickup goes among the pickups still ahead, nearest next from where the driver is now.
+            var trip = await db.Trips.Include(t => t.Stops).FirstAsync(t => t.Id == id, ct);
+            var done = trip.Stops.Where(s => s.DoneAt != null).OrderBy(s => s.Order).ToList();
+            var ahead = trip.Stops.Where(s => s.DoneAt == null && s.Kind == StopKind.Pickup).ToList();
+            var drops = trip.Stops.Where(s => s.Kind == StopKind.DropOff).OrderBy(s => s.Order).ToList();
+            var points = ride.Ahead.Append(r).ToDictionary(x => x.Id, x => x.Pickup);
+            var newStop = new TripStop { TripId = trip.Id, Kind = StopKind.Pickup, RequestId = r.Id };
+            var left = ahead.Append(newStop).ToList();
+            var cur = ride.Position ?? points.Values.FirstOrDefault(p => p is not null);
+            var ordered = new List<TripStop>();
+            while (left.Count > 0)
+            {
+                var next = cur is null ? left[0] : left.MinBy(s => points.GetValueOrDefault(s.RequestId!.Value) is { } p ? ProposalEngine.Estimate(cur, p) : double.MaxValue)!;
+                ordered.Add(next);
+                left.Remove(next);
+                cur = points.GetValueOrDefault(next.RequestId!.Value) ?? cur;
+            }
+            var order = 0;
+            foreach (var s in done.Concat(ordered).Concat(drops.Where(s => s.DoneAt == null))) s.Order = ++order;
+            trip.Stops.Add(newStop);
+            await db.Requests.Where(x => x.Id == r.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, RequestStatus.Assigned).SetProperty(x => x.UpdatedAt, now).SetProperty(x => x.AssignedAt, now), ct);
             await db.SaveChangesAsync(ct);
             await events.Changed(city);
             return Results.NoContent();
@@ -477,6 +528,43 @@ public static class DispatchEndpoints
         return result;
     }
 
+    /// <summary>Rides already sent (offered or active), as the "join on the way" rule sees them.</summary>
+    static async Task<List<ProposalEngine.SentRide>> SentRides(AppDbContext db, Guid city, Guid op, CancellationToken ct)
+    {
+        var trips = await db.Trips.Where(t => t.CityId == city && t.OperationId == op && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered))
+            .Include(t => t.Stops).Include(t => t.Driver).ToListAsync(ct);
+        if (trips.Count == 0) return [];
+        var reqIds = trips.SelectMany(t => t.Stops).Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList();
+        var reqs = await db.Requests.Where(r => reqIds.Contains(r.Id)).Include(r => r.Passengers).ThenInclude(p => p.Person)
+            .ToDictionaryAsync(r => r.Id, ct);
+        var clusters = await db.Clusters.Where(c => c.CityId == city).ToDictionaryAsync(c => c.Id, c => c.Location, ct);
+        static GeoPoint? Geo(Point? pt) => Point(pt) is { } p ? new GeoPoint(p.lat, p.lon) : null;
+
+        var result = new List<ProposalEngine.SentRide>();
+        foreach (var t in trips)
+        {
+            var d = t.Driver!;
+            QueueItem Item(RideRequest r)
+            {
+                var genders = r.Passengers.Select(p => p.Person!.Gender).Distinct().ToList();
+                var kind = genders.Count > 1 ? RideKind.Family : genders[0] == Gender.Male ? RideKind.Men : RideKind.Women;
+                return new QueueItem(r.Id, kind, r.Passengers.Count + (r.WithEscort ? 1 : 0), r.NeedsWheelchair, Geo(r.Location),
+                    r.Passengers.Select(p => p.ClusterId).Distinct().ToList(), null, 0, null, false);
+            }
+            var pickups = t.Stops.Where(s => s.Kind == StopKind.Pickup && s.RequestId is { } id && reqs.ContainsKey(id)).OrderBy(s => s.Order).ToList();
+            var inCar = pickups.Select(s => Item(reqs[s.RequestId!.Value])).ToList();
+            var ahead = pickups.Where(s => s.DoneAt == null).Select(s => Item(reqs[s.RequestId!.Value])).ToList();
+            var lastDone = pickups.LastOrDefault(s => s.DoneAt != null);
+            var dropIds = t.Stops.Where(s => s.Kind == StopKind.DropOff && s.ClusterId != null).Select(s => s.ClusterId!.Value).ToList();
+            var position = lastDone is not null ? Geo(reqs[lastDone.RequestId!.Value].Location) : Geo(d.Location);
+            var driver = new DriverItem(d.Id, d.FullName, d.Seats, d.WheelchairCar, false, null, Geo(d.Location));
+            result.Add(new ProposalEngine.SentRide(t.Id, driver, position, inCar, ahead, dropIds,
+                dropIds.Count > 0 ? Geo(clusters.GetValueOrDefault(dropIds[0])) : null,
+                t.Stops.Any(s => s.Kind == StopKind.DropOff && s.DoneAt != null)));
+        }
+        return result;
+    }
+
     /// <summary>Waiting requests, as rules input and as screen rows.</summary>
     static async Task<List<(QueueItem item, object dto)>> QueueItems(AppDbContext db, Guid city, Guid op, DateTimeOffset now, CancellationToken ct)
     {
@@ -497,7 +585,7 @@ public static class DispatchEndpoints
             // A pickup window that has not started yet stays out of the queue and the proposals until it starts.
             var notYet = r.TimeMode == TimeMode.Between && r.WindowFrom is { } from && At(from) > now;
             var wait = Waiting.Minutes(now, r.CreatedAt, r.TimeMode, r.WindowFrom);
-            var item = new QueueItem(r.Id, kind, r.Passengers.Count, r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet,
+            var item = new QueueItem(r.Id, kind, r.Passengers.Count + (r.WithEscort ? 1 : 0), r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet,
                 r.SuspendedAt is not null);
             object dto = new
             {
@@ -507,7 +595,7 @@ public static class DispatchEndpoints
                 passengers = r.Passengers.Select(p => new { p.Person!.FullName, gender = p.Person.Gender.ToString(), p.ClusterId, p.BallotBox }),
                 pending = r.Passengers.Any(p => p.PendingVerification),
                 r.CallerPhone, street = r.Street?.Name, r.BuildingNumber, r.Entrance, r.DriverNotes, r.ApproximateLocation,
-                location = pickup, clusterIds, r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp,
+                location = pickup, clusterIds, r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp, r.WithEscort,
                 timeMode = r.TimeMode.ToString(), r.WindowFrom, r.WindowTo, r.UrgencyReason, returnMode = r.ReturnMode.ToString(),
                 r.CreatedAt,
             };

@@ -148,7 +148,7 @@ public static class DriverAppEndpoints
                     kind = "Pickup", distance = Leg(r.Location),
                     address = $"{r.Street?.Name} {r.BuildingNumber}", r.Entrance, r.DriverNotes,
                     names = r.Passengers.Select(x => x.Person!.FullName).ToList(),
-                    r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp, phone = r.CallerPhone,
+                    r.NeedsWheelchair, r.NeedsWalker, r.NeedsHelp, r.WithEscort, phone = r.CallerPhone,
                     comesBack = r.ReturnMode == ReturnMode.DriverWaits,
                     location = DispatchEndpoints.Point(r.Location) is { } rp ? new { rp.lat, rp.lon } : null,
                 };

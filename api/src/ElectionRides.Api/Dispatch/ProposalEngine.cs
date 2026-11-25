@@ -150,6 +150,47 @@ public static class ProposalEngine
     public static GeoPoint? StartPoint(GeoPoint? lastDropOff, GeoPoint? appLocation, DateTimeOffset? appAt, GeoPoint? area, DateTimeOffset now) =>
         lastDropOff ?? (appLocation is not null && appAt is { } at && now - at <= TimeSpan.FromMinutes(5) ? appLocation : null) ?? area;
 
+    /// <summary>"Join a ride already sent": only when the pickup is right on the way, adding at most this (minutes).</summary>
+    public const double OnRouteMinutes = 1;
+
+    /// <summary>
+    /// A ride already sent, as the join rule sees it: where the driver is now (the last pickup done, or the driver,
+    /// or the first pickup), the pickups still ahead, the cluster(s) and the seats and kind already in the car.
+    /// </summary>
+    public record SentRide(Guid TripId, DriverItem Driver, GeoPoint? Position, List<QueueItem> InCar, List<QueueItem> Ahead,
+        IReadOnlyList<Guid> Clusters, GeoPoint? Destination, bool DroppedOff);
+
+    /// <summary>
+    /// Why request <paramref name="r"/> cannot join this sent ride; empty when it can. It can when the ride has not
+    /// reached its cluster yet, goes to exactly the same cluster(s), the car fits (gender, family alone, seats,
+    /// wheelchair) and the pickup adds at most 1 minute of driving: right on the way.
+    /// </summary>
+    public static string WhyNotJoin(SentRide ride, QueueItem r, TravelMinutes? minutes = null)
+    {
+        var t = minutes ?? Estimate;
+        if (ride.DroppedOff) return "כבר הגיע לאשכול";
+        if (!ride.Clusters.ToHashSet().SetEquals(r.Clusters)) return "לאשכול אחר";
+        var why = WhyNot(ride.Driver, ride.InCar, r);
+        if (why != "") return why;
+        if (r.Pickup is null || ride.Destination is null) return "אין מיקום";
+        var start = ride.Position ?? ride.Ahead.FirstOrDefault(x => x.Pickup is not null)?.Pickup ?? r.Pickup;
+        double Route(List<QueueItem> pickups)
+        {
+            var left = pickups.Where(x => x.Pickup is not null).ToList();
+            var cur = start;
+            double total = 0;
+            while (left.Count > 0)
+            {
+                var next = left.MinBy(x => t(cur, x.Pickup!))!;
+                total += t(cur, next.Pickup!);
+                cur = next.Pickup!;
+                left.Remove(next);
+            }
+            return total + t(cur, ride.Destination);
+        }
+        return Route([.. ride.Ahead, r]) - Route(ride.Ahead) <= OnRouteMinutes ? "" : "לא על הדרך";
+    }
+
     /// <summary>Driving minutes for a car: from the driver (or the first pickup), pickups nearest-next, then the cluster.</summary>
     static double RideMinutes(GeoPoint? start, List<QueueItem> car, TravelMinutes t)
     {

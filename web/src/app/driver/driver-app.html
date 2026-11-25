@@ -87,9 +87,10 @@
           <b class="text-xl leading-tight">{{ s.address }}@if (s.entrance) { , כניסה {{ s.entrance }} }</b>
           <span>{{ s.names?.join(', ') }}
             @if (s.comesBack) { <span class="ms-1 rounded-full bg-action-soft px-2 text-sm">חוזר איתך הביתה</span> }</span>
-          @if (s.needsWheelchair || s.needsWalker || s.needsHelp) {
+          @if (s.needsWheelchair || s.needsWalker || s.needsHelp || s.withEscort) {
             <span class="flex flex-wrap items-center gap-2 text-sm">@if (s.needsWheelchair) { <span class="inline-flex items-center gap-1"><app-icon name="wc" [size]="18" /> כיסא גלגלים</span> }
-              @if (s.needsWalker) { <span>הליכון</span> } @if (s.needsHelp) { <span>צריך עזרה</span> }</span>
+              @if (s.needsWalker) { <span>הליכון</span> } @if (s.needsHelp) { <span>צריך עזרה</span> }
+              @if (s.withEscort) { <span>עם מלווה</span> }</span>
           }
           @if (s.driverNotes) { <span class="text-sm text-muted">{{ s.driverNotes }}</span> }
           <span class="text-sm">טלפון: <span dir="ltr" class="whitespace-nowrap">{{ formatPhone(s.phone ?? '') }}</span></span>

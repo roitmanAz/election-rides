@@ -1386,6 +1386,9 @@ namespace ElectionRides.Api.Data.Migrations
                     b.Property<TimeOnly?>("WindowTo")
                         .HasColumnType("time without time zone");
 
+                    b.Property<bool>("WithEscort")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CallerPhone");

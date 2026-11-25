@@ -154,7 +154,7 @@
             <label class="label" for="comm">לאיזו קהילה שייכים?</label>
             <app-combo inputId="comm" [items]="communityItems()" [(value)]="communityId" placeholder="חלק מהשם" />
           </div>
-          <p class="label mt-4 mb-2">צריך כיסא גלגלים, הליכון או עזרה?</p>
+          <p class="label mt-4 mb-2">צריך כיסא גלגלים, הליכון, עזרה או מלווה?</p>
           <div class="flex flex-wrap gap-2">
             <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="needsWheelchair">
               <input type="checkbox" name="wc" class="size-4" [(ngModel)]="needsWheelchair" /><app-icon name="wc" [size]="18" /> כיסא גלגלים</label>
@@ -162,6 +162,9 @@
               <input type="checkbox" name="walker" class="size-4" [(ngModel)]="needsWalker" /> הליכון</label>
             <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="needsHelp">
               <input type="checkbox" name="help" class="size-4" [(ngModel)]="needsHelp" /> צריך עזרה (הערה לנהג)</label>
+            <label class="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-soft px-4" [class.!bg-action-soft]="withEscort"
+              title="המלווה תופס מקום נוסף ברכב">
+              <input type="checkbox" name="escort" class="size-4" [(ngModel)]="withEscort" /> מגיע עם מלווה (מקום נוסף)</label>
           </div>
 
           @if (notAccessible().length) {
