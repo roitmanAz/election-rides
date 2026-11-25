@@ -9,7 +9,9 @@ using NetTopologySuite.Geometries;
 
 namespace ElectionRides.Api.Dispatch;
 
-public record DriverIn(string Phone, string FullName, int Seats, bool WheelchairCar, bool HasSmartphone);
+public record DriverIn(string Phone, string FullName, int Seats, bool WheelchairCar, bool HasSmartphone,
+    Guid? AreaStreetId = null, string? AreaBuilding = null);
+public record SuspendIn(bool Suspend);
 public record TripIn(Guid DriverId, List<Guid> RequestIds);
 public record DriverActionIn(string Action);
 public record LocationIn(double Lat, double Lon);
@@ -57,6 +59,7 @@ public static class DispatchEndpoints
                         d.StatusSince, d.FreeAt, d.BreakAfterTrip,
                         minutesToFree = d.FreeAt is { } f ? Math.Max(0, (int)Math.Ceiling((f - now).TotalMinutes)) : (int?)null,
                         location = Point(d.Location),
+                        d.AreaStreetId, d.AreaBuilding,
                         hasLink = d.AccessTokenExpires > now,
                         lastDecline = declines.FirstOrDefault(x => x.DriverId == d.Id)?.DeclineReason,
                         trip = trip is null ? null : new
@@ -175,7 +178,7 @@ public static class DispatchEndpoints
             return Results.Ok(new { found = true, onList, d.Id, d.FullName, d.Seats, d.WheelchairCar, d.HasSmartphone });
         });
 
-        g.MapPost("/drivers", async (DriverIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        g.MapPost("/drivers", async (DriverIn b, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CityEvents events, CancellationToken ct) =>
         {
             var city = me.CityId();
             var op = await IntakeEndpoints.ActiveOperation(db, city, ct);
@@ -190,6 +193,8 @@ public static class DispatchEndpoints
                 CityId = city, Phone = phone, FullName = Rules.NormalizeName(b.FullName), Seats = b.Seats,
                 WheelchairCar = b.WheelchairCar, HasSmartphone = b.HasSmartphone, OperationId = op.Id, Status = DriverStatus.Free,
             };
+            var areaError = await SetArea(d, b, city, db, geo, ct);
+            if (areaError is not null) return areaError;
             db.Drivers.Add(d);
             await db.SaveChangesAsync(ct);
             await events.Changed(city);
@@ -215,7 +220,7 @@ public static class DispatchEndpoints
             return Results.NoContent();
         });
 
-        g.MapPut("/drivers/{id:guid}", async (Guid id, DriverIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        g.MapPut("/drivers/{id:guid}", async (Guid id, DriverIn b, ClaimsPrincipal me, AppDbContext db, IGeocoder geo, CityEvents events, CancellationToken ct) =>
         {
             var city = me.CityId();
             var d = await db.Drivers.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city, ct);
@@ -230,6 +235,21 @@ public static class DispatchEndpoints
             d.Seats = b.Seats;
             d.WheelchairCar = b.WheelchairCar;
             d.HasSmartphone = b.HasSmartphone;
+            var areaError = await SetArea(d, b, city, db, geo, ct);
+            if (areaError is not null) return areaError;
+            await db.SaveChangesAsync(ct);
+            await events.Changed(city);
+            return Results.NoContent();
+        });
+
+        // "Suspend": a request from a far area is kept aside and offered only to a driver who starts near it (spec 7).
+        g.MapPost("/requests/{id:guid}/suspend", async (Guid id, SuspendIn b, ClaimsPrincipal me, AppDbContext db, CityEvents events, CancellationToken ct) =>
+        {
+            var city = me.CityId();
+            var r = await db.Requests.FirstOrDefaultAsync(x => x.Id == id && x.CityId == city && x.Status == RequestStatus.Queued, ct);
+            if (r is null) return Problems.Error("הפנייה כבר לא בתור", 409);
+            r.SuspendedAt = b.Suspend ? DateTimeOffset.UtcNow : null;
+            r.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct);
             await events.Changed(city);
             return Results.NoContent();
@@ -293,6 +313,27 @@ public static class DispatchEndpoints
             await events.Changed(city);
             return Results.NoContent();
         });
+    }
+
+    /// <summary>The driver's optional area: a street of the city and a number, found on the map (or cleared).</summary>
+    static async Task<IResult?> SetArea(Driver d, DriverIn b, Guid city, AppDbContext db, IGeocoder geo, CancellationToken ct)
+    {
+        var building = b.AreaBuilding?.Trim() ?? "";
+        if (b.AreaStreetId is not { } streetId)
+        {
+            d.AreaStreetId = null;
+            d.AreaBuilding = null;
+            d.AreaLocation = null;
+            return null;
+        }
+        if (d.AreaStreetId == streetId && (d.AreaBuilding ?? "") == building && d.AreaLocation is not null) return null;
+        var street = await db.Streets.FirstOrDefaultAsync(s => s.Id == streetId && s.CityId == city, ct);
+        if (street is null) return Problems.Error("צריך לבחור רחוב מהרשימה");
+        var cityName = await db.Cities.Where(c => c.Id == city).Select(c => c.Name).FirstAsync(ct);
+        d.AreaStreetId = streetId;
+        d.AreaBuilding = building == "" ? null : building;
+        d.AreaLocation = (await geo.FindAsync(cityName, street.Name, building, ct)).Location;
+        return null;
     }
 
     static IResult? ValidateDriver(DriverIn b)
@@ -400,10 +441,40 @@ public static class DispatchEndpoints
     {
         var drivers = await db.Drivers.Where(d => d.CityId == city && d.OperationId == op && Available.Contains(d.Status) && !d.BreakAfterTrip
             && !db.Trips.Any(t => t.DriverId == d.Id && (t.Status == TripStatus.Active || t.Status == TripStatus.Offered))).ToListAsync(ct);
+        var ends = await LastDropOffs(db, city, op, drivers.Select(d => d.Id).ToList(), ct);
+        static GeoPoint? Geo(Point? pt) => Point(pt) is { } p ? new GeoPoint(p.lat, p.lon) : null;
         return drivers.Select(d => new DriverItem(
             d.Id, d.FullName, d.Seats, d.WheelchairCar, d.Status == DriverStatus.Soon,
             d.FreeAt is { } f ? Math.Max(0, (f - now).TotalMinutes) : null,
-            Point(d.Location) is { } p ? new GeoPoint(p.lat, p.lon) : null)).ToList();
+            ProposalEngine.StartPoint(ends.GetValueOrDefault(d.Id), Geo(d.Location), d.LocationAt, Geo(d.AreaLocation), now))).ToList();
+    }
+
+    /// <summary>
+    /// Where each driver's last finished ride ended: the home of the last passenger brought back (when the driver
+    /// waited and brought people home; the first picked up is the last brought back), otherwise the last cluster.
+    /// </summary>
+    static async Task<Dictionary<Guid, GeoPoint?>> LastDropOffs(AppDbContext db, Guid city, Guid op, List<Guid> driverIds, CancellationToken ct)
+    {
+        var trips = await db.Trips.Where(t => t.CityId == city && t.OperationId == op && t.Status == TripStatus.Done && driverIds.Contains(t.DriverId))
+            .Select(t => new { t.DriverId, t.CreatedAt, stops = t.Stops.OrderBy(s => s.Order).Select(s => new { s.Kind, s.RequestId, s.ClusterId, s.DoneAt }).ToList() })
+            .ToListAsync(ct);
+        var last = trips.GroupBy(t => t.DriverId)
+            .ToDictionary(g => g.Key, g => g.MaxBy(t => t.stops.Max(s => s.DoneAt) ?? t.CreatedAt)!);
+        var reqIds = last.Values.SelectMany(t => t.stops).Where(s => s.RequestId != null).Select(s => s.RequestId!.Value).ToList();
+        var reqs = await db.Requests.Where(r => reqIds.Contains(r.Id)).Select(r => new { r.Id, r.Location, r.ReturnMode }).ToDictionaryAsync(r => r.Id, ct);
+        var clusterIds = last.Values.SelectMany(t => t.stops).Where(s => s.ClusterId != null).Select(s => s.ClusterId!.Value).ToList();
+        var clusters = await db.Clusters.Where(c => clusterIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => c.Location, ct);
+
+        var result = new Dictionary<Guid, GeoPoint?>();
+        foreach (var (driver, trip) in last)
+        {
+            var home = trip.stops.Where(s => s.Kind == StopKind.Pickup && s.RequestId is { } id && reqs.GetValueOrDefault(id)?.ReturnMode == ReturnMode.DriverWaits)
+                .Select(s => reqs[s.RequestId!.Value].Location).FirstOrDefault(l => l is not null);
+            var cluster = trip.stops.Where(s => s.Kind == StopKind.DropOff && s.ClusterId is not null)
+                .Select(s => clusters.GetValueOrDefault(s.ClusterId!.Value)).LastOrDefault(l => l is not null);
+            result[driver] = (home ?? cluster) is { } pt ? new GeoPoint(pt.Y, pt.X) : null;
+        }
+        return result;
     }
 
     /// <summary>Waiting requests, as rules input and as screen rows.</summary>
@@ -426,12 +497,13 @@ public static class DispatchEndpoints
             // A pickup window that has not started yet stays out of the queue and the proposals until it starts.
             var notYet = r.TimeMode == TimeMode.Between && r.WindowFrom is { } from && At(from) > now;
             var wait = Waiting.Minutes(now, r.CreatedAt, r.TimeMode, r.WindowFrom);
-            var item = new QueueItem(r.Id, kind, r.Passengers.Count, r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet);
+            var item = new QueueItem(r.Id, kind, r.Passengers.Count, r.NeedsWheelchair, pickup, clusterIds, dest, wait, toDeadline, notYet,
+                r.SuspendedAt is not null);
             object dto = new
             {
                 r.Id, r.Number, kind = kind.ToString(), waitMinutes = (int)Math.Floor(wait),
                 minutesToDeadline = toDeadline is null ? (int?)null : (int)Math.Floor(toDeadline.Value),
-                deadlineSoon = ProposalEngine.DeadlineSoon(item), notYet,
+                deadlineSoon = ProposalEngine.DeadlineSoon(item), notYet, suspended = r.SuspendedAt is not null,
                 passengers = r.Passengers.Select(p => new { p.Person!.FullName, gender = p.Person.Gender.ToString(), p.ClusterId, p.BallotBox }),
                 pending = r.Passengers.Any(p => p.PendingVerification),
                 r.CallerPhone, street = r.Street?.Name, r.BuildingNumber, r.Entrance, r.DriverNotes, r.ApproximateLocation,

@@ -32,6 +32,13 @@ public class Driver
     public Point? Location { get; set; }
     public DateTimeOffset? LocationAt { get; set; }
     /// <summary>
+    /// Where the driver usually is (optional, written by the dispatcher): a street and number of the city, found on
+    /// the map. Used as the starting point when there is no last drop-off and no fresh app location (spec 7).
+    /// </summary>
+    public Guid? AreaStreetId { get; set; }
+    public string? AreaBuilding { get; set; }
+    public Point? AreaLocation { get; set; }
+    /// <summary>
     /// Personal sign-in link for the driver app (spec 12): one use, valid until the end of election day.
     /// Only its hash is stored. The dispatcher copies the link and sends it to the driver.
     /// </summary>

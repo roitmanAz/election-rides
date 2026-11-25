@@ -1,5 +1,7 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
+import { Combo, ComboItem } from '../shared/combo';
 import { Router } from '@angular/router';
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { Api } from '../core/api';
@@ -33,7 +35,7 @@ type Filter = 'all' | 'Men' | 'Women' | 'Family' | 'wc' | 'pending';
 @Component({
   selector: 'app-dispatcher',
   host: { '(document:keydown.escape)': 'pinFor.set(null)' },
-  imports: [FormsModule, Dialog, Icon, CityMap, RoleSwitch, Select, Digits],
+  imports: [FormsModule, NgTemplateOutlet, Dialog, Icon, CityMap, RoleSwitch, Select, Digits, Combo],
   templateUrl: './dispatcher.html',
 })
 export class DispatcherPage implements OnInit, OnDestroy {
@@ -82,9 +84,11 @@ export class DispatcherPage implements OnInit, OnDestroy {
         : b.waitMinutes - a.waitMinutes,
     ),
   );
+  /** Suspended requests (far areas), in their own list under the queue. */
+  protected readonly suspendedList = computed(() => this.ordered().filter((r) => r.suspended));
   protected readonly shown = computed(() => {
     const f = this.filter();
-    return this.ordered().filter((r) =>
+    return this.ordered().filter((r) => !r.suspended).filter((r) =>
       f === 'all' ? true : f === 'wc' ? r.needsWheelchair : f === 'pending' ? r.pending : r.kind === f,
     );
   });
@@ -140,8 +144,14 @@ export class DispatcherPage implements OnInit, OnDestroy {
   /** Requests whose pickup window has not started yet: not in the queue, only counted. */
   protected readonly later = signal(0);
 
+  /** The city's streets, for the driver's optional area. */
+  protected readonly streetItems = signal<ComboItem[]>([]);
+
   async ngOnInit() {
     this.clusters.set(await this.api.get<ClusterRow[]>('/api/city/clusters'));
+    this.api.get<{ id: string; name: string }[]>('/api/city/streets', true)
+      .then((list) => this.streetItems.set(list.map((s) => ({ id: s.id, label: s.name }))))
+      .catch(() => {});
     await this.reload();
     this.hub = new HubConnectionBuilder().withUrl('/hubs/city').withAutomaticReconnect().configureLogging(LogLevel.Warning).build();
     this.hub.on('changed', () => this.scheduleReload());
@@ -306,6 +316,13 @@ export class DispatcherPage implements OnInit, OnDestroy {
     }
   }
 
+  /** "Suspend (far area)" or "back to the queue" (spec 7). */
+  protected async suspend(r: QueueRow, on: boolean) {
+    await this.api.post(`/api/dispatch/requests/${r.id}/suspend`, { suspend: on });
+    this.showToast(on ? `פנייה מס' ${r.number} הושהתה: תוצע רק לנהג שמתחיל קרוב אליה` : `פנייה מס' ${r.number} חזרה לתור`);
+    await this.reload();
+  }
+
   protected async verify(r: QueueRow) {
     await this.api.post(`/api/dispatch/requests/${r.id}/verify`);
     await this.reload();
@@ -413,10 +430,13 @@ export class DispatcherPage implements OnInit, OnDestroy {
   protected readonly drvEditId = signal<string | null>(null);
   protected readonly known = signal<{ id: string; fullName: string; seats: number; onList: boolean } | null>(null);
   protected readonly drvErr = signal<{ phone?: string; name?: string; seats?: string; app?: string; save?: string }>({});
-  protected drv = { phone: '', fullName: '', seats: '' as string, wheelchairCar: false, hasSmartphone: null as boolean | null };
+  protected drv = {
+    phone: '', fullName: '', seats: '' as string, wheelchairCar: false, hasSmartphone: null as boolean | null,
+    areaStreetId: null as string | null, areaBuilding: '',
+  };
 
   protected openNewDriver() {
-    this.drv = { phone: '', fullName: '', seats: '', wheelchairCar: false, hasSmartphone: null };
+    this.drv = { phone: '', fullName: '', seats: '', wheelchairCar: false, hasSmartphone: null, areaStreetId: null, areaBuilding: '' };
     this.drvEditId.set(null);
     this.known.set(null);
     this.drvErr.set({});
@@ -424,7 +444,10 @@ export class DispatcherPage implements OnInit, OnDestroy {
   }
 
   protected openEditDriver(d: DriverRow) {
-    this.drv = { phone: formatPhone(d.phone), fullName: d.fullName, seats: String(d.seats), wheelchairCar: d.wheelchairCar, hasSmartphone: d.hasSmartphone };
+    this.drv = {
+      phone: formatPhone(d.phone), fullName: d.fullName, seats: String(d.seats), wheelchairCar: d.wheelchairCar, hasSmartphone: d.hasSmartphone,
+      areaStreetId: d.areaStreetId, areaBuilding: d.areaBuilding ?? '',
+    };
     this.drvEditId.set(d.id);
     this.known.set(null);
     this.drvErr.set({});
@@ -463,7 +486,10 @@ export class DispatcherPage implements OnInit, OnDestroy {
     };
     this.drvErr.set(e);
     if (Object.values(e).some(Boolean)) return;
-    const body = { phone: phoneDigits(this.drv.phone), fullName: this.drv.fullName, seats: +this.drv.seats, wheelchairCar: this.drv.wheelchairCar, hasSmartphone: this.drv.hasSmartphone };
+    const body = {
+      phone: phoneDigits(this.drv.phone), fullName: this.drv.fullName, seats: +this.drv.seats, wheelchairCar: this.drv.wheelchairCar,
+      hasSmartphone: this.drv.hasSmartphone, areaStreetId: this.drv.areaStreetId, areaBuilding: this.drv.areaStreetId ? this.drv.areaBuilding : null,
+    };
     try {
       const id = this.drvEditId();
       if (id) await this.api.put(`/api/dispatch/drivers/${id}`, body);

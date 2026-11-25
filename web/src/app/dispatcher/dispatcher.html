@@ -36,32 +36,18 @@
             <span>דקות המתנה</span><span>שם</span><span>מאיפה ולאן</span><span>זמן</span>
           </div>
           @for (r of shown(); track r.id) {
-            <button type="button" class="grid w-full grid-cols-[64px_minmax(0,1fr)_minmax(0,1.2fr)_80px] items-center gap-2 border-b border-line px-3 py-2 text-start hover:bg-bg"
-              [class.!bg-action-soft]="r.id === selectedId()" [class.shadow-[inset_-4px_0_0_var(--color-action)]]="inProposal(r)"
-              (click)="selectedId.set(r.id)">
-              <span class="inline-flex h-7 w-11 items-center justify-center rounded-[10px] font-semibold tabular-nums"
-                [class]="waitClass(r) === 'bad' ? 'bg-bad text-white' : waitClass(r) === 'warn' ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'">{{ r.waitMinutes }}</span>
-              <span class="min-w-0">
-                <b class="block truncate">{{ r.passengers[0].fullName }}@if (r.passengers.length > 1) { <span class="font-normal"> +{{ r.passengers.length - 1 }}</span> }</b>
-                <span class="flex flex-wrap items-center gap-1 text-xs text-muted">{{ kindOf(r) }}
-                  @if (r.needsWheelchair) { <span class="inline-flex text-ink" title="כיסא גלגלים"><app-icon name="wc" [size]="14" /></span> }
-                  @if (r.pending) { <span class="rounded-full bg-warn-soft px-1.5 text-warn">ממתין לאימות</span> }
-                  @if (!r.location) { <span class="rounded-full bg-bad-soft px-1.5 text-bad">לא נמצא מיקום</span> } @else if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
-                </span>
-              </span>
-              <span class="flex min-w-0 items-center gap-1.5 text-sm">
-                <span class="truncate">{{ r.street }} {{ r.buildingNumber }}@if (r.entrance) {, כניסה {{ r.entrance }}}</span>
-                <span class="h-0 min-w-3 flex-1 border-t-2 border-dotted border-line2"></span>
-                <span class="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-lg bg-ink px-1.5 text-xs font-semibold text-white"
-                  [title]="(cluster(r.clusterIds[0])?.name ?? '') + ', ' + (cluster(r.clusterIds[0])?.street ?? '') + ' ' + (cluster(r.clusterIds[0])?.buildingNumber ?? '')">{{ plate(r.clusterIds[0]) }}</span>
-              </span>
-              <span class="text-sm tabular-nums">
-                @if (r.deadlineSoon) { <span class="rounded-full bg-bad px-1.5 py-0.5 text-xs font-medium text-white">{{ whenText(r) }}</span> }
-                @else { {{ whenText(r) }} }
-              </span>
-            </button>
+            <ng-container *ngTemplateOutlet="queueRow; context: { $implicit: r }" />
           } @empty {
             <p class="p-6 text-center text-muted">{{ queue().length ? 'אין פניות שמתאימות לסינון' : 'התור ריק' }}</p>
+          }
+          @if (suspendedList().length) {
+            <div class="sticky top-[33px] z-[5] flex items-center gap-2 border-y border-line bg-soft px-3 py-1.5 text-xs font-semibold text-muted"
+              title="פניות מאזורים רחוקים: לא מוצעות לנהגים אוטומטית, אלא רק לנהג שמתחיל קרוב אליהן. אפשר גם לשבץ ידנית.">
+              מושהות, אזור רחוק <span class="rounded-full bg-surface px-2">{{ suspendedList().length }}</span>
+            </div>
+            @for (r of suspendedList(); track r.id) {
+              <ng-container *ngTemplateOutlet="queueRow; context: { $implicit: r }" />
+            }
           }
         </div>
       </section>
@@ -111,7 +97,9 @@
                   <button type="button" class="btn-primary h-9 px-3 text-sm" (click)="addToProposal()">צרף להצעה של {{ d.fullName }}</button>
                 }
               }
-              <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm text-bad" (click)="openCancel()">ביטול פנייה</button>
+              <button type="button" class="btn-secondary ms-auto h-9 px-3 text-sm" (click)="suspend(r, !r.suspended)"
+                [title]="r.suspended ? 'הפנייה תחזור לתור הרגיל' : 'לאזור רחוק: הפנייה תוצע רק לנהג שמתחיל קרוב אליה'">{{ r.suspended ? 'החזר לתור' : 'השהה (אזור רחוק)' }}</button>
+              <button type="button" class="btn-secondary h-9 px-3 text-sm text-bad" (click)="openCancel()">ביטול פנייה</button>
             </div>
           </section>
         }
@@ -161,6 +149,7 @@
                         <span class="-ms-[26px] size-3.5 shrink-0 rounded-full border-4 border-action bg-surface"></span>
                         <span><b>{{ r.passengers.map(p => p.fullName).join(', ') }}</b> · {{ r.street }} {{ r.buildingNumber }}@if (r.entrance) {, כניסה {{ r.entrance }}}</span>
                         @if (r.needsWheelchair) { <app-icon name="wc" [size]="14" /> }
+                        @if (r.suspended) { <span class="rounded-full bg-warn-soft px-1.5 text-xs text-warn">פנייה מושהית ליד הנהג</span> }
                         <button type="button" class="ms-auto h-7 rounded-lg bg-soft px-2 text-xs font-medium hover:text-bad" (click)="removeStop(r.id)">הסר</button>
                       </li>
                     }
@@ -373,6 +362,17 @@
         <div class="error-text">{{ drvErr().app }}</div>
       </fieldset>
       </div>
+      <div class="grid gap-x-4 gap-y-2 sm:col-span-2 sm:grid-cols-[minmax(0,1fr)_120px]">
+        <div class="field">
+          <label class="label" for="dArea">באיזה אזור הנהג נמצא בדרך כלל?</label>
+          <app-combo inputId="dArea" [items]="streetItems()" [(value)]="drv.areaStreetId" placeholder="רחוב (לא חובה)" />
+          <div class="hint">משמש נקודת מוצא להצעות, כשאין מיקום עדכני יותר.</div>
+        </div>
+        <div class="field">
+          <label class="label" for="dAreaNo">איזה מספר?</label>
+          <input id="dAreaNo" class="input text-right" appDigits="5" dir="ltr" [(ngModel)]="drv.areaBuilding" [disabled]="!drv.areaStreetId" />
+        </div>
+      </div>
       @if (drvErr().save) { <p class="notice bad sm:col-span-2" role="alert">{{ drvErr().save }}</p> }
       <div class="flex gap-2 sm:col-span-2">
         <button type="button" class="btn-primary" (click)="saveDriver()">{{ drvEditId() ? 'שמירה' : 'הוסף נהג' }}</button>
@@ -385,3 +385,31 @@
 @if (toast()) {
   <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-3 font-medium text-white shadow-[var(--shadow-pop)]" role="status">{{ toast() }}</div>
 }
+
+<!-- One queue row (the queue and the suspended list). -->
+<ng-template #queueRow let-r>
+            <button type="button" class="grid w-full grid-cols-[64px_minmax(0,1fr)_minmax(0,1.2fr)_80px] items-center gap-2 border-b border-line px-3 py-2 text-start hover:bg-bg"
+    [class.!bg-action-soft]="r.id === selectedId()" [class.shadow-[inset_-4px_0_0_var(--color-action)]]="inProposal(r)"
+    (click)="selectedId.set(r.id)">
+    <span class="inline-flex h-7 w-11 items-center justify-center rounded-[10px] font-semibold tabular-nums"
+      [class]="waitClass(r) === 'bad' ? 'bg-bad text-white' : waitClass(r) === 'warn' ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'">{{ r.waitMinutes }}</span>
+    <span class="min-w-0">
+      <b class="block truncate">{{ r.passengers[0].fullName }}@if (r.passengers.length > 1) { <span class="font-normal"> +{{ r.passengers.length - 1 }}</span> }</b>
+      <span class="flex flex-wrap items-center gap-1 text-xs text-muted">{{ kindOf(r) }}
+        @if (r.needsWheelchair) { <span class="inline-flex text-ink" title="כיסא גלגלים"><app-icon name="wc" [size]="14" /></span> }
+        @if (r.pending) { <span class="rounded-full bg-warn-soft px-1.5 text-warn">ממתין לאימות</span> }
+        @if (!r.location) { <span class="rounded-full bg-bad-soft px-1.5 text-bad">לא נמצא מיקום</span> } @else if (r.approximateLocation) { <span class="rounded-full bg-soft px-1.5">מיקום משוער</span> }
+      </span>
+    </span>
+    <span class="flex min-w-0 items-center gap-1.5 text-sm">
+      <span class="truncate">{{ r.street }} {{ r.buildingNumber }}@if (r.entrance) {, כניסה {{ r.entrance }}}</span>
+      <span class="h-0 min-w-3 flex-1 border-t-2 border-dotted border-line2"></span>
+      <span class="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-lg bg-ink px-1.5 text-xs font-semibold text-white"
+        [title]="(cluster(r.clusterIds[0])?.name ?? '') + ', ' + (cluster(r.clusterIds[0])?.street ?? '') + ' ' + (cluster(r.clusterIds[0])?.buildingNumber ?? '')">{{ plate(r.clusterIds[0]) }}</span>
+    </span>
+    <span class="text-sm tabular-nums">
+      @if (r.deadlineSoon) { <span class="rounded-full bg-bad px-1.5 py-0.5 text-xs font-medium text-white">{{ whenText(r) }}</span> }
+      @else { {{ whenText(r) }} }
+    </span>
+  </button>
+</ng-template>

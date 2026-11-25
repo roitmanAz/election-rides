@@ -89,6 +89,11 @@ public class RideRequest
     public RequestStatus Status { get; set; } = RequestStatus.Queued;
     /// <summary>When a driver was given the request; the wait for reports is from CreatedAt to here.</summary>
     public DateTimeOffset? AssignedAt { get; set; }
+    /// <summary>
+    /// "Suspended" by the dispatcher (a far area, spec 7): kept aside, offered only to a driver who starts near it.
+    /// It keeps its waiting time and colors.
+    /// </summary>
+    public DateTimeOffset? SuspendedAt { get; set; }
     /// <summary>Seconds the operator spent on this request, from the phone number to saving (new requests only).</summary>
     public int? IntakeSeconds { get; set; }
     public string? CancelReason { get; set; }

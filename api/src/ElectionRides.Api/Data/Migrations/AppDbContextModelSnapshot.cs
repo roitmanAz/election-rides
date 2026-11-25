@@ -998,6 +998,15 @@ namespace ElectionRides.Api.Data.Migrations
                     b.Property<string>("AccessTokenHash")
                         .HasColumnType("text");
 
+                    b.Property<string>("AreaBuilding")
+                        .HasColumnType("text");
+
+                    b.Property<Point>("AreaLocation")
+                        .HasColumnType("geometry");
+
+                    b.Property<Guid?>("AreaStreetId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("BreakAfterTrip")
                         .HasColumnType("boolean");
 
@@ -1354,6 +1363,9 @@ namespace ElectionRides.Api.Data.Migrations
 
                     b.Property<Guid>("StreetId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("SuspendedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("TakenById")
                         .HasColumnType("uuid");

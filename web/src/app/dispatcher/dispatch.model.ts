@@ -40,6 +40,8 @@ export interface QueueRow {
   minutesToDeadline: number | null;
   deadlineSoon: boolean;
   notYet: boolean;
+  /** Suspended by the dispatcher (far area): kept aside, offered only to a driver who starts near it. */
+  suspended: boolean;
   passengers: { fullName: string; gender: 'Male' | 'Female'; clusterId: string; ballotBox: string | null }[];
   pending: boolean;
   callerPhone: string;
@@ -89,6 +91,9 @@ export interface DriverRow {
   minutesToFree: number | null;
   location: LatLon | null;
   hasLink: boolean;
+  /** Optional area of the driver (street and number), the starting point when nothing newer is known. */
+  areaStreetId: string | null;
+  areaBuilding: string | null;
   lastDecline: string | null;
   trip: { id: string; status: 'Offered' | 'Active'; offeredAt: string; stops: TripStop[] } | null;
 }

@@ -99,6 +99,44 @@ public class ProposalEngineTests
     }
 
     [Fact]
+    public void Start_point_is_the_last_drop_off_then_a_fresh_app_location_then_the_area()
+    {
+        var now = DateTimeOffset.UtcNow;
+        GeoPoint drop = new(31.1, 35.1), app = new(31.2, 35.2), area = new(31.3, 35.3);
+        Assert.Equal(drop, ProposalEngine.StartPoint(drop, app, now, area, now));
+        Assert.Equal(app, ProposalEngine.StartPoint(null, app, now.AddMinutes(-4), area, now));
+        Assert.Equal(area, ProposalEngine.StartPoint(null, app, now.AddMinutes(-6), area, now));
+        Assert.Null(ProposalEngine.StartPoint(null, null, null, null, now));
+    }
+
+    [Fact]
+    public void A_nearer_request_goes_first_only_by_the_minutes_it_saves_in_driving()
+    {
+        // 1 minute per 0.001 degree; the driver is at the near request.
+        ProposalEngine.TravelMinutes t = (a, b) => (Math.Abs(a.Lat - b.Lat) + Math.Abs(a.Lon - b.Lon)) * 1000;
+        var driver = new DriverItem(Guid.NewGuid(), "נהג", 4, false, false, null, new GeoPoint(31.780, 35.210));
+        QueueItem At(double wait, double lat, Guid cluster) => new(Guid.NewGuid(), RideKind.Men, 1, false, new GeoPoint(lat, 35.210),
+            [cluster], new GeoPoint(lat, 35.212), wait, null, false);
+        // Near: waited 10, 0 minutes away (score 10). Far: waited 25, 20 minutes away (score 5): the near one goes first.
+        var near = At(10, 31.780, Guid.NewGuid());
+        var far = At(25, 31.800, Guid.NewGuid());
+        Assert.Equal([near.Id], ProposalEngine.Build([far, near], [driver], t).Single().RequestIds);
+        // Far waited 40 (score 20): now it goes first, even though it is far.
+        var longFar = At(40, 31.800, Guid.NewGuid());
+        Assert.Equal([longFar.Id], ProposalEngine.Build([longFar, near], [driver], t).Single().RequestIds);
+    }
+
+    [Fact]
+    public void A_suspended_request_goes_only_to_a_driver_who_starts_near_it()
+    {
+        var farAway = new DriverItem(Guid.NewGuid(), "רחוק", 4, false, false, null, new GeoPoint(31.90, 35.30));
+        var close = new DriverItem(Guid.NewGuid(), "קרוב", 4, false, false, null, new GeoPoint(31.781, 35.211));
+        var suspended = Q(RideKind.Men, wait: 50) with { Suspended = true };
+        Assert.Empty(ProposalEngine.Build([suspended], [farAway]).Single().RequestIds);
+        Assert.Equal([suspended.Id], ProposalEngine.Build([suspended], [close]).Single().RequestIds);
+    }
+
+    [Fact]
     public void Free_drivers_get_proposals_before_soon_free_drivers()
     {
         var soon = D(soon: true, inMin: 5);
