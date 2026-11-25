@@ -16,6 +16,26 @@ public class FoundationTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task Every_response_carries_the_security_headers()
+    {
+        var res = await api.CreateClient().GetAsync("/api/health");
+        Assert.Equal("nosniff", res.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("DENY", res.Headers.GetValues("X-Frame-Options").Single());
+        Assert.Contains("frame-ancestors 'none'", res.Headers.GetValues("Content-Security-Policy").Single());
+    }
+
+    [Fact]
+    public async Task The_per_request_ceiling_returns_429_when_one_address_floods()
+    {
+        // The test config's ceiling is very high; a client with its own low ceiling proves the limiter is wired.
+        using var factory = api.WithConfig(new() { ["RateLimit:PerMinute"] = "5" });
+        var client = factory.CreateClient();
+        var codes = new List<int>();
+        for (var i = 0; i < 12; i++) codes.Add((int)(await client.GetAsync("/api/health")).StatusCode);
+        Assert.Contains(429, codes);
+    }
+
+    [Fact]
     public async Task Only_one_election_operation_can_be_active()
     {
         await using var db = api.NewDb();

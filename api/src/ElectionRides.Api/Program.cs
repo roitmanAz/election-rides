@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using ElectionRides.Api.Auth;
 using ElectionRides.Api.CityScreens;
@@ -108,17 +109,32 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy(Policies.Dispatch, p => p.RequireClaim(SessionPolicy.CityClaim).RequireRole(nameof(UserRole.Dispatcher), nameof(UserRole.CityAdmin)));
 });
 
-// Sign-in endpoints: at most 20 requests a minute from one address (configurable for tests).
+// The caller's real IP: Cloudflare sets CF-Connecting-IP and strips any the client sent, so it cannot be spoofed
+// through the proxy; the connection address is the fallback when the site is reached without Cloudflare.
+static string ClientIp(HttpContext http) =>
+    http.Request.Headers["CF-Connecting-IP"].FirstOrDefault() ?? http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = 429;
-    o.AddPolicy("auth", http => RateLimitPartition.GetFixedWindowLimiter(
-        http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    // Sign-in endpoints: at most 20 requests a minute from one IP (configurable for tests). Brute force is also
+    // capped per account by the lockout.
+    o.AddPolicy("auth", http => RateLimitPartition.GetFixedWindowLimiter(ClientIp(http),
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = http.RequestServices.GetRequiredService<IConfiguration>().GetValue("RateLimit:AuthPerMinute", 20),
             Window = TimeSpan.FromMinutes(1),
         }));
+    // A ceiling on every request, per signed-in user (or per IP before sign-in), far above real use so staff never
+    // meet it: it stops one session or address from flooding the server. 300/min while a busy dispatcher does ~20.
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(http =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            http.User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) is { } uid ? "u:" + uid : "ip:" + ClientIp(http),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue("RateLimit:PerMinute", 300),
+                Window = TimeSpan.FromMinutes(1),
+            }));
 });
 
 const string WebCors = "web";
@@ -136,6 +152,23 @@ if (app.Configuration.GetValue("Database:MigrateOnStart", false))
 }
 
 app.UseForwardedHeaders();
+
+// Security headers on every response (pages and files alike). They constrain the browser; a normal user sees no
+// change. CSP allows only what the app loads: its own bundles, Google Fonts and OpenStreetMap tiles; no framing.
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";
+    h["X-Frame-Options"] = "DENY";
+    h["Referrer-Policy"] = "same-origin";
+    h["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org; " +
+        "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+    if (ctx.Request.IsHttps) h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
+});
+
 // Hosted as one service: the built screens are served from wwwroot, next to the API.
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -145,9 +178,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 app.UseCors(WebCors);
-app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+// After authentication, so the per-request ceiling keys by the signed-in user when there is one.
+app.UseRateLimiter();
 
 // Health: the server is up, and whether it can reach the database.
 app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>

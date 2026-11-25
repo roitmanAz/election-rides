@@ -26,6 +26,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["ConnectionStrings:Db"] = ConnectionString,
             ["RateLimit:AuthPerMinute"] = "10000",
+            ["RateLimit:PerMinute"] = "100000",
             // Tests never call outside services.
             ["Geocoding:Provider"] = "none",
             ["Routing:BaseUrl"] = "",
@@ -33,6 +34,10 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // Tests never call data.gov.il.
         builder.ConfigureServices(s => s.Replace(ServiceDescriptor.Singleton<IGovData>(Gov)));
     }
+
+    /// <summary>A copy of the factory with some settings overridden (e.g. a low rate limit), sharing the test DB.</summary>
+    public WebApplicationFactory<Program> WithConfig(Dictionary<string, string?> overrides) =>
+        WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(overrides)));
 
     public FakeGovData Gov { get; } = new();
 
