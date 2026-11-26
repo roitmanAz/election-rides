@@ -165,10 +165,12 @@ app.Use(async (ctx, next) =>
     // break providers (like MapTiler) that check the Referer.
     h["Referrer-Policy"] = "strict-origin-when-cross-origin";
     h["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        // 'wasm-unsafe-eval' lets the map engine and its Hebrew text plugin run WebAssembly; it allows WASM only,
+        // not JavaScript eval, so it does not open the usual eval risk.
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         // The map engine renders in a blob web worker. Images and tile/style data may come from any HTTPS host, so
         // the map provider is configurable; images cannot execute and this does not weaken the script protection.
-        "worker-src blob:; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
+        "worker-src 'self' blob:; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
         "connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
     if (ctx.Request.IsHttps) h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
     await next();

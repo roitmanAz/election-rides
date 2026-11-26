@@ -1,7 +1,21 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, signal, viewChild } from '@angular/core';
 import * as L from 'leaflet';
+import maplibregl from 'maplibre-gl';
 // A vector-map base layer that lives inside Leaflet, so all the Leaflet markers and routes stay as they are.
 import '@maplibre/maplibre-gl-leaflet';
+
+// Right-to-left text so Hebrew (and Arabic) labels read correctly; the file is served from our own site.
+let rtlReady = false;
+function ensureRtl() {
+  if (rtlReady) return;
+  rtlReady = true;
+  try {
+    (maplibregl as unknown as { setRTLTextPlugin(u: string, c: unknown, lazy: boolean): void })
+      .setRTLTextPlugin('/mapbox-gl-rtl-text.js', null, true);
+  } catch {
+    // Already set, or not supported: labels still show, only bidi order may be off.
+  }
+}
 import { ClusterRow, DriverRow, LatLon, QueueRow, RoadRoute, waitClass } from './dispatch.model';
 import { Icon } from '../shared/icon';
 
@@ -102,6 +116,7 @@ export class CityMap implements AfterViewInit, OnDestroy {
     const maplibreGL = lib.maplibreGL ?? lib.default?.maplibreGL;
     if (cfg?.styleUrl && maplibreGL) {
       try {
+        ensureRtl();
         const gl = maplibreGL({ style: cfg.styleUrl, attribution: cfg.tileAttribution ?? '© MapTiler © OpenStreetMap' });
         gl.addTo(this.map);
         hebrewLabels(gl.getMaplibreMap());
