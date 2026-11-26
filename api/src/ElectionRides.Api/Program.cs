@@ -160,7 +160,10 @@ app.Use(async (ctx, next) =>
     var h = ctx.Response.Headers;
     h["X-Content-Type-Options"] = "nosniff";
     h["X-Frame-Options"] = "DENY";
-    h["Referrer-Policy"] = "same-origin";
+    // Cross-origin requests send only the site's origin (not the path), so the map's tile provider can identify the
+    // site by its Referer; same-origin requests send the full URL. "same-origin" would send nothing cross-origin and
+    // break providers (like MapTiler) that check the Referer.
+    h["Referrer-Policy"] = "strict-origin-when-cross-origin";
     h["Content-Security-Policy"] =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         // Images (only) may come from any HTTPS host, so the map's tile provider is configurable; images cannot
