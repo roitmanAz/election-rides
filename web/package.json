@@ -17,8 +17,10 @@
     "@angular/forms": "^22.0.0",
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "@microsoft/signalr": "^9.0.6",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -1,5 +1,7 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, effect, input, output, signal, viewChild } from '@angular/core';
 import * as L from 'leaflet';
+// A vector-map base layer that lives inside Leaflet, so all the Leaflet markers and routes stay as they are.
+import '@maplibre/maplibre-gl-leaflet';
 import { ClusterRow, DriverRow, LatLon, QueueRow, RoadRoute, waitClass } from './dispatch.model';
 import { Icon } from '../shared/icon';
 
@@ -89,13 +91,31 @@ export class CityMap implements AfterViewInit, OnDestroy {
 
   async ngAfterViewInit() {
     this.map = L.map(this.box().nativeElement, { zoomControl: true, attributionControl: true }).setView([31.778, 35.216], 13);
-    // The tile source (the map background) comes from the server config, so it can be switched without a code
-    // change: OpenStreetMap by default (clear, with house numbers), another provider when OSM blocks the server.
+    // The map background comes from the server config, so it can be switched without a code change.
+    // A vector style (styleUrl) renders through MapLibre with Hebrew labels; otherwise plain image tiles (tileUrl).
     const cfg = await fetch('/api/config').then((r) => r.json()).catch(() => null);
-    L.tileLayer(cfg?.tileUrl ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: cfg?.tileAttribution ?? '© OpenStreetMap',
-    }).addTo(this.map);
+    let glOk = false;
+    // The plugin adds maplibreGL to Leaflet's live object; `import * as L` is a snapshot without it, so reach the
+    // live object through `default`.
+    type GlFactory = (o: object) => L.Layer & { getMaplibreMap(): MaplibreMap };
+    const lib = L as unknown as { maplibreGL?: GlFactory; default?: { maplibreGL?: GlFactory } };
+    const maplibreGL = lib.maplibreGL ?? lib.default?.maplibreGL;
+    if (cfg?.styleUrl && maplibreGL) {
+      try {
+        const gl = maplibreGL({ style: cfg.styleUrl, attribution: cfg.tileAttribution ?? '© MapTiler © OpenStreetMap' });
+        gl.addTo(this.map);
+        hebrewLabels(gl.getMaplibreMap());
+        glOk = true;
+      } catch (e) {
+        console.error('vector map failed, using image tiles:', e);
+      }
+    }
+    if (!glOk) {
+      L.tileLayer(cfg?.tileUrl ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: cfg?.tileAttribution ?? '© OpenStreetMap',
+      }).addTo(this.map);
+    }
     this.layer.addTo(this.map);
     // Marks follow the zoom: smaller when zoomed out.
     this.map.on('zoomend', () => {
@@ -210,4 +230,37 @@ function initials(name: string) {
 }
 function escape(s: string) {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+}
+
+/** The little of MapLibre's map that we touch, to avoid a full type dependency. */
+interface MaplibreMap {
+  isStyleLoaded(): boolean;
+  once(ev: string, cb: () => void): void;
+  getStyle(): { layers: { id: string; type: string; layout?: Record<string, unknown> }[] };
+  setLayoutProperty(layer: string, prop: string, value: unknown): void;
+}
+
+/**
+ * Shows place and street labels in Hebrew (the map provider's styles default to English). Each label layer whose
+ * text comes from the "name" field is switched to the Hebrew name, falling back to the Latin name and then the
+ * default; other labels (house numbers, road numbers) are left as they are.
+ */
+function hebrewLabels(map: MaplibreMap) {
+  const apply = () => {
+    const hebrew = ['coalesce', ['get', 'name:he'], ['get', 'name:latin'], ['get', 'name']];
+    for (const layer of map.getStyle().layers) {
+      if (layer.type !== 'symbol') continue;
+      const field = JSON.stringify(layer.layout?.['text-field'] ?? '');
+      // Only the layers that label by name, so house numbers and road shields are untouched.
+      if (field.includes('name') && !field.includes('housenumber') && !field.includes('ref')) {
+        try {
+          map.setLayoutProperty(layer.id, 'text-field', hebrew);
+        } catch {
+          // A layer that will not take the expression keeps its own label.
+        }
+      }
+    }
+  };
+  if (map.isStyleLoaded()) apply();
+  else map.once('styledata', apply);
 }

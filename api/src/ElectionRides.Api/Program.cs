@@ -166,10 +166,10 @@ app.Use(async (ctx, next) =>
     h["Referrer-Policy"] = "strict-origin-when-cross-origin";
     h["Content-Security-Policy"] =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        // Images (only) may come from any HTTPS host, so the map's tile provider is configurable; images cannot
-        // execute, so this does not weaken the script/connect protections.
-        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
-        "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
+        // The map engine renders in a blob web worker. Images and tile/style data may come from any HTTPS host, so
+        // the map provider is configurable; images cannot execute and this does not weaken the script protection.
+        "worker-src blob:; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; " +
+        "connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'";
     if (ctx.Request.IsHttps) h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
     await next();
 });
@@ -202,6 +202,8 @@ app.MapGet("/api/config", (IConfiguration cfg) => Results.Ok(new
     // Trim: a value pasted into a hosting dashboard can carry a trailing newline, which would break the tile URL.
     tileUrl = cfg["Map:TileUrl"]?.Trim() is { Length: > 0 } u ? u : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     tileAttribution = cfg["Map:TileAttribution"]?.Trim() is { Length: > 0 } a ? a : "© OpenStreetMap",
+    // A vector style URL (e.g. a MapTiler style.json) renders through MapLibre with Hebrew labels; null uses tileUrl.
+    styleUrl = cfg["Map:StyleUrl"]?.Trim() is { Length: > 0 } s ? s : null,
 }));
 app.MapAuth();
 app.MapCityLists();
