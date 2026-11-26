@@ -196,8 +196,9 @@ app.MapGet("/api/health", async (AppDbContext db, CancellationToken ct) =>
 // without rebuilding: OpenStreetMap by default, another provider when OSM blocks the server.
 app.MapGet("/api/config", (IConfiguration cfg) => Results.Ok(new
 {
-    tileUrl = cfg["Map:TileUrl"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    tileAttribution = cfg["Map:TileAttribution"] ?? "© OpenStreetMap",
+    // Trim: a value pasted into a hosting dashboard can carry a trailing newline, which would break the tile URL.
+    tileUrl = cfg["Map:TileUrl"]?.Trim() is { Length: > 0 } u ? u : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    tileAttribution = cfg["Map:TileAttribution"]?.Trim() is { Length: > 0 } a ? a : "© OpenStreetMap",
 }));
 app.MapAuth();
 app.MapCityLists();
